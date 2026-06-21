@@ -5,6 +5,7 @@ Project context lives in this directory. Start with the constitution, then use n
 ## Core Documents
 
 - [Project Constitution](constitution.md): product definition, release shape, tech stack, and current project boundary.
+- [Development Setup](development.md): local commands for the Python package, web app, tests, and builds.
 
 ## Notes
 

@@ -4,6 +4,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+.eggs/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
@@ -17,16 +18,22 @@ venv/
 env/
 
 # uv
-uv.lock
+.python-version
 
 # Node / Bun / frontend
 node_modules/
 dist/
 build/
+web/dist/
 .vite/
 .next/
 coverage/
 bun.lockb
+*.tsbuildinfo
+
+# Local QA artifacts
+.playwright-cli/
+output/playwright/
 
 # Local configuration
 .env

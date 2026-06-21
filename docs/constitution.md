@@ -22,13 +22,15 @@ open a structure file → preview it interactively → adjust visual parameters 
 Users install a Python package and launch a local GUI:
 
 ```bash
-uvx pretty-lattice gui
+uv tool install pretty-lattice
+prl gui
 ```
 
-or, after persistent installation:
+or, with another Python package installer:
 
 ```bash
-pretty-lattice gui
+pipx install pretty-lattice
+prl gui
 ```
 
 The command starts a local Python server and opens a browser page. The browser runs the bundled web app and uses Three.js/WebGL for rendering.
@@ -38,7 +40,7 @@ flowchart LR
     A[Web source<br/>Bun + React + Three.js] --> B[Build static web assets]
     B --> C[Bundle assets into Python package]
     C --> D[User installs pretty-lattice]
-    D --> E[pretty-lattice gui]
+    D --> E[prl gui]
     E --> F[Local browser GUI]
 ```
 
@@ -63,9 +65,13 @@ Responsibilities:
 
 Tools:
 
-- `uv`, `pytest`, `ruff`
-- `pymatgen` and/or `ASE`
+- Python 3.12
+- `uv`
+- FastAPI + Uvicorn
+- Typer
+- ASE
 - `numpy`
+- `pytest`, `ruff`
 
 ### Web side
 
@@ -80,10 +86,13 @@ Responsibilities:
 Tools:
 
 - Bun
+- Vite
 - TypeScript
 - React
 - Three.js
 - React Three Fiber
+
+Vite is a developer/build-time tool only. It should not become a runtime requirement for normal users.
 
 ## Project Boundary
 
