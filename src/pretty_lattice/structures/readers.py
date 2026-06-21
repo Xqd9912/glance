@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from io import StringIO
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from ase import Atoms
 from ase.io import read
@@ -29,37 +29,25 @@ def read_structure_bytes(payload: bytes, filename: str | None = None) -> Atoms:
         raise StructureReadError("Uploaded structure file is empty.")
 
     display_name = filename or "uploaded structure"
+    safe_name = _safe_upload_name(display_name)
     try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise StructureReadError(f"Could not read {display_name} as UTF-8 text.") from exc
+        with TemporaryDirectory(prefix="pretty-lattice-structure-") as temp_dir:
+            structure_path = Path(temp_dir) / safe_name
+            structure_path.write_bytes(payload)
+            atoms = read(structure_path)
+    except Exception as exc:
+        raise StructureReadError(
+            f"Could not parse {display_name} as an ASE-readable structure file: {exc}"
+        ) from exc
 
-    errors: list[str] = []
-    for structure_format in _candidate_formats(display_name, text):
-        try:
-            atoms = read(StringIO(text), format=structure_format)
-        except Exception as exc:
-            errors.append(f"{structure_format}: {exc}")
-            continue
-        return _ensure_atoms(atoms, display_name)
-
-    detail = "; ".join(errors) if errors else "no supported parser was selected"
-    raise StructureReadError(
-        f"Could not parse {display_name} as a supported CIF or POSCAR-style structure ({detail})."
-    )
+    return _ensure_atoms(atoms, display_name)
 
 
-def _candidate_formats(filename: str, text: str) -> tuple[str, ...]:
-    name = Path(filename).name.lower()
-    suffix = Path(name).suffix
-    looks_like_cif = text.lstrip().startswith("data_") or "_cell_length_" in text
-    looks_like_poscar = name in {"poscar", "contcar"} or suffix in {".poscar", ".vasp"}
-
-    if suffix == ".cif" or looks_like_cif:
-        return ("cif", "vasp")
-    if looks_like_poscar:
-        return ("vasp", "cif")
-    return ("cif", "vasp")
+def _safe_upload_name(filename: str) -> str:
+    name = Path(filename).name.replace("\\", "_").replace("@", "_")
+    if name in {"", ".", ".."}:
+        return "uploaded-structure"
+    return name
 
 
 def _ensure_atoms(atoms: Atoms, display_name: str) -> Atoms:

@@ -8,7 +8,8 @@ crystal preview without introducing early visual-control debt.
 ## What Changes
 
 - Add a desktop GUI flow for opening a local structure file through the browser.
-- Parse uploaded CIF and POSCAR-style files through the Python API using ASE.
+- Parse uploaded ASE-readable structure files through the Python API, with CIF
+  and POSCAR fixtures as the committed baseline.
 - Convert parsed structures into a stable scene specification for the frontend.
 - Render the returned scene in the browser as atoms plus the unit cell, using
   fixed internal defaults.
@@ -35,5 +36,6 @@ crystal preview without introducing early visual-control debt.
 - Python data: bundled element radii and internal default colormap data.
 - Frontend: file-open card state, API call for uploaded structures, and Three.js
   rendering from returned scene data.
-- Tests: copied fixture structures, parser/scene API tests, frontend type/build
-  checks, and no committed generated preview images.
+- Tests: copied fixture structures, parser/scene API tests, a non-whitelisted
+  ASE-format smoke test, frontend type/build checks, and no committed generated
+  preview images.

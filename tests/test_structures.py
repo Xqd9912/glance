@@ -30,6 +30,16 @@ def test_read_poscar_fixture_from_bytes() -> None:
     assert atoms.get_chemical_symbols() == ["Na", "Cl"]
 
 
+def test_read_non_whitelisted_ase_format_from_bytes() -> None:
+    atoms = read_structure_bytes(
+        b"2\nwater\nH 0 0 0\nO 0 0 1\n",
+        filename="water.xyz",
+    )
+
+    assert len(atoms) == 2
+    assert atoms.get_chemical_symbols() == ["H", "O"]
+
+
 def test_invalid_structure_bytes_raise_project_error() -> None:
     with pytest.raises(StructureReadError, match="Could not parse invalid.cif"):
         read_structure_bytes(b"not a structure", filename="invalid.cif")

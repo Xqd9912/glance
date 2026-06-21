@@ -91,7 +91,6 @@ export function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".cif,.poscar,.vasp"
           className="hidden"
           tabIndex={-1}
           onChange={(event) => void handleFileChange(event)}

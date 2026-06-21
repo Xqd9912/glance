@@ -7,9 +7,9 @@ interaction card. The selected file SHALL be uploaded to the local Python API
 for parsing, and the app SHALL NOT require a command-line file path for this
 MVP flow.
 
-#### Scenario: Open a supported file from the GUI
+#### Scenario: Open a local structure file from the GUI
 
-- **WHEN** the user selects a CIF or POSCAR-style file from the GUI
+- **WHEN** the user selects a local structure file from the GUI
 - **THEN** the frontend uploads that file to the local API
 - **AND** the interaction card shows the selected file name and a loading state
 
@@ -20,11 +20,13 @@ MVP flow.
 - **AND** it does not create a recent-file list or save the uploaded structure as
   project state
 
-### Requirement: Python API parses supported structures
+### Requirement: Python API parses ASE-readable structures
 
-The system SHALL parse CIF and POSCAR-style structure files with ASE and convert
-successful parses into a structure preview response. Parse failures SHALL return
-a clear API error that the frontend can display.
+The system SHALL parse uploaded structure files with ASE without enforcing a
+project-local file-format whitelist, and convert successful parses into a
+structure preview response. CIF and POSCAR-style files SHALL remain covered as
+the MVP fixture baseline. Parse failures SHALL return a clear API error that
+the frontend can display.
 
 #### Scenario: Parse a CIF fixture
 
@@ -38,9 +40,16 @@ a clear API error that the frontend can display.
 - **THEN** it returns a successful structure preview response
 - **AND** the response includes unit-cell vectors and atom records
 
+#### Scenario: Parse an additional ASE-readable format
+
+- **WHEN** the parser receives a valid ASE-readable structure outside the CIF
+  and POSCAR fixture baseline
+- **THEN** it returns an ASE atoms object without requiring a project-local
+  whitelist entry for that file type
+
 #### Scenario: Reject an invalid structure file
 
-- **WHEN** the API cannot parse the uploaded file as a supported structure
+- **WHEN** the API cannot parse the uploaded file with ASE
 - **THEN** it returns an error response with a clear parse message
 - **AND** the frontend displays that message in the interaction card
 
@@ -53,7 +62,7 @@ data, or user-facing visual-control settings.
 
 #### Scenario: Build scene response from a parsed structure
 
-- **WHEN** a supported structure is parsed successfully
+- **WHEN** an ASE-parsed structure is converted successfully
 - **THEN** the scene response includes the supplied unit-cell vectors
 - **AND** each atom record includes ID, element, Cartesian position, radius, and
   color fields
@@ -131,6 +140,7 @@ committed as examples or golden images for this MVP slice.
 #### Scenario: Fixture-backed parser and scene tests
 
 - **WHEN** the automated tests run
-- **THEN** they cover at least one CIF fixture and one POSCAR-style fixture
+- **THEN** they cover at least one CIF fixture, one POSCAR-style fixture, and
+  one non-whitelisted ASE-readable format smoke test
 - **AND** they validate the returned scene structure rather than comparing
   golden image files

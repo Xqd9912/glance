@@ -16,7 +16,8 @@ different product shape. This change uses the assets without importing the old
 **Goals:**
 
 - Let the desktop GUI open a local structure file and preview it.
-- Support CIF and POSCAR-style files as the committed MVP formats.
+- Accept ASE-readable structure files without maintaining a project-local format
+  whitelist; keep CIF and POSCAR as committed MVP test fixtures.
 - Convert ASE structures into a small frontend scene contract with atoms and
   unit-cell vectors.
 - Resolve atom radius and color on the Python side using internal defaults.
@@ -92,8 +93,10 @@ those capabilities exist.
 
 ## Risks / Trade-offs
 
-- ASE accepts many formats beyond CIF and POSCAR -> Commit tests and user-facing
-  behavior only for the MVP formats; treat other formats as incidental.
+- ASE accepts many formats with different parser assumptions -> Route uploads
+  through ASE without a project-local whitelist, but treat CIF/POSCAR fixtures
+  and a small non-whitelisted format smoke test as the committed baseline rather
+  than promising every ASE format works equally well.
 - VESTA colors may not match the final Pretty Lattice look -> Label them as an
   internal compatibility baseline and keep colormap choice out of the UI.
 - A tiny scene contract may need extension later -> Keep the initial contract
