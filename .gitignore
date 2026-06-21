@@ -1,0 +1,40 @@
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyre/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# uv
+uv.lock
+
+# Node / Bun / frontend
+node_modules/
+dist/
+build/
+.vite/
+.next/
+coverage/
+bun.lockb
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Editor and OS noise
+.idea/
+.vscode/
+*.swp
+*.swo
