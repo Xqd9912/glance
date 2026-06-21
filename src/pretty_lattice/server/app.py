@@ -43,6 +43,9 @@ def _mount_static_web(
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa_fallback(path: str) -> FileResponse:
+        static_file = _resolve_static_file(resolved_static_root, path)
+        if static_file is not None:
+            return FileResponse(static_file)
         return FileResponse(index_file)
 
 
@@ -62,6 +65,16 @@ def _resolve_static_root(
         if (candidate / "index.html").is_file():
             return candidate
 
+    return None
+
+
+def _resolve_static_file(static_root: Path, path: str) -> Path | None:
+    root = static_root.resolve()
+    candidate = (root / path).resolve()
+    if not candidate.is_relative_to(root):
+        return None
+    if candidate.is_file():
+        return candidate
     return None
 
 

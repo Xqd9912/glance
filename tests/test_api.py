@@ -63,6 +63,7 @@ async def test_structure_preview_upload_endpoint_returns_parse_error() -> None:
 async def test_static_index_is_served_from_explicit_static_root(tmp_path) -> None:
     (tmp_path / "assets").mkdir()
     (tmp_path / "index.html").write_text("<!doctype html><title>Pretty Lattice</title>")
+    (tmp_path / "favicon.svg").write_text("<svg><title>Pretty Lattice logo</title></svg>")
 
     async with AsyncClient(
         transport=ASGITransport(app=create_app(static_root=tmp_path, dev_static_fallback=False)),
@@ -70,11 +71,15 @@ async def test_static_index_is_served_from_explicit_static_root(tmp_path) -> Non
     ) as client:
         response = await client.get("/")
         fallback_response = await client.get("/workspace")
+        favicon_response = await client.get("/favicon.svg")
 
         assert response.status_code == 200
         assert "Pretty Lattice" in response.text
         assert fallback_response.status_code == 200
         assert "Pretty Lattice" in fallback_response.text
+        assert favicon_response.status_code == 200
+        assert "Pretty Lattice logo" in favicon_response.text
+        assert "image/svg+xml" in favicon_response.headers["content-type"]
 
 
 @pytest.mark.anyio
