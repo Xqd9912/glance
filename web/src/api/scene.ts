@@ -3,15 +3,6 @@ export interface SceneSpec {
     vectors: [number, number, number][];
   };
   atoms: AtomSpec[];
-  bonds: BondSpec[];
-  view: {
-    projection: "orthographic";
-    preset: string;
-    camera: {
-      position: [number, number, number];
-      target: [number, number, number];
-    };
-  };
 }
 
 export interface AtomSpec {
@@ -19,19 +10,47 @@ export interface AtomSpec {
   element: string;
   position: [number, number, number];
   radius: number;
+  color: string;
 }
 
-export interface BondSpec {
-  from: string;
-  to: string;
+export class StructurePreviewError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StructurePreviewError";
+  }
 }
 
-export async function fetchDemoScene(): Promise<SceneSpec> {
-  const response = await fetch("/api/demo-scene");
+export async function uploadStructurePreview(file: File): Promise<SceneSpec> {
+  const response = await fetch("/api/structure-preview", {
+    method: "POST",
+    headers: {
+      "content-type": file.type || "application/octet-stream",
+      "x-pretty-lattice-filename": encodeURIComponent(file.name),
+    },
+    body: file,
+  });
 
   if (!response.ok) {
-    throw new Error(`Failed to load demo scene: ${response.status}`);
+    throw new StructurePreviewError(await readPreviewError(response));
   }
 
   return (await response.json()) as SceneSpec;
+}
+
+async function readPreviewError(response: Response): Promise<string> {
+  try {
+    const payload = (await response.json()) as {
+      detail?: string | { message?: string };
+    };
+    if (typeof payload.detail === "string") {
+      return payload.detail;
+    }
+    if (payload.detail?.message) {
+      return payload.detail.message;
+    }
+  } catch {
+    // Fall through to the status-based message.
+  }
+
+  return `Structure preview failed with status ${response.status}.`;
 }

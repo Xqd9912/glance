@@ -1,7 +1,11 @@
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from pretty_lattice.server.app import create_app
+
+FIXTURE_DIR = Path(__file__).parent / "fixtures" / "structures"
 
 
 @pytest.mark.anyio
@@ -16,17 +20,43 @@ async def test_health_endpoint() -> None:
 
 
 @pytest.mark.anyio
-async def test_demo_scene_endpoint() -> None:
+async def test_structure_preview_upload_endpoint_returns_scene() -> None:
+    payload = (FIXTURE_DIR / "binary_nacl.poscar").read_bytes()
+
     async with AsyncClient(
         transport=ASGITransport(app=create_app()), base_url="http://testserver"
     ) as client:
-        response = await client.get("/api/demo-scene")
+        response = await client.post(
+            "/api/structure-preview",
+            content=payload,
+            headers={"x-pretty-lattice-filename": "binary_nacl.poscar"},
+        )
         payload = response.json()
 
         assert response.status_code == 200
-        assert payload["cell"]["vectors"]
-        assert len(payload["atoms"]) >= 2
-        assert payload["view"]["projection"] == "orthographic"
+        assert payload["cell"]["vectors"] == [
+            [5.64, 0.0, 0.0],
+            [0.0, 5.64, 0.0],
+            [0.0, 0.0, 5.64],
+        ]
+        assert [atom["element"] for atom in payload["atoms"]] == ["Na", "Cl"]
+        assert "bonds" not in payload
+        assert "view" not in payload
+
+
+@pytest.mark.anyio
+async def test_structure_preview_upload_endpoint_returns_parse_error() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/structure-preview",
+            content=b"not a structure",
+            headers={"x-pretty-lattice-filename": "bad.cif"},
+        )
+
+        assert response.status_code == 400
+        assert "Could not parse bad.cif" in response.json()["detail"]["message"]
 
 
 @pytest.mark.anyio

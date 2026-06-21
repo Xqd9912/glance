@@ -1,8 +1,11 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from urllib.parse import unquote
 
-from pretty_lattice.structures.scene import demo_scene
+from fastapi import APIRouter, HTTPException, Request
+
+from pretty_lattice.structures.readers import StructureReadError, read_structure_bytes
+from pretty_lattice.structures.scene import build_scene_response
 
 router = APIRouter()
 
@@ -12,6 +15,18 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@router.get("/demo-scene")
-def get_demo_scene() -> dict[str, object]:
-    return demo_scene()
+@router.post("/structure-preview")
+async def create_structure_preview(request: Request) -> dict[str, object]:
+    filename = _uploaded_filename(request)
+    try:
+        atoms = read_structure_bytes(await request.body(), filename=filename)
+        return build_scene_response(atoms)
+    except StructureReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+def _uploaded_filename(request: Request) -> str:
+    encoded_name = request.headers.get("x-pretty-lattice-filename")
+    if encoded_name:
+        return unquote(encoded_name)
+    return "uploaded structure"
