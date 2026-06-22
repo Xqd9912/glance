@@ -3,7 +3,7 @@ from __future__ import annotations
 from importlib import resources
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -46,6 +46,8 @@ def _mount_static_web(
         static_file = _resolve_static_file(resolved_static_root, path)
         if static_file is not None:
             return FileResponse(static_file)
+        if path == "favicon.ico":
+            raise HTTPException(status_code=404)
         return FileResponse(index_file)
 
 

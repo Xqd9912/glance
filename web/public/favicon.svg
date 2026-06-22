@@ -4,16 +4,9 @@
   <defs>
     <style>
       .lavender { fill: #a4a7c8; }
-      .green { fill: #a4d590; }
-      .peach { fill: #e7b49a; }
+      .green { fill: #a4a7c8; }
+      .peach { fill: #a4a7c8; }
       .cyan { fill: #a5dcd8; }
-      .line {
-        fill: none;
-        stroke: #040503;
-        stroke-width: 8;
-        stroke-linecap: butt;
-        stroke-linejoin: miter;
-      }
     </style>
   </defs>
 
@@ -35,12 +28,4 @@
 
   <polygon class="cyan" points="585,341 871,508 871,839 585,1005 299,839 299,508" />
 
-  <path class="line" d="M585 8 1162 340 1162 1007 585 1339 8 1007 8 340Z" />
-  <path class="line" d="M299 176H871V1170H299Z" />
-  <path class="line" d="M299 176 12 673 299 1170" />
-  <path class="line" d="M871 176 1158 673 871 1170" />
-  <path class="line" d="M299 176 1158 673" />
-  <path class="line" d="M871 176 12 673" />
-  <path class="line" d="M299 1170 1158 673" />
-  <path class="line" d="M871 1170 12 673" />
 </svg>

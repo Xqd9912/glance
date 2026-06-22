@@ -72,6 +72,7 @@ async def test_static_index_is_served_from_explicit_static_root(tmp_path) -> Non
         response = await client.get("/")
         fallback_response = await client.get("/workspace")
         favicon_response = await client.get("/favicon.svg")
+        missing_ico_response = await client.get("/favicon.ico")
 
         assert response.status_code == 200
         assert "Pretty Lattice" in response.text
@@ -80,6 +81,7 @@ async def test_static_index_is_served_from_explicit_static_root(tmp_path) -> Non
         assert favicon_response.status_code == 200
         assert "Pretty Lattice logo" in favicon_response.text
         assert "image/svg+xml" in favicon_response.headers["content-type"]
+        assert missing_ico_response.status_code == 404
 
 
 @pytest.mark.anyio

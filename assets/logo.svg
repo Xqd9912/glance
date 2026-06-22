@@ -9,8 +9,8 @@
       .cyan { fill: #a5dcd8; }
       .line {
         fill: none;
-        stroke: #040503;
-        stroke-width: 8;
+        stroke: #333333;
+        stroke-width: 10;
         stroke-linecap: butt;
         stroke-linejoin: miter;
       }
