@@ -1,5 +1,12 @@
 import { FolderOpen } from "lucide-react";
-import { type ChangeEvent, type ReactNode, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ChangeEvent,
+  type ReactNode,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -7,8 +14,16 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 
 import { uploadStructurePreview, type SceneSpec } from "../api/scene";
-import { LatticeScene } from "../scene/LatticeScene";
+import { LatticeScene, type PreviewSafeArea } from "../scene/LatticeScene";
+import { deriveElementLegendEntries, type ElementLegendEntry } from "./elementLegend";
 import { summarizeScene, type PreviewStatus } from "./previewState";
+
+const PREVIEW_SAFE_AREA: PreviewSafeArea = {
+  bottom: 132,
+  left: 380,
+  right: 32,
+  top: 24,
+};
 
 export function App() {
   const [scene, setScene] = useState<SceneSpec | null>(null);
@@ -41,12 +56,13 @@ export function App() {
   }
 
   const summary = useMemo(() => summarizeScene(scene), [scene]);
+  const legendEntries = useMemo(() => deriveElementLegendEntries(scene), [scene]);
 
   return (
     <main className="relative h-dvh min-w-80 overflow-hidden bg-background text-foreground">
       <section className="scene-stage absolute inset-0" aria-label="Crystal structure preview">
         {scene ? (
-          <LatticeScene scene={scene} />
+          <LatticeScene scene={scene} safeArea={PREVIEW_SAFE_AREA} />
         ) : (
           <div
             className="grid h-full w-full place-items-center bg-background text-sm text-muted-foreground"
@@ -57,8 +73,12 @@ export function App() {
         )}
       </section>
 
+      {legendEntries.length > 0 ? (
+        <ElementLegend entries={legendEntries} safeArea={PREVIEW_SAFE_AREA} />
+      ) : null}
+
       <aside
-        className="absolute left-4 top-4 w-[332px] max-w-[calc(100vw-2rem)] rounded-lg border bg-card/92 p-4 shadow-xl shadow-foreground/10 backdrop-blur-md"
+        className="absolute left-4 top-4 w-[332px] max-w-[calc(100vw-2rem)] rounded-lg border bg-card/92 p-3 shadow-xl shadow-foreground/10 backdrop-blur-md"
         aria-label="Current structure"
       >
         <div className="flex items-center justify-between gap-2">
@@ -92,7 +112,7 @@ export function App() {
           </TooltipProvider>
         </div>
 
-        <Separator className="my-3" />
+        <Separator className="my-2" />
 
         <input
           ref={fileInputRef}
@@ -111,7 +131,7 @@ export function App() {
 
         {errorMessage ? (
           <div
-            className="mt-3 rounded-md border border-destructive/20 bg-destructive/10 p-3 font-mono text-sm leading-snug text-destructive"
+            className="mt-2 rounded-md border border-destructive/20 bg-destructive/10 p-2.5 font-mono text-sm leading-snug text-destructive"
             role="alert"
           >
             {errorMessage}
@@ -119,8 +139,8 @@ export function App() {
         ) : null}
 
         {scene ? (
-          <div className="mt-2.5 flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               <SummaryRow
                 label="Formula"
                 value={renderFormula(summary.formula)}
@@ -133,7 +153,7 @@ export function App() {
             <div>
               <span className="block text-xs font-bold text-muted-foreground">Symmetry</span>
               {summary.symmetry?.available ? (
-                <dl className="mt-1.5 flex flex-col gap-1.5 text-sm">
+                <dl className="mt-1 flex flex-col gap-1 text-sm">
                   <SymmetryMetric
                     label="Space group"
                     value={renderSpaceGroup(
@@ -166,7 +186,7 @@ export function App() {
                   />
                 </dl>
               ) : (
-                <p className="mt-1.5 text-sm text-muted-foreground">Symmetry unavailable</p>
+                <p className="mt-1 text-sm text-muted-foreground">Symmetry unavailable</p>
               )}
             </div>
 
@@ -177,7 +197,7 @@ export function App() {
                   <span className="block text-xs font-bold text-muted-foreground">
                     Lattice Parameters
                   </span>
-                  <dl className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1.5 font-mono text-sm">
+                  <dl className="mt-1 grid grid-cols-3 gap-x-3 gap-y-1 font-mono text-[0.8125rem]">
                     <CellMetric label="a" value={summary.cell.a} unit="Å" />
                     <CellMetric label="b" value={summary.cell.b} unit="Å" />
                     <CellMetric label="c" value={summary.cell.c} unit="Å" />
@@ -195,6 +215,50 @@ export function App() {
   );
 }
 
+function ElementLegend({
+  entries,
+  safeArea,
+}: {
+  entries: ElementLegendEntry[];
+  safeArea: PreviewSafeArea;
+}) {
+  return (
+    <nav
+      aria-label="Element legend"
+      className="pointer-events-none absolute bottom-7 -translate-x-1/2 rounded-full border bg-card/88 px-4 py-2.5 shadow-lg shadow-foreground/10 backdrop-blur-md"
+      style={legendContainerStyle(safeArea)}
+    >
+      <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        {entries.map((entry) => (
+          <li key={entry.element} className="flex min-w-0 items-center gap-2">
+            <span
+              aria-hidden="true"
+              className="size-[22px] shrink-0 rounded-full border border-foreground/10 shadow-sm"
+              style={legendSphereStyle(entry.color)}
+            />
+            <span className="font-sans text-[0.95rem] font-normal leading-none text-foreground">
+              {entry.element}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  );
+}
+
+function legendContainerStyle(safeArea: PreviewSafeArea): CSSProperties {
+  return {
+    left: `calc(50% + ${(safeArea.left - safeArea.right) / 2}px)`,
+    maxWidth: `min(calc(100vw - ${safeArea.left + safeArea.right + 32}px), 760px)`,
+  };
+}
+
+function legendSphereStyle(color: string): CSSProperties {
+  return {
+    background: `radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.96) 0 8%, ${color} 36%, ${color} 72%, rgba(0, 0, 0, 0.42) 100%)`,
+  };
+}
+
 function SummaryRow({
   label,
   mono = true,
@@ -209,13 +273,13 @@ function SummaryRow({
   valueClassName?: string;
 }) {
   return (
-    <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-2.5 text-sm">
+    <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-2 text-sm">
       <span className="text-xs font-semibold text-muted-foreground">{label}</span>
       <span title={title}>
         <span
           className={cn(
             "block truncate font-normal leading-snug tabular-nums",
-            mono ? "font-mono" : "font-sans",
+            mono ? "font-mono text-[0.8125rem]" : "font-sans",
             valueClassName,
           )}
         >
@@ -238,12 +302,12 @@ function SymmetryMetric({
   value: ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] items-baseline gap-2.5">
+    <div className="grid grid-cols-[6.75rem_minmax(0,1fr)] items-baseline gap-2">
       <dt className="text-xs font-semibold text-muted-foreground">{label}</dt>
       <dd
         className={cn(
           "min-w-0 truncate font-normal leading-snug tabular-nums",
-          mono ? "font-mono" : "font-sans",
+          mono ? "font-mono text-[0.8125rem]" : "font-sans",
         )}
         title={title}
       >
