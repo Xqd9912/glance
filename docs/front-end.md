@@ -1,41 +1,38 @@
-# 前端设计
-
-
+# Front-End Design
 
 ## Tech Stack
 
-前端采用一个偏工具界面的 React 技术栈：
+### Runtime and Build
 
-- Bun：包管理和脚本运行。
-- Vite：开发服务器和前端构建。
-- TypeScript + React：应用界面。
-- Tailwind CSS：样式系统和设计 token。
-- shadcn/ui：应用控件的源码级组件基础。
-- Radix UI primitives：tooltip、separator、popover、dialog 等控件的可访问性交互底层。
-- lucide-react：线性图标。
-- Three.js + React Three Fiber：晶体结构预览和后续导出前的可视化。
+- Bun: package management and script running.
+- Vite: development server and frontend build.
+- TypeScript + React: application UI.
 
-shadcn/ui 只用于面板、按钮、输入控件、提示层等应用界面。晶体图本身的审美、材料、相机和导出效果由 Three.js 渲染层单独控制。
+### Interface System
 
+- Tailwind CSS: styling and design tokens.
+- shadcn/ui: source-level components for application controls.
+- Radix UI primitives: accessible behavior for tooltips, separators, popovers, dialogs, and related controls.
+- lucide-react: line icons.
 
+### Visualization
+
+- Three.js + React Three Fiber: crystal preview rendering and pre-export visualization.
+
+Use shadcn/ui for panels, buttons, inputs, overlays, and other application controls. Keep crystal aesthetics, materials, camera behavior, and export-facing rendering in the Three.js layer.
 
 ## Design Style
 
-模仿 Vercel 的风格，参见 [vercel_design.md](notes/vercel_design.md) 。
+Follow the Vercel-inspired light theme in [vercel_design.md](notes/vercel_design.md) and build controls with shadcn/ui.
 
-UI 字体采用 Geist。
-
-核心在于：高对比度，黑白灰，UI 上克制用彩色，不要为了装饰而用彩色。
-
-
+The interface should be quiet, high-contrast, and mostly neutral. Use color sparingly for state, focus, and scientific meaning, not decoration.
 
 ## Workspace Layout
 
-Pretty Lattice 的主界面应当以晶体预览为中心：Three.js 画布保持全窗口、无可见边框，不把结构图放进卡片或预览框里。界面控件以浮层方式组织，预览布局为左侧结构信息、底部图例和右侧显示区域保留稳定的 safe-area，不因为某个抽屉开关而大幅重排。
+The crystal preview is the main workspace. The Three.js canvas should fill the window without a visible frame, card, or preview container.
 
-左侧是主要工作栏，分成两个竖向区域：
+Controls should sit as overlays around the preview while preserving stable safe areas. Opening or closing a drawer should not cause the scene or primary controls to jump.
 
-- 上方固定只读信息卡片：显示当前文件、化学式、原子数、晶胞参数、空间群等结构事实。它应保持紧凑，不承载显示设置。
-- 下方常用操作卡片：调整视角，选择是否显示化学键、多面体，导出等高频动作。
+Keep high-frequency structure facts and actions close to the main preview. Put lower-frequency display and export settings in a secondary side area. Side panels should feel like tool storage, not modal interruptions.
 
-右侧用于低频显示设置。结构加载后显示一个小的 `Settings` 入口按钮；展开后显示贴齐右边、贯穿垂直高度的 Settings 抽屉，用于承载结构显示策略、视觉选项和将来的导出相关设置。右侧抽屉不是 modal，不应遮暗整个画布；内容区域应支持纵向滚动。展开和收回应使用同一套克制的侧向滑动动效，让它感觉像工具栏收纳，而不是弹窗关闭。展开按钮和收回按钮应保持同一屏幕位置，避免交互目标跳动。预览区域只保留稳定的右侧余量，抽屉打开时可以覆盖一部分晶体图。抽屉本身可以有轻微半透明或模糊质感，但文字和控件底下应保持接近不透明，避免晶体图影响可读性。
+Text, controls, and legends must remain readable over the scene. Use opacity or blur only when it does not weaken contrast.
