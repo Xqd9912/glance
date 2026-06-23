@@ -54,7 +54,7 @@ The user-facing zoom value should be:
 viewScale = camera.zoom / fitZoom
 ```
 
-`fitZoom` is recalculated from the loaded scene span, viewport size, and preview safe areas. `viewScale` is clamped to `0.2` through `5.0`, shown as `20%` through `500%`, and reset to `100%`.
+`fitZoom` is recalculated from the loaded scene span, viewport size, and preview safe areas. `viewScale` is clamped to `0.25` through `4.0`, shown as `25%` through `400%`, and reset to `100%`.
 
 The vertical slider should use logarithmic mapping so the midpoint is `100%`:
 

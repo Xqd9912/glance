@@ -284,7 +284,7 @@ The frontend SHALL allow the user to rotate a loaded structure preview with mous
 
 ### Requirement: Preview zoom is bounded and synchronized
 
-The frontend SHALL express preview zoom as a percentage of the fitted loaded-scene view. The zoom percentage SHALL be clamped from 20% to 500%. Wheel zoom, the vertical zoom slider, and the editable percentage input SHALL stay synchronized to the same zoom value. The zoom slider SHALL use logarithmic mapping so 100% lies at the midpoint between 20% and 500%.
+The frontend SHALL express preview zoom as a percentage of the fitted loaded-scene view. The zoom percentage SHALL be clamped from 25% to 400%. Wheel zoom, the vertical zoom slider, and the editable percentage input SHALL stay synchronized to the same zoom value. The zoom slider SHALL use logarithmic mapping so 100% lies at the midpoint between 25% and 400%.
 
 #### Scenario: Show fitted zoom as 100 percent
 
@@ -295,8 +295,8 @@ The frontend SHALL express preview zoom as a percentage of the fitted loaded-sce
 #### Scenario: Wheel zoom clamps to bounds
 
 - **WHEN** the user zooms with the mouse wheel beyond the supported range
-- **THEN** the zoom value remains no lower than 20%
-- **AND** the zoom value remains no higher than 500%
+- **THEN** the zoom value remains no lower than 25%
+- **AND** the zoom value remains no higher than 400%
 
 #### Scenario: Slider and input stay synchronized
 
@@ -312,8 +312,8 @@ The frontend SHALL express preview zoom as a percentage of the fitted loaded-sce
 
 #### Scenario: Percentage input clamps on commit
 
-- **WHEN** the user commits a zoom percentage below 20% or above 500%
-- **THEN** the zoom control clamps the value into the supported 20% to 500% range
+- **WHEN** the user commits a zoom percentage below 25% or above 400%
+- **THEN** the zoom control clamps the value into the supported 25% to 400% range
 - **AND** the rendered preview uses the clamped zoom value
 
 ### Requirement: Preview exposes a compact view-control rail

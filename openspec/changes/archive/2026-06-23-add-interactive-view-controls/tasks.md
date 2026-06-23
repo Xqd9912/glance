@@ -13,7 +13,7 @@
 
 ## 3. Zoom And Overlay UI
 
-- [x] 3.1 Implement zoom as a 20% to 500% percentage of fitted view and apply the same clamp to wheel, slider, and input paths.
+- [x] 3.1 Implement zoom as a 25% to 400% percentage of fitted view and apply the same clamp to wheel, slider, and input paths.
 - [x] 3.2 Add the compact left-side view-control rail with reset, lock, vertical logarithmic zoom slider, and editable zoom percentage input.
 - [x] 3.3 Add the Trackball/Orbit interaction-mode control to the right Settings drawer without adding unrelated placeholder controls.
 - [x] 3.4 Update preview safe-area layout so the loaded structure avoids the left card and view-control rail.

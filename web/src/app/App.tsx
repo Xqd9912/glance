@@ -6,6 +6,7 @@ import {
   SlidersHorizontal,
   Unlock,
 } from "lucide-react";
+import { Quaternion } from "three";
 import {
   type CSSProperties,
   type ChangeEvent,
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 import { uploadStructurePreview, type SceneSpec } from "../api/scene";
 import { LatticeScene, type PreviewSafeArea } from "../scene/LatticeScene";
+import { OrientationGizmo } from "../scene/OrientationGizmo";
 import {
   hasPeriodicImageAtoms,
   previewSafeAreaForSettings,
@@ -77,6 +79,7 @@ export function App() {
   const [viewState, setViewState] = useState(createPreviewViewState);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraOrientationRef = useRef(new Quaternion());
   const lockedInteractionPointerRef = useRef<LockedInteractionPointer | null>(null);
   const lockedInteractionWheelIdleTimeoutRef = useRef<number | null>(null);
 
@@ -242,6 +245,7 @@ export function App() {
       >
         {visibleScene ? (
           <LatticeScene
+            cameraOrientationRef={cameraOrientationRef}
             interactionLocked={viewState.interactionLocked}
             interactionMode={viewState.interactionMode}
             onViewScaleChange={handleViewScaleChange}
@@ -259,6 +263,15 @@ export function App() {
           </div>
         )}
       </section>
+
+      {visibleScene ? (
+        <OrientationGizmo
+          cameraOrientationRef={cameraOrientationRef}
+          cellVectors={visibleScene.cell.vectors}
+          className="pointer-events-none absolute h-[clamp(176px,34vmin,300px)] w-[clamp(176px,34vmin,300px)]"
+          style={orientationGizmoContainerStyle(previewSafeArea)}
+        />
+      ) : null}
 
       {legendEntries.length > 0 ? (
         <ElementLegend entries={legendEntries} safeArea={previewSafeArea} />
@@ -924,6 +937,13 @@ function legendContainerStyle(safeArea: PreviewSafeArea): CSSProperties {
   return {
     left: `calc(50% + ${(safeArea.left - safeArea.right) / 2}px)`,
     maxWidth: `min(calc(100vw - ${safeArea.left + safeArea.right + 32}px), 760px)`,
+  };
+}
+
+function orientationGizmoContainerStyle(safeArea: PreviewSafeArea): CSSProperties {
+  return {
+    bottom: Math.max(16, safeArea.bottom - 80),
+    left: Math.max(16, safeArea.left - 38),
   };
 }
 

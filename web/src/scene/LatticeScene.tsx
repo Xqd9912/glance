@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
-import { Box3, MOUSE, OrthographicCamera, TOUCH, Vector3 } from "three";
+import { Box3, MOUSE, OrthographicCamera, Quaternion, TOUCH, Vector3 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TrackballControls } from "three/examples/jsm/controls/TrackballControls.js";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -25,6 +25,10 @@ export interface PreviewSafeArea {
   top: number;
 }
 
+export interface CameraOrientationRef {
+  current: Quaternion;
+}
+
 const EMPTY_SAFE_AREA: PreviewSafeArea = {
   bottom: 0,
   left: 0,
@@ -43,6 +47,7 @@ const CELL_FRAME_COLOR = "#111111";
 export const CELL_FRAME_LINE_WIDTH_PIXELS = 1;
 
 export function LatticeScene({
+  cameraOrientationRef,
   interactionLocked,
   interactionMode,
   onViewScaleChange,
@@ -51,6 +56,7 @@ export function LatticeScene({
   scene,
   viewScale,
 }: {
+  cameraOrientationRef?: CameraOrientationRef;
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   onViewScaleChange: (viewScale: number) => void;
@@ -83,6 +89,7 @@ export function LatticeScene({
         scene={scene}
         viewScale={viewScale}
       />
+      <CameraOrientationTracker cameraOrientationRef={cameraOrientationRef} />
       <InteractiveCameraControls
         interactionLocked={interactionLocked}
         interactionMode={interactionMode}
@@ -92,6 +99,24 @@ export function LatticeScene({
       />
     </Canvas>
   );
+}
+
+function CameraOrientationTracker({
+  cameraOrientationRef,
+}: {
+  cameraOrientationRef?: CameraOrientationRef;
+}) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    cameraOrientationRef?.current.copy(camera.quaternion);
+  }, [camera, cameraOrientationRef]);
+
+  useFrame(() => {
+    cameraOrientationRef?.current.copy(camera.quaternion);
+  });
+
+  return null;
 }
 
 function SceneContent({

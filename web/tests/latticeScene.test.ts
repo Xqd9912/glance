@@ -12,6 +12,7 @@ import {
   computeOrthographicFrustum,
   computeStandardCameraPose,
 } from "../src/scene/viewMath";
+import { computeOrientationGizmoAxes } from "../src/scene/orientationGizmoMath";
 
 describe("computeSceneLayout", () => {
   test("anchors the preview on the unit-cell center instead of atom distribution", () => {
@@ -89,6 +90,19 @@ describe("computeSceneLayout", () => {
     expect(positions).toHaveLength(72);
     expect(positions.slice(0, 6)).toEqual([0, 0, 0, 4, 0, 0]);
     expect(positions.slice(-6)).toEqual([1, 3, 2, 5, 3, 2]);
+  });
+
+  test("normalizes orientation gizmo axes without orthogonalizing the cell", () => {
+    const axes = computeOrientationGizmoAxes([
+      [4, 0, 0],
+      [1, 3, 0],
+      [0, 0, 2],
+    ]);
+
+    expect(axes.map((axis) => axis.label)).toEqual(["a", "b", "c"]);
+    expectVectorClose(axes[0]!.direction, [1, 0, 0]);
+    expectVectorClose(axes[1]!.direction, [1 / Math.sqrt(10), 3 / Math.sqrt(10), 0]);
+    expectVectorClose(axes[2]!.direction, [0, 0, 1]);
   });
 });
 

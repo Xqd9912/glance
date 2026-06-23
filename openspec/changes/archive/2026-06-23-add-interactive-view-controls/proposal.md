@@ -9,7 +9,7 @@ The structure preview currently uses a fixed internal camera, so loaded scenes a
 - Add an advanced interaction-mode setting in the right Settings drawer so the user can switch between Trackball and Orbit rotation behavior.
 - Keep panning disabled in both interaction modes so mouse gestures do not change figure composition through translation.
 - Add bounded zoom as part of the same preview interaction model, with wheel zoom and a linked vertical zoom rail.
-- Express zoom as a percentage of the fitted view, clamped from 20% to 500%, with a logarithmic slider and editable percentage input.
+- Express zoom as a percentage of the fitted view, clamped from 25% to 400%, with a logarithmic slider and editable percentage input.
 - Add a canvas interaction lock that disables mouse gesture changes while leaving explicit controls available.
 - Add a reset control that restores Standard orientation, 100% zoom, and centered framing.
 
