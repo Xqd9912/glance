@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { SceneSpec } from "../src/api/scene";
+import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
   SETTINGS_PREVIEW_SAFE_AREA,
   countPeriodicImageAtoms,
@@ -85,16 +85,18 @@ function sceneWithPeriodicImages(): SceneSpec {
   };
 }
 
-function atom(id: string, element: string, isPeriodicImage: boolean) {
+function atom(id: string, element: string, isPeriodicImage: boolean): AtomSpec {
+  const vector: [number, number, number] = isPeriodicImage ? [1, 0, 0] : [0, 0, 0];
+
   return {
     color: element === "Na" ? "#fadd3d" : "#1ff01f",
     element,
-    fractionalPosition: isPeriodicImage ? [1, 0, 0] : [0, 0, 0],
+    fractionalPosition: vector,
     id,
-    imageOffset: isPeriodicImage ? [1, 0, 0] : [0, 0, 0],
+    imageOffset: vector,
     isPeriodicImage,
-    position: isPeriodicImage ? [1, 0, 0] : [0, 0, 0],
+    position: vector,
     radius: 0.5,
     siteId: id.replace("-image-1-0-0", ""),
-  } as const;
+  };
 }

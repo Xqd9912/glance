@@ -66,6 +66,7 @@ PRETTY_LATTICE_API_URL=http://127.0.0.1:9000 bun run dev
 Run frontend checks:
 
 ```bash
+bun run test
 bun run typecheck
 bun run build
 ```

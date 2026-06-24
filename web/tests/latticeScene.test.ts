@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import type { SceneSpec } from "../src/api/scene";
+import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
   CELL_FRAME_LINE_WIDTH_PIXELS,
   cellFrameLinePositions,
@@ -153,7 +153,7 @@ function sceneWithOffCenterAtoms(): SceneSpec {
   };
 }
 
-function atom(id: string, position: [number, number, number]) {
+function atom(id: string, position: [number, number, number]): AtomSpec {
   return {
     color: "#9a9a9a",
     element: "Si",
@@ -164,5 +164,5 @@ function atom(id: string, position: [number, number, number]) {
     position,
     radius: 0.5,
     siteId: id,
-  } as const;
+  };
 }
