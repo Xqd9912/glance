@@ -212,16 +212,26 @@ describe("App", () => {
     const activeIndicator = commonControls.querySelector(
       "[data-slot='common-controls-active-indicator']",
     ) as HTMLElement | null;
-    expect(commonControls.querySelector("[data-slot='tabs-list']")?.className).toContain("!h-8");
+    const tabsList = commonControls.querySelector("[data-slot='tabs-list']") as HTMLElement | null;
+    expect(tabsList?.className).toContain("!h-8");
+    expect(tabsList?.className).toContain("transition-[grid-template-columns]");
+    expect(tabsList?.style.gridTemplateColumns).toContain("1.65fr");
     expect(activeIndicator?.className).toContain("transition-[transform,width]");
+    expect(
+      within(commonControls)
+        .getAllByRole("tab")
+        .map((tab) => tab.getAttribute("aria-label")),
+    ).toEqual(["Display", "Camera", "Style", "Export"]);
     const displayTab = within(commonControls).getByRole("tab", { name: "Display" });
     const cameraTab = within(commonControls).getByRole("tab", { name: "Camera" });
     expect(displayTab.className).toContain("!bg-transparent");
     expect(displayTab.className).toContain("!h-6");
-    expect(displayTab.style.flexGrow).toBe("1.65");
-    expect(cameraTab.style.flexGrow).toBe("0.9");
-    expect(cameraTab.className).toContain("transition-[flex-grow");
-    expect(cameraTab.textContent).toBe("");
+    expect(displayTab.style.flexGrow).toBe("");
+    expect(cameraTab.style.flexGrow).toBe("");
+    expect(cameraTab.className).not.toContain("transition-[flex-grow");
+    expect(
+      cameraTab.querySelector("[data-slot='common-controls-tab-label']")?.className,
+    ).toContain("max-w-0");
 
     await user.click(cameraTab);
 
@@ -232,12 +242,19 @@ describe("App", () => {
     expect(within(commonControls).getByRole("tab", { name: "Camera" }).textContent).toContain(
       "Camera",
     );
-    expect(within(commonControls).getByRole("tab", { name: "Camera" }).style.flexGrow).toBe(
-      "1.65",
-    );
-    expect(within(commonControls).getByRole("tab", { name: "Display" }).style.flexGrow).toBe(
-      "0.9",
-    );
+    expect(tabsList?.style.gridTemplateColumns).toContain("1.65fr");
+    expect(
+      within(commonControls)
+        .getByRole("tab", { name: "Camera" })
+        .querySelector("[data-slot='common-controls-tab-label']")
+        ?.className,
+    ).toContain("max-w-16");
+    expect(
+      within(commonControls)
+        .getByRole("tab", { name: "Display" })
+        .querySelector("[data-slot='common-controls-tab-label']")
+        ?.className,
+    ).toContain("max-w-0");
 
     await user.click(within(commonControls).getByRole("tab", { name: "Display" }));
 

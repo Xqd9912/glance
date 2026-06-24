@@ -35,8 +35,8 @@ const COMMON_PANEL_TABS: {
   label: string;
   value: CommonPanelTab;
 }[] = [
-  { Icon: CameraIcon, label: "Camera", value: "camera" },
   { Icon: DisplayIcon, label: "Display", value: "display" },
+  { Icon: CameraIcon, label: "Camera", value: "camera" },
   { Icon: Palette, label: "Style", value: "style" },
   { Icon: ImageDown, label: "Export", value: "export" },
 ];
@@ -60,6 +60,11 @@ export function CommonControlsPanel({
     activeTab === "display"
       ? "h-[144px]"
       : "h-[76px]";
+  const tabListStyle = {
+    gridTemplateColumns: COMMON_PANEL_TABS.map(({ value }) =>
+      value === activeTab ? "1.65fr" : "0.9fr",
+    ).join(" "),
+  } as const;
 
   useEffect(() => {
     const updateIndicatorRect = () => {
@@ -111,7 +116,10 @@ export function CommonControlsPanel({
           value={activeTab}
           onValueChange={(value) => setActiveTab(value as CommonPanelTab)}
         >
-          <TabsList className="relative flex !h-8 w-full overflow-hidden rounded-lg bg-muted/70 p-1">
+          <TabsList
+            className="relative grid !h-8 w-full overflow-hidden rounded-lg bg-muted/70 p-1 transition-[grid-template-columns] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none"
+            style={tabListStyle}
+          >
             {tabIndicatorRect ? (
               <span
                 aria-hidden="true"
@@ -133,14 +141,22 @@ export function CommonControlsPanel({
                   key={value}
                   value={value}
                   aria-label={label}
-                  style={{ flexGrow: isActive ? 1.65 : 0.9 }}
                   className={cn(
-                    "z-10 !h-6 min-w-0 basis-0 rounded-md !bg-transparent text-xs !shadow-none transition-[flex-grow,color,padding] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=active]:!bg-transparent data-[state=active]:!shadow-none motion-reduce:transition-none [&_svg]:size-3.5",
+                    "z-10 !h-6 min-w-0 rounded-md !bg-transparent text-xs !shadow-none transition-[color,padding] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=active]:!bg-transparent data-[state=active]:!shadow-none motion-reduce:transition-none [&_svg]:size-3.5",
                     isActive ? "px-2 text-foreground" : "px-0.5 text-muted-foreground",
                   )}
                 >
                   <Icon aria-hidden="true" />
-                  {isActive ? <span className="truncate">{label}</span> : null}
+                  <span
+                    data-slot="common-controls-tab-label"
+                    data-active={isActive ? "true" : "false"}
+                    className={cn(
+                      "overflow-hidden whitespace-nowrap transition-[max-width,opacity] duration-[420ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+                      isActive ? "max-w-16 opacity-100" : "max-w-0 opacity-0",
+                    )}
+                  >
+                    {label}
+                  </span>
                 </TabsTrigger>
               );
 
