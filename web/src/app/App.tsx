@@ -184,7 +184,12 @@ export function App() {
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
-    if (isStaticScenePreview || !file) {
+    if (!file) {
+      return;
+    }
+
+    if (isStaticScenePreview) {
+      setErrorMessage(BACKEND_UNAVAILABLE_MESSAGE);
       return;
     }
 
