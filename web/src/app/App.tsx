@@ -29,12 +29,18 @@ import {
   LatticeScene,
   previewSafeAreaForViewport,
 } from "../scene/LatticeScene";
+import { createCameraPoseSnapshot } from "../scene/cameraPose";
+import { computeStructureExportAspectRatio } from "../scene/exportFrame";
 import { OrientationGizmo } from "../scene/OrientationGizmo";
 import {
   CommonControlsPanel,
 } from "./controls/CommonControlsPanel";
 import { ViewControlRail } from "./controls/ViewControlRail";
 import { deriveElementLegendEntries } from "./elementLegend";
+import {
+  createFigureExportFile,
+  downloadBlob,
+} from "./exportFigure";
 import { ElementLegend } from "./legend/ElementLegend";
 import {
   orientationGizmoContainerStyle,
@@ -50,10 +56,13 @@ import {
 import {
   createDefaultComponentOpacity,
   createDefaultComponentVisibility,
+  createDefaultExportSettings,
   createDefaultStyle,
+  type ExportSettingsState,
   hasPolyhedra,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
+  syncExportSettingsAspectRatio,
   visibleSceneForComponents,
 } from "./settings";
 import {
@@ -94,6 +103,10 @@ export function App() {
   );
   const [componentOpacity, setComponentOpacity] = useState(createDefaultComponentOpacity);
   const [style, setStyle] = useState(createDefaultStyle);
+  const [exportSettings, setExportSettings] = useState(createDefaultExportSettings);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [cameraOrientationVersion, setCameraOrientationVersion] = useState(0);
   const [viewState, setViewState] = useState(createPreviewViewState);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
@@ -123,6 +136,10 @@ export function App() {
 
   const handleResetView = useCallback(() => {
     setViewState(resetPreviewViewState);
+  }, []);
+
+  const handleCameraOrientationChange = useCallback(() => {
+    setCameraOrientationVersion((version) => version + 1);
   }, []);
 
   useEffect(() => {
@@ -191,6 +208,10 @@ export function App() {
     setComponentVisibility(createDefaultComponentVisibility());
     setComponentOpacity(createDefaultComponentOpacity());
     setStyle(createDefaultStyle());
+    setExportSettings(createDefaultExportSettings());
+    setExportError(null);
+    cameraOrientationRef.current.identity();
+    setCameraOrientationVersion((version) => version + 1);
     setViewState(createPreviewViewState());
     setIsStructureSummaryCollapsed(true);
 
@@ -254,6 +275,27 @@ export function App() {
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
   );
+  const exportAspectRatio = useMemo(() => {
+    if (!visibleScene) {
+      return null;
+    }
+
+    return computeStructureExportAspectRatio({
+      cameraPose: createCameraPoseSnapshot(cameraOrientationRef.current),
+      componentOpacity,
+      scene: visibleScene,
+      showAtoms: componentVisibility.atoms,
+      showUnitCell: componentVisibility.unitCell,
+      style,
+    });
+  }, [
+    cameraOrientationVersion,
+    componentOpacity,
+    componentVisibility.atoms,
+    componentVisibility.unitCell,
+    style,
+    visibleScene,
+  ]);
   const legendEntries = useMemo(
     () => deriveElementLegendEntries(scene, style.colorScheme),
     [scene, style.colorScheme],
@@ -276,6 +318,62 @@ export function App() {
   const triggerLockedInteractionFeedback = useCallback(() => {
     setLockedInteractionFeedbackCount((count) => count + 1);
   }, []);
+
+  useEffect(() => {
+    if (exportAspectRatio === null) {
+      return;
+    }
+
+    setExportSettings((currentSettings) =>
+      syncExportSettingsAspectRatio(currentSettings, exportAspectRatio),
+    );
+  }, [exportAspectRatio]);
+
+  const handleExportSettingsChange = useCallback(
+    (nextExportSettings: ExportSettingsState) => {
+      setExportSettings(nextExportSettings);
+      setExportError(null);
+    },
+    [],
+  );
+
+  const handleExportFigure = useCallback(async () => {
+    if (!scene || isExporting) {
+      return;
+    }
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const exportFile = await createFigureExportFile({
+        cameraOrientationRef,
+        componentOpacity,
+        componentVisibility,
+        fileName: selectedFileName,
+        scene,
+        settings: exportSettings,
+        style,
+      });
+      downloadBlob(exportFile.blob, exportFile.fileName);
+    } catch (error) {
+      setExportError(
+        error instanceof Error
+          ? error.message
+          : "Could not export this structure figure.",
+      );
+    } finally {
+      setIsExporting(false);
+    }
+  }, [
+    componentOpacity,
+    componentVisibility,
+    exportSettings,
+    isExporting,
+    scene,
+    selectedFileName,
+    style,
+  ]);
 
   const collapseStructureSummaryIfControlsOverflow = useCallback(() => {
     const commonControlsPanelElement = commonControlsPanelRef.current;
@@ -436,6 +534,7 @@ export function App() {
         {visibleScene ? (
           <LatticeScene
             cameraOrientationRef={cameraOrientationRef}
+            onCameraOrientationChange={handleCameraOrientationChange}
             interactionLocked={viewState.interactionLocked}
             interactionMode={viewState.interactionMode}
             layoutScene={scene ?? visibleScene}
@@ -497,12 +596,18 @@ export function App() {
             <CommonControlsPanel
               componentOpacity={componentOpacity}
               style={style}
+              exportAspectRatio={exportAspectRatio ?? undefined}
               componentVisibility={componentVisibility}
+              exportError={exportError}
+              exportSettings={exportSettings}
               hasPolyhedra={hasPolyhedra(scene)}
+              isExporting={isExporting}
               onAtomRadiusModelChange={(atomRadiusModel) => {
                 setStyle((currentStyle) => ({ ...currentStyle, atomRadiusModel }));
               }}
               onComponentOpacityChange={setComponentOpacity}
+              onExport={handleExportFigure}
+              onExportSettingsChange={handleExportSettingsChange}
               onStyleChange={setStyle}
               onComponentVisibilityChange={setComponentVisibility}
             />

@@ -25,15 +25,33 @@ import type {
   SceneSpec,
 } from "../api/scene";
 import { atomColorForScheme } from "../app/colorSchemes";
-import type { BondColorMode, ComponentOpacityState, StyleState } from "../app/settings";
+import type {
+  BondColorMode,
+  ComponentOpacityState,
+  ExportMeshQuality,
+  StyleState,
+} from "../app/settings";
 import { applyWheelZoomDelta, type InteractionMode } from "../app/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
+import { applyCameraPoseSnapshot, type CameraPoseSnapshot } from "./cameraPose";
+import {
+  applyOrthographicExportFrame,
+  type StructureExportFramePlan,
+} from "./exportFrame";
 import { PREVIEW_AMBIENT_LIGHT_INTENSITY } from "./renderAppearance";
+import {
+  BOND_RADIUS,
+  CELL_FRAME_COLOR,
+  CELL_FRAME_LINE_WIDTH_PIXELS,
+  atomRadiusForModel,
+  cellCenter,
+  cellCorners,
+  cellFrameLinePositions,
+} from "./sceneGeometry";
 import {
   applyOrthographicFrustum,
   computeCameraFitZoom,
   computeStandardCameraPose,
-  withDefaultCellVectors,
   type StandardCameraPose,
   type VectorTuple,
 } from "./viewMath";
@@ -71,16 +89,55 @@ const NARROW_VIEWPORT_SAFE_AREA: PreviewSafeArea = {
 };
 const CAMERA_TARGET = new Vector3(0, 0, 0);
 export const BOND_COLOR = "#c7cbd1";
-export const BOND_RADIUS = 0.14;
 export const BOND_2D_RADIAL_SEGMENTS = 12;
 export const BOND_TUBE_RADIAL_SEGMENTS = 24;
-const CELL_FRAME_COLOR = "#111111";
-export const CELL_FRAME_LINE_WIDTH_PIXELS = 1;
 export const POLYHEDRON_SURFACE_OPACITY = 0.25;
 export const POLYHEDRON_EDGE_COLOR = "#525866";
 export const POLYHEDRON_EDGE_OPACITY = 0.42;
 const POLYHEDRON_EDGE_OPACITY_RATIO =
   POLYHEDRON_EDGE_OPACITY / POLYHEDRON_SURFACE_OPACITY;
+
+export {
+  BOND_RADIUS,
+  CELL_FRAME_LINE_WIDTH_PIXELS,
+  cellFrameLinePositions,
+} from "./sceneGeometry";
+
+export interface SceneMeshDetail {
+  bond2dRadialSegments: number;
+  bondRadialSegments: number;
+  sphereHeightSegments: number;
+  sphereWidthSegments: number;
+}
+
+export const PREVIEW_SCENE_MESH_DETAIL: SceneMeshDetail = {
+  bond2dRadialSegments: BOND_2D_RADIAL_SEGMENTS,
+  bondRadialSegments: BOND_TUBE_RADIAL_SEGMENTS,
+  sphereHeightSegments: 32,
+  sphereWidthSegments: 48,
+};
+
+export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMeshDetail> = {
+  low: {
+    bond2dRadialSegments: 8,
+    bondRadialSegments: 12,
+    sphereHeightSegments: 16,
+    sphereWidthSegments: 24,
+  },
+  medium: {
+    bond2dRadialSegments: 10,
+    bondRadialSegments: 16,
+    sphereHeightSegments: 24,
+    sphereWidthSegments: 32,
+  },
+  high: PREVIEW_SCENE_MESH_DETAIL,
+  xhigh: {
+    bond2dRadialSegments: 16,
+    bondRadialSegments: 32,
+    sphereHeightSegments: 48,
+    sphereWidthSegments: 72,
+  },
+};
 
 export function LatticeScene({
   cameraOrientationRef,
@@ -89,6 +146,7 @@ export function LatticeScene({
   interactionMode,
   layoutScene,
   onViewScaleChange,
+  onCameraOrientationChange,
   resetCounter,
   safeArea = EMPTY_SAFE_AREA,
   scene,
@@ -102,6 +160,7 @@ export function LatticeScene({
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   layoutScene?: SceneSpec;
+  onCameraOrientationChange?: () => void;
   onViewScaleChange: (viewScale: number) => void;
   resetCounter: number;
   safeArea?: PreviewSafeArea;
@@ -139,9 +198,10 @@ export function LatticeScene({
     >
       <ambientLight intensity={PREVIEW_AMBIENT_LIGHT_INTENSITY} />
       <CameraHeadlight />
-      <SceneContent
+      <PreviewSceneContent
         componentOpacity={componentOpacity}
         layout={layout}
+        meshDetail={PREVIEW_SCENE_MESH_DETAIL}
         resetCounter={resetCounter}
         safeArea={safeArea}
         scene={scene}
@@ -150,7 +210,10 @@ export function LatticeScene({
         style={style}
         viewScale={viewScale}
       />
-      <CameraOrientationTracker cameraOrientationRef={cameraOrientationRef} />
+      <CameraOrientationTracker
+        cameraOrientationRef={cameraOrientationRef}
+        onCameraOrientationChange={onCameraOrientationChange}
+      />
       <InteractiveCameraControls
         interactionLocked={interactionLocked}
         interactionMode={interactionMode}
@@ -164,25 +227,46 @@ export function LatticeScene({
 
 function CameraOrientationTracker({
   cameraOrientationRef,
+  onCameraOrientationChange,
 }: {
   cameraOrientationRef?: CameraOrientationRef;
+  onCameraOrientationChange?: () => void;
 }) {
   const { camera } = useThree();
+  const lastNotifiedOrientationRef = useRef(new Quaternion());
+  const lastNotificationTimeRef = useRef(0);
 
   useEffect(() => {
     cameraOrientationRef?.current.copy(camera.quaternion);
-  }, [camera, cameraOrientationRef]);
+    lastNotifiedOrientationRef.current.copy(camera.quaternion);
+    lastNotificationTimeRef.current = performance.now();
+    onCameraOrientationChange?.();
+  }, [camera, cameraOrientationRef, onCameraOrientationChange]);
 
   useFrame(() => {
     cameraOrientationRef?.current.copy(camera.quaternion);
+    if (!onCameraOrientationChange) {
+      return;
+    }
+
+    const now = performance.now();
+    const orientationDelta = lastNotifiedOrientationRef.current.angleTo(camera.quaternion);
+    if (orientationDelta < 0.002 || now - lastNotificationTimeRef.current < 120) {
+      return;
+    }
+
+    lastNotifiedOrientationRef.current.copy(camera.quaternion);
+    lastNotificationTimeRef.current = now;
+    onCameraOrientationChange();
   });
 
   return null;
 }
 
-function SceneContent({
+function PreviewSceneContent({
   componentOpacity,
   layout,
+  meshDetail,
   resetCounter,
   safeArea,
   scene,
@@ -193,6 +277,7 @@ function SceneContent({
 }: {
   componentOpacity: ComponentOpacityState;
   layout: SceneLayout;
+  meshDetail: SceneMeshDetail;
   resetCounter: number;
   safeArea: PreviewSafeArea;
   scene: SceneSpec;
@@ -224,8 +309,89 @@ function SceneContent({
   }, [camera, effectiveSafeArea, size.height, size.width, zoom]);
 
   return (
+    <StructureSceneObjects
+      atomById={atomById}
+      componentOpacity={componentOpacity}
+      groupPosition={layout.groupPosition}
+      meshDetail={meshDetail}
+      scene={scene}
+      showAtoms={showAtoms}
+      showUnitCell={showUnitCell}
+      style={style}
+    />
+  );
+}
+
+export function ExportSceneContent({
+  cameraPose,
+  componentOpacity,
+  exportFramePlan,
+  layout,
+  meshDetail,
+  scene,
+  showAtoms,
+  showUnitCell,
+  style,
+}: {
+  cameraPose: CameraPoseSnapshot;
+  componentOpacity: ComponentOpacityState;
+  exportFramePlan: StructureExportFramePlan;
+  layout: SceneLayout;
+  meshDetail: SceneMeshDetail;
+  scene: SceneSpec;
+  showAtoms: boolean;
+  showUnitCell: boolean;
+  style: StyleState;
+}) {
+  const { camera } = useThree();
+  const atomById = useMemo(() => new Map(scene.atoms.map((atom) => [atom.id, atom])), [scene]);
+
+  useLayoutEffect(() => {
+    applyCameraPoseSnapshot(camera, cameraPose, layout.standardPose.distance, layout.span);
+  }, [camera, cameraPose, layout.span, layout.standardPose.distance]);
+
+  useLayoutEffect(() => {
+    if (camera instanceof OrthographicCamera) {
+      applyOrthographicExportFrame(camera, exportFramePlan);
+    }
+  }, [camera, exportFramePlan]);
+
+  return (
+    <StructureSceneObjects
+      atomById={atomById}
+      componentOpacity={componentOpacity}
+      groupPosition={layout.groupPosition}
+      meshDetail={meshDetail}
+      scene={scene}
+      showAtoms={showAtoms}
+      showUnitCell={showUnitCell}
+      style={style}
+    />
+  );
+}
+
+function StructureSceneObjects({
+  atomById,
+  componentOpacity,
+  groupPosition,
+  meshDetail,
+  scene,
+  showAtoms,
+  showUnitCell,
+  style,
+}: {
+  atomById: Map<string, AtomSpec>;
+  componentOpacity: ComponentOpacityState;
+  groupPosition: VectorTuple;
+  meshDetail: SceneMeshDetail;
+  scene: SceneSpec;
+  showAtoms: boolean;
+  showUnitCell: boolean;
+  style: StyleState;
+}) {
+  return (
     <group>
-      <group position={layout.groupPosition}>
+      <group position={groupPosition}>
         {showUnitCell ? (
           <CellFrame
             opacity={componentOpacity.unitCell / 100}
@@ -248,6 +414,7 @@ function SceneContent({
             bond={bond}
             colorMode={style.bondColorMode}
             colorScheme={style.colorScheme}
+            meshDetail={meshDetail}
             thicknessScale={style.bondThickness / 100}
             opacity={componentOpacity.bonds / 100}
           />
@@ -258,6 +425,7 @@ function SceneContent({
                 key={atom.id}
                 atom={atom}
                 colorScheme={style.colorScheme}
+                meshDetail={meshDetail}
                 radiusModel={style.atomRadiusModel}
                 radiusScale={style.atomRadius / 100}
                 opacity={componentOpacity.atoms / 100}
@@ -409,12 +577,14 @@ function applyStandardCameraPose(
 function Atom({
   atom,
   colorScheme,
+  meshDetail,
   opacity,
   radiusModel,
   radiusScale,
 }: {
   atom: AtomSpec;
   colorScheme: StyleState["colorScheme"];
+  meshDetail: SceneMeshDetail;
   opacity: number;
   radiusModel: AtomRadiusModel;
   radiusScale: number;
@@ -425,7 +595,13 @@ function Atom({
 
   return (
     <mesh position={atom.position}>
-      <sphereGeometry args={[radius * radiusScale, 48, 32]} />
+      <sphereGeometry
+        args={[
+          radius * radiusScale,
+          meshDetail.sphereWidthSegments,
+          meshDetail.sphereHeightSegments,
+        ]}
+      />
       <meshLambertMaterial
         key={isTransparent ? "transparent" : "opaque"}
         color={color}
@@ -442,6 +618,7 @@ function Bond({
   bond,
   colorMode,
   colorScheme,
+  meshDetail,
   opacity,
   thicknessScale,
 }: {
@@ -449,6 +626,7 @@ function Bond({
   bond: BondSpec;
   colorMode: BondColorMode;
   colorScheme: StyleState["colorScheme"];
+  meshDetail: SceneMeshDetail;
   opacity: number;
   thicknessScale: number;
 }) {
@@ -503,7 +681,7 @@ function Bond({
         opacity={opacity}
         position={geometry.center}
         quaternion={geometry.quaternion}
-        radialSegments={BOND_2D_RADIAL_SEGMENTS}
+        radialSegments={meshDetail.bond2dRadialSegments}
         radius={radius}
       />
     );
@@ -519,7 +697,7 @@ function Bond({
           opacity={opacity}
           position={geometry.startSegmentCenter}
           quaternion={geometry.quaternion}
-          radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
+          radialSegments={meshDetail.bondRadialSegments}
           radius={radius}
         />
         <BondCylinder
@@ -529,7 +707,7 @@ function Bond({
           opacity={opacity}
           position={geometry.endSegmentCenter}
           quaternion={geometry.quaternion}
-          radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
+          radialSegments={meshDetail.bondRadialSegments}
           radius={radius}
         />
       </>
@@ -544,7 +722,7 @@ function Bond({
       opacity={opacity}
       position={geometry.center}
       quaternion={geometry.quaternion}
-      radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
+      radialSegments={meshDetail.bondRadialSegments}
       radius={radius}
     />
   );
@@ -726,34 +904,7 @@ function CellFrame({ opacity, vectors }: { opacity: number; vectors: VectorTuple
   return <primitive object={cellFrame} />;
 }
 
-export function cellFrameLinePositions(vectors: VectorTuple[]): number[] {
-  const [vectorA, vectorB, vectorC] = withDefaultCellVectors(vectors);
-  const origin = new Vector3(0, 0, 0);
-  const a = new Vector3(...vectorA);
-  const b = new Vector3(...vectorB);
-  const c = new Vector3(...vectorC);
-  const ab = a.clone().add(b);
-  const ac = a.clone().add(c);
-  const bc = b.clone().add(c);
-  const abc = a.clone().add(b).add(c);
-
-  return [
-    ...vectorEdge(origin, a),
-    ...vectorEdge(origin, b),
-    ...vectorEdge(origin, c),
-    ...vectorEdge(a, ab),
-    ...vectorEdge(a, ac),
-    ...vectorEdge(b, ab),
-    ...vectorEdge(b, bc),
-    ...vectorEdge(c, ac),
-    ...vectorEdge(c, bc),
-    ...vectorEdge(ab, abc),
-    ...vectorEdge(ac, abc),
-    ...vectorEdge(bc, abc),
-  ];
-}
-
-interface SceneLayout {
+export interface SceneLayout {
   groupPosition: VectorTuple;
   span: number;
   standardPose: StandardCameraPose;
@@ -785,10 +936,6 @@ export function computeSceneLayout(
   };
 }
 
-function atomRadiusForModel(atom: AtomSpec, model: AtomRadiusModel): number {
-  return atom.radii?.[model] ?? atom.radius;
-}
-
 export function previewSafeAreaForViewport(
   safeArea: PreviewSafeArea,
   viewportWidth: number,
@@ -803,39 +950,4 @@ export function previewSafeAreaForViewport(
     right: NARROW_VIEWPORT_SAFE_AREA.right,
     top: Math.max(safeArea.top, NARROW_VIEWPORT_SAFE_AREA.top),
   };
-}
-
-function cellCenter(vectors: VectorTuple[]): Vector3 {
-  const [vectorA, vectorB, vectorC] = withDefaultCellVectors(vectors);
-
-  return new Vector3(...vectorA)
-    .add(new Vector3(...vectorB))
-    .add(new Vector3(...vectorC))
-    .multiplyScalar(0.5);
-}
-
-function cellCorners(vectors: VectorTuple[]): Vector3[] {
-  const [vectorA, vectorB, vectorC] = withDefaultCellVectors(vectors);
-  const origin = new Vector3(0, 0, 0);
-  const a = new Vector3(...vectorA);
-  const b = new Vector3(...vectorB);
-  const c = new Vector3(...vectorC);
-
-  return [
-    origin,
-    a,
-    b,
-    c,
-    a.clone().add(b),
-    a.clone().add(c),
-    b.clone().add(c),
-    a.clone().add(b).add(c),
-  ];
-}
-
-function vectorEdge(
-  start: Vector3,
-  end: Vector3,
-): [number, number, number, number, number, number] {
-  return [start.x, start.y, start.z, end.x, end.y, end.z];
 }

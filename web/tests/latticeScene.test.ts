@@ -1,20 +1,38 @@
 import { describe, expect, test } from "bun:test";
+import { OrthographicCamera, Quaternion } from "three";
 
 import type { AtomSpec, SceneSpec } from "../src/api/scene";
+import {
+  createDefaultComponentOpacity,
+  createDefaultComponentVisibility,
+  createDefaultStyle,
+  visibleSceneForComponents,
+} from "../src/app/settings";
 import {
   BOND_COLOR,
   BOND_2D_RADIAL_SEGMENTS,
   BOND_RADIUS,
   BOND_TUBE_RADIAL_SEGMENTS,
   CELL_FRAME_LINE_WIDTH_PIXELS,
+  EXPORT_SCENE_MESH_DETAIL_PRESETS,
   POLYHEDRON_EDGE_COLOR,
   POLYHEDRON_EDGE_OPACITY,
   POLYHEDRON_SURFACE_OPACITY,
+  PREVIEW_SCENE_MESH_DETAIL,
   cellFrameLinePositions,
   computeSceneLayout,
   polyhedronGeometryFromAtoms,
   previewSafeAreaForViewport,
 } from "../src/scene/LatticeScene";
+import {
+  applyCameraPoseSnapshot,
+  createCameraPoseSnapshot,
+} from "../src/scene/cameraPose";
+import {
+  computeStructureExportAspectRatio,
+  computeStructureExportFramePlan,
+  projectCellFrameLinesToExportFrame,
+} from "../src/scene/exportFrame";
 import {
   computeCameraFitZoom,
   computeOrthographicFrustum,
@@ -112,6 +130,109 @@ describe("computeSceneLayout", () => {
     expect(BOND_2D_RADIAL_SEGMENTS).toBe(12);
     expect(BOND_RADIUS).toBe(0.14);
     expect(BOND_TUBE_RADIAL_SEGMENTS).toBe(24);
+  });
+
+  test("keeps preview mesh detail fixed while export presets scale together", () => {
+    expect(PREVIEW_SCENE_MESH_DETAIL).toEqual({
+      bond2dRadialSegments: 12,
+      bondRadialSegments: 24,
+      sphereHeightSegments: 32,
+      sphereWidthSegments: 48,
+    });
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.low).toEqual({
+      bond2dRadialSegments: 8,
+      bondRadialSegments: 12,
+      sphereHeightSegments: 16,
+      sphereWidthSegments: 24,
+    });
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.high).toBe(PREVIEW_SCENE_MESH_DETAIL);
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.sphereWidthSegments).toBe(72);
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.bondRadialSegments).toBe(32);
+  });
+
+  test("captures and applies a narrow orthographic camera pose snapshot", () => {
+    const sourceOrientation = new Quaternion();
+    const snapshot = createCameraPoseSnapshot(sourceOrientation, [1, 2, 3]);
+    const camera = new OrthographicCamera();
+
+    applyCameraPoseSnapshot(camera, snapshot, 10, 3);
+
+    expect(snapshot).toEqual({
+      projection: "orthographic",
+      quaternion: [0, 0, 0, 1],
+      target: [1, 2, 3],
+    });
+    expect(camera.position.x).toBeCloseTo(1);
+    expect(camera.position.y).toBeCloseTo(2);
+    expect(camera.position.z).toBeCloseTo(13);
+    expect(camera.up.x).toBeCloseTo(0);
+    expect(camera.up.y).toBeCloseTo(1);
+    expect(camera.up.z).toBeCloseTo(0);
+    expect(camera.near).toBeCloseTo(0.01);
+    expect(camera.far).toBeGreaterThanOrEqual(1000);
+  });
+
+  test("derives export aspect from the projected currently visible content", () => {
+    const scene = sceneWithExportVisibilityAtoms();
+    const visibility = createDefaultComponentVisibility(scene);
+    const cameraPose = createCameraPoseSnapshot(new Quaternion());
+    const componentOpacity = createDefaultComponentOpacity();
+    const style = createDefaultStyle();
+
+    const defaultVisibleScene = visibleSceneForComponents(scene, visibility);
+    const withOneHopScene = visibleSceneForComponents(scene, {
+      ...visibility,
+      oneHopBondedAtoms: true,
+    });
+
+    expect(defaultVisibleScene).not.toBeNull();
+    expect(withOneHopScene).not.toBeNull();
+    expect(
+      computeStructureExportAspectRatio({
+        cameraPose,
+        componentOpacity,
+        scene: defaultVisibleScene!,
+        showAtoms: true,
+        showUnitCell: false,
+        style,
+      }),
+    ).toBeCloseTo(2);
+    expect(
+      computeStructureExportAspectRatio({
+        cameraPose,
+        componentOpacity,
+        scene: withOneHopScene!,
+        showAtoms: true,
+        showUnitCell: false,
+        style,
+      }),
+    ).toBeCloseTo(2 / 3);
+  });
+
+  test("projects unit-cell frame lines into the export frame for vector PDF overlay", () => {
+    const scene = sceneWithExportVisibilityAtoms();
+    const cameraPose = createCameraPoseSnapshot(new Quaternion());
+    const framePlan = computeStructureExportFramePlan({
+      cameraPose,
+      componentOpacity: createDefaultComponentOpacity(),
+      height: 100,
+      scene,
+      showAtoms: false,
+      showUnitCell: true,
+      style: createDefaultStyle(),
+      width: 100,
+    });
+    const lines = projectCellFrameLinesToExportFrame({ cameraPose, framePlan, scene });
+
+    expect(lines).toHaveLength(12);
+    for (const line of lines) {
+      for (const point of [line.start, line.end]) {
+        expect(point.x).toBeGreaterThanOrEqual(0);
+        expect(point.x).toBeLessThanOrEqual(100);
+        expect(point.y).toBeGreaterThanOrEqual(0);
+        expect(point.y).toBeLessThanOrEqual(100);
+      }
+    }
   });
 
   test("builds polyhedron geometry from returned hull atoms and faces", () => {
@@ -225,6 +346,60 @@ function sceneWithOffCenterAtoms(): SceneSpec {
         gamma: "71.57",
       },
       formula: "Si",
+      symmetry: {
+        available: false,
+        crystalSystem: null,
+        latticeSystem: null,
+        pointGroup: null,
+        pointGroupSchoenflies: null,
+        spaceGroup: null,
+        spaceGroupNumber: null,
+      },
+    },
+  };
+}
+
+function sceneWithExportVisibilityAtoms(): SceneSpec {
+  return {
+    atoms: [
+      atom("Na-0", [0, 0, 0]),
+      {
+        ...atom("Na-0-boundary", [1, 0, 0]),
+        imageOffset: [1, 0, 0],
+        imageReasons: ["boundary"],
+        isPeriodicImage: true,
+        visibilityDependencies: ["boundaryAtoms"],
+        visibilityDependencyGroups: [["boundaryAtoms"]],
+      },
+      {
+        ...atom("Cl-1-one-hop", [0, -2, 0]),
+        imageOffset: [0, -1, 0],
+        imageReasons: ["bonded"],
+        isPeriodicImage: true,
+        visibilityDependencies: ["oneHopBondedAtoms"],
+        visibilityDependencyGroups: [["oneHopBondedAtoms"]],
+      },
+    ],
+    bonds: [],
+    cell: {
+      vectors: [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 1],
+      ],
+    },
+    polyhedra: [],
+    summary: {
+      atomCount: 1,
+      cell: {
+        a: "1.00",
+        alpha: "90.00",
+        b: "1.00",
+        beta: "90.00",
+        c: "1.00",
+        gamma: "90.00",
+      },
+      formula: "NaCl",
       symmetry: {
         available: false,
         crystalSystem: null,

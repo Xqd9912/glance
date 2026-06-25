@@ -4,15 +4,24 @@ import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
+  createDefaultExportSettings,
   createDefaultStyle,
   createDefaultComponentVisibility,
   INSPECTOR_OPEN_SCENE_OFFSET_X_PX,
   INSPECTOR_PREVIEW_SAFE_AREA,
+  parseExportDimensionInput,
+  setExportAspectRatioLocked,
+  setExportDimension,
+  setExportFormat,
+  setExportMeshQuality,
+  setExportSupersampling,
   countPeriodicImageAtoms,
   hasPolyhedra,
   hasPeriodicImageAtoms,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
+  syncExportSettingsAspectRatio,
+  validateExportSettings,
   visibleSceneForComponents,
 } from "../src/app/settings";
 
@@ -27,6 +36,71 @@ describe("settings", () => {
     });
     expect(STYLE_SCALE_MIN.atomRadius).toBe(0);
     expect(STYLE_SCALE_MAX.bondThickness).toBe(200);
+  });
+
+  test("defaults figure export settings to PNG with separate 2D and 3D quality controls", () => {
+    expect(createDefaultExportSettings()).toEqual({
+      aspectRatioLocked: true,
+      format: "png",
+      height: 1800,
+      meshQuality: "high",
+      supersampling: 2,
+      width: 2400,
+    });
+  });
+
+  test("edits export dimensions with locked and unlocked aspect ratios", () => {
+    const defaultSettings = createDefaultExportSettings();
+
+    expect(setExportDimension(defaultSettings, "width", 3000)).toMatchObject({
+      height: 2250,
+      width: 3000,
+    });
+    expect(setExportDimension(defaultSettings, "height", 1200)).toMatchObject({
+      height: 1200,
+      width: 1600,
+    });
+    expect(setExportDimension(defaultSettings, "width", 3000, 2)).toMatchObject({
+      height: 1500,
+      width: 3000,
+    });
+    expect(syncExportSettingsAspectRatio(defaultSettings, 1)).toMatchObject({
+      height: 2400,
+      width: 2400,
+    });
+
+    const unlockedSettings = setExportAspectRatioLocked(defaultSettings, false);
+    expect(setExportDimension(unlockedSettings, "height", 1200)).toMatchObject({
+      height: 1200,
+      width: 2400,
+    });
+    expect(syncExportSettingsAspectRatio(unlockedSettings, 1)).toBe(unlockedSettings);
+  });
+
+  test("parses and validates bounded export quality settings", () => {
+    const defaultSettings = createDefaultExportSettings();
+
+    expect(parseExportDimensionInput("3200px")).toBe(3200);
+    expect(parseExportDimensionInput("0")).toBeNull();
+    expect(parseExportDimensionInput("99999")).toBe(6000);
+    expect(setExportSupersampling(defaultSettings, 9).supersampling).toBe(4);
+    expect(setExportMeshQuality(defaultSettings, "xhigh").meshQuality).toBe("xhigh");
+    expect(setExportFormat(defaultSettings, "pdf")).toEqual({
+      ...defaultSettings,
+      format: "pdf",
+    });
+    expect(validateExportSettings(defaultSettings).valid).toBe(true);
+    expect(
+      validateExportSettings({
+        ...defaultSettings,
+        height: 6000,
+        supersampling: 4,
+        width: 6000,
+      }),
+    ).toEqual({
+      valid: false,
+      message: "Size and supersampling are too large for this browser export.",
+    });
   });
 
   test("detects periodic image atoms", () => {

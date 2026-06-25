@@ -5,6 +5,10 @@ import type { ReactNode } from "react";
 import { Quaternion, Vector3 } from "three";
 
 import type { AtomSpec, SceneSpec } from "../src/api/scene";
+import type {
+  CreateFigureExportOptions,
+  FigureExportFile,
+} from "../src/app/exportFigure";
 
 interface FetchCall {
   input: RequestInfo | URL;
@@ -83,6 +87,36 @@ mock.module("../src/scene/OrientationGizmo", () => ({
   OrientationGizmo: () => <div data-testid="mock-orientation-gizmo" />,
 }));
 
+let exportRequests: CreateFigureExportOptions[] = [];
+let exportDownloads: { blob: Blob; fileName: string }[] = [];
+let exportFailure: Error | null = null;
+
+async function createFigureExportFileMock(
+  options: CreateFigureExportOptions,
+): Promise<FigureExportFile> {
+  exportRequests.push(options);
+  if (exportFailure) {
+    throw exportFailure;
+  }
+
+  return {
+    blob: new Blob([options.settings.format], {
+      type: options.settings.format === "pdf" ? "application/pdf" : "image/png",
+    }),
+    fileName: `NaCl.${options.settings.format}`,
+    format: options.settings.format,
+  };
+}
+
+function downloadBlobMock(blob: Blob, fileName: string) {
+  exportDownloads.push({ blob, fileName });
+}
+
+mock.module("../src/app/exportFigure", () => ({
+  createFigureExportFile: createFigureExportFileMock,
+  downloadBlob: downloadBlobMock,
+}));
+
 const { App } = await import("../src/app/App");
 let fetchCalls: FetchCall[] = [];
 let fetchResponses: Response[] = [];
@@ -90,6 +124,9 @@ let fetchResponses: Response[] = [];
 beforeEach(() => {
   fetchCalls = [];
   fetchResponses = [];
+  exportDownloads = [];
+  exportFailure = null;
+  exportRequests = [];
   globalThis.fetch = (async (input, init) => {
     fetchCalls.push({ input, init });
     const response = fetchResponses.shift();
@@ -522,6 +559,92 @@ describe("App", () => {
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
     expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
     expect(colorSchemeSelect.textContent).toContain("Jmol");
+  });
+
+  test("lets export controls update settings and route PNG and PDF actions", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    await user.click(within(commonControls).getByRole("tab", { name: "Export" }));
+
+    expect(within(commonControls).queryByText("No controls")).toBeNull();
+    const widthInput = within(commonControls).getByRole("textbox", {
+      name: "Export width",
+    }) as HTMLInputElement;
+    const heightInput = within(commonControls).getByRole("textbox", {
+      name: "Export height",
+    }) as HTMLInputElement;
+    const exportPngButton = within(commonControls).getByRole("button", {
+      name: "Export PNG",
+    });
+
+    expect(widthInput.value).toBe("2400");
+    expect(heightInput.value).toBe("1800");
+    expect(exportPngButton.isConnected).toBe(true);
+
+    await user.click(exportPngButton);
+    await waitFor(() => expect(exportRequests).toHaveLength(1));
+
+    expect(exportRequests[0]?.settings.format).toBe("png");
+    expect(exportRequests[0]?.settings.supersampling).toBe(2);
+    expect(exportDownloads[0]?.fileName).toBe("NaCl.png");
+
+    await user.clear(widthInput);
+    await user.type(widthInput, "3000{Enter}");
+
+    expect(widthInput.value).toBe("3000");
+    expect(heightInput.value).toBe("2250");
+
+    await user.click(
+      within(commonControls).getByRole("button", { name: "Unlock aspect ratio" }),
+    );
+    await user.clear(heightInput);
+    await user.type(heightInput, "1000{Enter}");
+
+    expect(widthInput.value).toBe("3000");
+    expect(heightInput.value).toBe("1000");
+
+    await user.click(within(commonControls).getByRole("radio", { name: "1x supersampling" }));
+    await user.click(
+      within(commonControls).getByRole("radio", { name: "XHigh mesh quality" }),
+    );
+    await user.click(within(commonControls).getByRole("radio", { name: "PDF format" }));
+
+    const exportPdfButton = within(commonControls).getByRole("button", {
+      name: "Export PDF",
+    });
+    await user.click(exportPdfButton);
+    await waitFor(() => expect(exportRequests).toHaveLength(2));
+
+    expect(exportRequests[1]?.settings).toMatchObject({
+      format: "pdf",
+      height: 1000,
+      meshQuality: "xhigh",
+      supersampling: 1,
+      width: 3000,
+    });
+    expect(exportDownloads[1]?.fileName).toBe("NaCl.pdf");
+  });
+
+  test("shows recoverable export errors without losing the loaded scene", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+    exportFailure = new Error("WebGL export failed.");
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    await user.click(within(commonControls).getByRole("tab", { name: "Export" }));
+    await user.click(within(commonControls).getByRole("button", { name: "Export PNG" }));
+
+    await waitFor(() =>
+      expect(within(commonControls).getByRole("status").textContent).toContain(
+        "WebGL export failed.",
+      ),
+    );
+    expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
+    expect(exportDownloads).toHaveLength(0);
   });
 
   test("uses a single sliding active indicator for tab animation", async () => {

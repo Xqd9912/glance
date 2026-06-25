@@ -1,5 +1,7 @@
 import {
   ImageDown,
+  Lock,
+  LockOpen,
   Palette,
   RotateCcw,
   Rotate3d as CameraIcon,
@@ -19,6 +21,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -31,6 +34,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -41,13 +45,27 @@ import {
 } from "../colorSchemes";
 import {
   COMPONENT_OPACITY_MAX,
+  EXPORT_FORMAT_OPTIONS,
+  EXPORT_MESH_QUALITY_OPTIONS,
+  EXPORT_SUPERSAMPLING_OPTIONS,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
   createDefaultComponentOpacity,
   createDefaultStyle,
+  parseExportDimensionInput,
+  setExportAspectRatioLocked,
+  setExportDimension,
+  setExportFormat,
+  setExportMeshQuality,
+  setExportSupersampling,
+  validateExportSettings,
   type BondColorMode,
   type ComponentOpacityState,
   type ComponentVisibilityState,
+  type ExportFormat,
+  type ExportMeshQuality,
+  type ExportSettingsState,
+  type ExportSupersampling,
   type StyleState,
 } from "../settings";
 import {
@@ -95,6 +113,16 @@ const ATOM_RADIUS_MODEL_OPTIONS: {
   { menuLabel: "Van der Waals", triggerLabel: "vdW", value: "vdw" },
   { menuLabel: "Ionic", triggerLabel: "Ionic", value: "ionic" },
 ];
+const EXPORT_MESH_QUALITY_LABELS: Record<ExportMeshQuality, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "XHigh",
+};
+const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
+  pdf: "PDF",
+  png: "PNG",
+};
 const UNICOLOR_TOKEN_STYLE = {
   background:
     "linear-gradient(145deg, rgba(255, 255, 255, 0.72) 0 18%, rgba(255, 255, 255, 0.2) 19% 34%, rgba(255, 255, 255, 0) 35%), linear-gradient(180deg, #dbe0e8 0%, #aeb5c0 42%, #7d8795 100%)",
@@ -118,19 +146,31 @@ const VESTA_TOKEN_STYLE = {
 export function CommonControlsPanel({
   componentOpacity,
   componentVisibility,
+  exportError,
+  exportAspectRatio,
+  exportSettings,
   hasPolyhedra,
+  isExporting,
   onComponentOpacityChange,
   onComponentVisibilityChange,
   onAtomRadiusModelChange,
+  onExport,
+  onExportSettingsChange,
   onStyleChange,
   style,
 }: {
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
+  exportError: string | null;
+  exportAspectRatio?: number;
+  exportSettings: ExportSettingsState;
   hasPolyhedra: boolean;
+  isExporting: boolean;
   onAtomRadiusModelChange: (atomRadiusModel: AtomRadiusModel) => void;
   onComponentOpacityChange: Dispatch<SetStateAction<ComponentOpacityState>>;
   onComponentVisibilityChange: Dispatch<SetStateAction<ComponentVisibilityState>>;
+  onExport: () => void;
+  onExportSettingsChange: (settings: ExportSettingsState) => void;
   onStyleChange: Dispatch<SetStateAction<StyleState>>;
   style: StyleState;
 }) {
@@ -342,12 +382,273 @@ export function CommonControlsPanel({
               />
             </TabsContent>
             <TabsContent value="export" className="pt-1.5">
-              <ReservedTabContent />
+              <ExportTabContent
+                error={exportError}
+                exportAspectRatio={exportAspectRatio}
+                isExporting={isExporting}
+                onExport={onExport}
+                onSettingsChange={onExportSettingsChange}
+                settings={exportSettings}
+              />
             </TabsContent>
           </div>
         </Tabs>
       </aside>
     </TooltipProvider>
+  );
+}
+
+function ExportTabContent({
+  error,
+  exportAspectRatio,
+  isExporting,
+  onExport,
+  onSettingsChange,
+  settings,
+}: {
+  error: string | null;
+  exportAspectRatio?: number;
+  isExporting: boolean;
+  onExport: () => void;
+  onSettingsChange: (settings: ExportSettingsState) => void;
+  settings: ExportSettingsState;
+}) {
+  const validation = validateExportSettings(settings);
+  const statusMessage = error ?? validation.message;
+  const actionLabel = isExporting
+    ? "Exporting"
+    : `Export ${EXPORT_FORMAT_LABELS[settings.format]}`;
+
+  function setDimension(dimension: "height" | "width", value: number) {
+    onSettingsChange(setExportDimension(settings, dimension, value, exportAspectRatio));
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <section aria-labelledby="export-output-label">
+        <h2
+          id="export-output-label"
+          className="px-1.5 text-xs font-bold leading-tight text-muted-foreground"
+        >
+          Output
+        </h2>
+        <div className="mt-1.5 grid grid-cols-[1fr_1.75rem_1fr] items-end gap-1.5 px-1.5">
+          <ExportSizeInput
+            label="W"
+            accessibleLabel="Export width"
+            value={settings.width}
+            onCommit={(value) => setDimension("width", value)}
+          />
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={
+                  settings.aspectRatioLocked
+                    ? "Unlock aspect ratio"
+                    : "Lock aspect ratio"
+                }
+                aria-pressed={settings.aspectRatioLocked}
+                className={cn(TOOL_ICON_BUTTON_CLASS, "mb-0.5 size-7")}
+                onClick={() =>
+                  onSettingsChange(
+                    setExportAspectRatioLocked(
+                      settings,
+                      !settings.aspectRatioLocked,
+                      exportAspectRatio,
+                    ),
+                  )}
+              >
+                {settings.aspectRatioLocked ? (
+                  <Lock aria-hidden="true" />
+                ) : (
+                  <LockOpen aria-hidden="true" />
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">
+              {settings.aspectRatioLocked ? "Unlock ratio" : "Lock ratio"}
+            </TooltipContent>
+          </Tooltip>
+
+          <ExportSizeInput
+            label="H"
+            accessibleLabel="Export height"
+            value={settings.height}
+            onCommit={(value) => setDimension("height", value)}
+          />
+        </div>
+      </section>
+
+      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <span className="min-w-0 truncate leading-tight">Supersampling</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          spacing={0}
+          value={String(settings.supersampling)}
+          className="w-full"
+          onValueChange={(value) => {
+            if (value) {
+              onSettingsChange(setExportSupersampling(settings, Number(value)));
+            }
+          }}
+        >
+          {EXPORT_SUPERSAMPLING_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option}
+              value={String(option)}
+              aria-label={`${option}x supersampling`}
+              className="h-6 flex-1 px-1 text-[0.68rem]"
+            >
+              {option}x
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      <Separator className="my-0.5" />
+
+      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <span className="min-w-0 truncate leading-tight">3D mesh</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          spacing={0}
+          value={settings.meshQuality}
+          className="w-full"
+          onValueChange={(value) => {
+            if (value) {
+              onSettingsChange(
+                setExportMeshQuality(settings, value as ExportMeshQuality),
+              );
+            }
+          }}
+        >
+          {EXPORT_MESH_QUALITY_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option}
+              value={option}
+              aria-label={`${EXPORT_MESH_QUALITY_LABELS[option]} mesh quality`}
+              className="h-6 flex-1 px-1 text-[0.64rem]"
+            >
+              {EXPORT_MESH_QUALITY_LABELS[option]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <span className="min-w-0 truncate leading-tight">Format</span>
+        <ToggleGroup
+          type="single"
+          variant="outline"
+          size="sm"
+          spacing={0}
+          value={settings.format}
+          className="w-full"
+          onValueChange={(value) => {
+            if (value) {
+              onSettingsChange(setExportFormat(settings, value as ExportFormat));
+            }
+          }}
+        >
+          {EXPORT_FORMAT_OPTIONS.map((option) => (
+            <ToggleGroupItem
+              key={option}
+              value={option}
+              aria-label={`${EXPORT_FORMAT_LABELS[option]} format`}
+              className="h-6 flex-1 px-2 text-[0.68rem]"
+            >
+              {EXPORT_FORMAT_LABELS[option]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      </div>
+
+      <Button
+        size="sm"
+        className="mx-1.5 h-8"
+        disabled={isExporting || !validation.valid}
+        onClick={onExport}
+      >
+        <ImageDown aria-hidden="true" data-icon="inline-start" />
+        {actionLabel}
+      </Button>
+
+      {statusMessage ? (
+        <p
+          role="status"
+          className="min-h-4 px-1.5 text-xs leading-snug text-muted-foreground"
+        >
+          {statusMessage}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ExportSizeInput({
+  accessibleLabel,
+  label,
+  onCommit,
+  value,
+}: {
+  accessibleLabel: string;
+  label: string;
+  onCommit: (value: number) => void;
+  value: number;
+}) {
+  const [valueText, setValueText] = useState(String(value));
+
+  useEffect(() => {
+    setValueText(String(value));
+  }, [value]);
+
+  function commitValueText() {
+    const nextValue = parseExportDimensionInput(valueText);
+    if (nextValue === null) {
+      setValueText(String(value));
+      return;
+    }
+
+    setValueText(String(nextValue));
+    onCommit(nextValue);
+  }
+
+  function handleValueKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+      commitValueText();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setValueText(String(value));
+      event.currentTarget.blur();
+    }
+  }
+
+  return (
+    <label className="grid min-w-0 gap-1">
+      <span className="px-0.5 text-[0.68rem] font-bold leading-none text-muted-foreground">
+        {label}
+      </span>
+      <Input
+        type="text"
+        inputMode="numeric"
+        value={valueText}
+        aria-label={accessibleLabel}
+        className="h-7 px-2 text-center font-mono text-xs tabular-nums"
+        onBlur={commitValueText}
+        onChange={(event) => setValueText(event.target.value)}
+        onKeyDown={handleValueKeyDown}
+      />
+    </label>
   );
 }
 

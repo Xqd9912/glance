@@ -107,6 +107,8 @@ export const EXPORT_DIMENSION_MAX = 6000;
 export const EXPORT_RENDER_DIMENSION_MAX = 8192;
 export const EXPORT_RENDER_PIXEL_MAX = 48_000_000;
 export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 3, 4];
+const EXPORT_SUPERSAMPLING_MIN: ExportSupersampling = 1;
+const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 4;
 export const EXPORT_FORMAT_OPTIONS: readonly ExportFormat[] = ["png", "pdf"];
 export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
   "low",
@@ -146,6 +148,7 @@ export function setExportDimension(
   settings: ExportSettingsState,
   dimension: "height" | "width",
   value: number,
+  aspectRatio = exportAspectRatioFromSettings(settings),
 ): ExportSettingsState {
   const nextValue = clampExportDimension(value);
   if (!settings.aspectRatioLocked) {
@@ -155,29 +158,54 @@ export function setExportDimension(
     };
   }
 
-  const aspectRatio = exportAspectRatio(settings);
+  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
   if (dimension === "width") {
     return {
       ...settings,
       width: nextValue,
-      height: clampExportDimension(Math.round(nextValue / aspectRatio)),
+      height: clampExportDimension(Math.round(nextValue / safeAspectRatio)),
     };
   }
 
   return {
     ...settings,
     height: nextValue,
-    width: clampExportDimension(Math.round(nextValue * aspectRatio)),
+    width: clampExportDimension(Math.round(nextValue * safeAspectRatio)),
   };
 }
 
 export function setExportAspectRatioLocked(
   settings: ExportSettingsState,
   aspectRatioLocked: boolean,
+  aspectRatio = exportAspectRatioFromSettings(settings),
 ): ExportSettingsState {
-  return {
+  const nextSettings = {
     ...settings,
     aspectRatioLocked,
+  };
+
+  return aspectRatioLocked
+    ? syncExportSettingsAspectRatio(nextSettings, aspectRatio)
+    : nextSettings;
+}
+
+export function syncExportSettingsAspectRatio(
+  settings: ExportSettingsState,
+  aspectRatio: number,
+): ExportSettingsState {
+  if (!settings.aspectRatioLocked) {
+    return settings;
+  }
+
+  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
+  const nextHeight = clampExportDimension(Math.round(settings.width / safeAspectRatio));
+  if (nextHeight === settings.height) {
+    return settings;
+  }
+
+  return {
+    ...settings,
+    height: nextHeight,
   };
 }
 
@@ -394,19 +422,27 @@ function clampExportSupersampling(value: number): ExportSupersampling {
     return roundedValue as ExportSupersampling;
   }
 
-  if (roundedValue <= EXPORT_SUPERSAMPLING_OPTIONS[0]) {
-    return EXPORT_SUPERSAMPLING_OPTIONS[0];
+  if (roundedValue <= EXPORT_SUPERSAMPLING_MIN) {
+    return EXPORT_SUPERSAMPLING_MIN;
   }
 
-  return EXPORT_SUPERSAMPLING_OPTIONS[EXPORT_SUPERSAMPLING_OPTIONS.length - 1];
+  return EXPORT_SUPERSAMPLING_MAX;
 }
 
-function exportAspectRatio(settings: ExportSettingsState): number {
+function exportAspectRatioFromSettings(settings: ExportSettingsState): number {
   if (settings.width > 0 && settings.height > 0) {
     return settings.width / settings.height;
   }
 
   return DEFAULT_EXPORT_SETTINGS.width / DEFAULT_EXPORT_SETTINGS.height;
+}
+
+function normalizeExportAspectRatio(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) {
+    return DEFAULT_EXPORT_SETTINGS.width / DEFAULT_EXPORT_SETTINGS.height;
+  }
+
+  return value;
 }
 
 function parsePositiveIntegerInput(value: string): number | null {
