@@ -141,7 +141,7 @@ describe("settings", () => {
     expect(parseExportDimensionInput("3200px")).toBe(3200);
     expect(parseExportDimensionInput("0")).toBeNull();
     expect(parseExportDimensionInput("99999")).toBe(6000);
-    expect(setExportSupersampling(defaultSettings, 9).supersampling).toBe(8);
+    expect(setExportSupersampling(defaultSettings, 9).supersampling).toBe(4);
     expect(setExportMeshQuality(defaultSettings, "xhigh").meshQuality).toBe("xhigh");
     expect(setExportFormat(defaultSettings, "pdf")).toEqual({
       ...defaultSettings,

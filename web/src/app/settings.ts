@@ -86,7 +86,7 @@ export const STYLE_SCALE_MAX: Pick<StyleState, "atomRadius" | "bondThickness"> =
 
 export type ExportFormat = "png" | "pdf";
 export type ExportMeshQuality = "low" | "medium" | "high" | "xhigh";
-export type ExportSupersampling = 1 | 2 | 4 | 8;
+export type ExportSupersampling = 1 | 2 | 4;
 
 export interface ExportProjectedSize {
   height: number;
@@ -112,9 +112,9 @@ export const EXPORT_DIMENSION_MIN = 64;
 export const EXPORT_DIMENSION_MAX = 6000;
 export const EXPORT_RENDER_DIMENSION_MAX = 8192;
 export const EXPORT_RENDER_PIXEL_MAX = 48_000_000;
-export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 4, 8];
+export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 4];
 const EXPORT_SUPERSAMPLING_MIN: ExportSupersampling = 1;
-const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 8;
+const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 4;
 export const EXPORT_FORMAT_OPTIONS: readonly ExportFormat[] = ["png", "pdf"];
 export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
   "low",
@@ -384,7 +384,7 @@ export function validateExportSettings(
   if (!EXPORT_SUPERSAMPLING_OPTIONS.includes(settings.supersampling)) {
     return {
       valid: false,
-      message: "Supersampling must be 1x, 2x, 4x, or 8x.",
+      message: "Supersampling must be 1x, 2x, or 4x.",
     };
   }
 

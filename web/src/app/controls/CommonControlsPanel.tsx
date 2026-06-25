@@ -669,7 +669,7 @@ function ExportSupersamplingControl({
       </span>
       <Tabs
         value={String(value)}
-        className="w-32 gap-0"
+        className="w-28 gap-0"
         onValueChange={(nextValue) => onCommit(Number(nextValue))}
       >
         <TabsList
