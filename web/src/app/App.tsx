@@ -95,7 +95,7 @@ export function App() {
   const [style, setStyle] = useState(createDefaultStyle);
   const [viewState, setViewState] = useState(createPreviewViewState);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
-  const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(false);
+  const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
   const viewportSize = useViewportSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const leftOverlayRef = useRef<HTMLDivElement>(null);
@@ -176,7 +176,7 @@ export function App() {
       setScene(null);
       setCurrentFile(null);
       setIsSettingsOpen(false);
-      setIsStructureSummaryCollapsed(false);
+      setIsStructureSummaryCollapsed(true);
       return;
     }
 
@@ -191,7 +191,7 @@ export function App() {
     setComponentOpacity(createDefaultComponentOpacity());
     setStyle(createDefaultStyle());
     setViewState(createPreviewViewState());
-    setIsStructureSummaryCollapsed(false);
+    setIsStructureSummaryCollapsed(true);
 
     try {
       const nextScene = await uploadStructurePreview(file);

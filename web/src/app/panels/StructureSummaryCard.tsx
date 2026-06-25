@@ -170,6 +170,28 @@ export function StructureSummaryCard({
         ) : null}
       </div>
 
+      {visibleWarnings.length > 0 ? (
+        <div className="mt-2.5 flex flex-col gap-2">
+          {visibleWarnings.map((warning) => (
+            <Alert
+              key={warning.code}
+              className="rounded-md px-2.5 py-2"
+              onDismiss={() => {
+                setDismissedWarningCodes(
+                  (currentWarningCodes) =>
+                    new Set(currentWarningCodes).add(warning.code),
+                );
+              }}
+            >
+              <AlertTriangleIcon aria-hidden="true" />
+              <AlertDescription className="text-xs leading-snug">
+                {warning.message}
+              </AlertDescription>
+            </Alert>
+          ))}
+        </div>
+      ) : null}
+
       {hasExpandableContent ? (
         <div
           id={expandableContentId}
@@ -182,24 +204,6 @@ export function StructureSummaryCard({
             aria-hidden={isCollapsed ? "true" : undefined}
             className="pt-2.5"
           >
-            {visibleWarnings.map((warning) => (
-              <Alert
-                key={warning.code}
-                className="rounded-md px-2.5 py-2"
-                onDismiss={() => {
-                  setDismissedWarningCodes(
-                    (currentWarningCodes) =>
-                      new Set(currentWarningCodes).add(warning.code),
-                  );
-                }}
-              >
-                <AlertTriangleIcon aria-hidden="true" />
-                <AlertDescription className="text-xs leading-snug">
-                  {warning.message}
-                </AlertDescription>
-              </Alert>
-            ))}
-
             {scene ? (
               <div className="flex flex-col gap-2.5 max-[760px]:hidden">
                 <Separator />

@@ -541,7 +541,7 @@ describe("App", () => {
     expect(content?.className).not.toContain("h-[");
   });
 
-  test("collapses and expands extended structure details from the card", async () => {
+  test("starts with collapsed extended structure details and toggles them from the card", async () => {
     const user = userEvent.setup();
 
     await renderLoadedStructure(user);
@@ -550,30 +550,30 @@ describe("App", () => {
     const detailsRegion = structureCard.querySelector(
       "[data-slot='structure-summary-details']",
     ) as HTMLElement | null;
-    const collapseButton = within(structureCard).getByRole("button", {
-      name: "Collapse details",
-    });
-
-    expect(collapseButton.getAttribute("aria-expanded")).toBe("true");
-    expect(detailsRegion?.className).toContain("transition-[height]");
-    expect(detailsRegion?.style.height).not.toBe("0px");
-
-    await user.click(collapseButton);
-
     const expandButton = within(structureCard).getByRole("button", {
       name: "Expand details",
     });
+
     expect(expandButton.getAttribute("aria-expanded")).toBe("false");
+    expect(detailsRegion?.className).toContain("transition-[height]");
     expect(detailsRegion?.style.height).toBe("0px");
 
     await user.click(expandButton);
 
+    const collapseButton = within(structureCard).getByRole("button", {
+      name: "Collapse details",
+    });
+    expect(collapseButton.getAttribute("aria-expanded")).toBe("true");
+    expect(detailsRegion?.style.height).not.toBe("0px");
+
+    await user.click(collapseButton);
+
     expect(
       within(structureCard)
-        .getByRole("button", { name: "Collapse details" })
+        .getByRole("button", { name: "Expand details" })
         .getAttribute("aria-expanded"),
-    ).toBe("true");
-    expect(detailsRegion?.style.height).not.toBe("0px");
+    ).toBe("false");
+    expect(detailsRegion?.style.height).toBe("0px");
   });
 
   test("keeps atom radius model local and reuploads when the bond algorithm changes", async () => {

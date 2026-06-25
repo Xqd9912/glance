@@ -7,8 +7,8 @@ from pretty_lattice.structures.readers import read_structure
 from pretty_lattice.structures.scene import build_scene_response
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-INPUT_PATH = PROJECT_ROOT / "tests" / "fixtures" / "structures" / "Sm(Mo3S4)2.cif"
-OUTPUT_PATH = PROJECT_ROOT / "web" / "public" / "examples" / "SmMo3S4.scene.json"
+INPUT_PATH = PROJECT_ROOT / "tests" / "fixtures" / "structures" / "Al2O3.cif"
+OUTPUT_PATH = PROJECT_ROOT / "web" / "public" / "examples" / "Al2O3.scene.json"
 
 
 def main() -> None:
