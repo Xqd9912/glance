@@ -15,12 +15,13 @@ import {
 } from "../src/app/settings";
 
 describe("settings", () => {
-  test("defaults style controls to global 100 percent and neutral bonds", () => {
+  test("defaults style controls to global 100 percent and bicolor bonds", () => {
     expect(createDefaultStyle()).toEqual({
       atomRadius: 100,
       atomRadiusModel: "uniform",
-      bondColorMode: "neutral",
+      bondColorMode: "by-atom",
       bondThickness: 100,
+      colorScheme: "vesta",
     });
     expect(STYLE_SCALE_MIN.atomRadius).toBe(0);
     expect(STYLE_SCALE_MAX.bondThickness).toBe(200);
@@ -277,7 +278,6 @@ function polyhedron(id: string, hullAtomIds: string[]): SceneSpec["polyhedra"][n
     centerAtomId: hullAtomIds[0]!,
     hullAtomIds,
     faces: hullAtomIds.length >= 3 ? [[0, 1, 2]] : [],
-    color: "#fadd3d",
     visibilityDependencies: [],
     visibilityDependencyGroups: [],
   };
@@ -293,7 +293,6 @@ function atom(
   const isPeriodicImage = imageOffset.some((value) => value !== 0);
   const visibilityDependencies = Array.from(new Set(visibilityDependencyGroups.flat()));
   return {
-    color: element === "Na" ? "#fadd3d" : "#1ff01f",
     element,
     fractionalPosition: imageOffset,
     id,

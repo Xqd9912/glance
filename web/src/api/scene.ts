@@ -59,7 +59,6 @@ export interface AtomSpec {
   visibilityDependencyGroups: VisibilityDependency[][];
   radius: number;
   radii?: AtomRadii;
-  color: string;
 }
 
 export type AtomRadii = Record<AtomRadiusModel, number>;
@@ -81,7 +80,6 @@ export interface PolyhedronSpec {
   centerAtomId: string;
   hullAtomIds: string[];
   faces: [number, number, number][];
-  color: string;
   visibilityDependencies: VisibilityDependency[];
   visibilityDependencyGroups: VisibilityDependency[][];
 }

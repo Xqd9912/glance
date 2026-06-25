@@ -6,7 +6,6 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 import pretty_lattice.structures.scene as scene_module
-from pretty_lattice.structures.colormaps import load_colormap
 from pretty_lattice.structures.elements import load_element_registry
 from pretty_lattice.structures.readers import (
     StructureReadError,
@@ -151,19 +150,17 @@ def test_point_group_schoenflies_mapping_covers_crystallographic_point_groups() 
     assert point_group_schoenflies_symbol("not-a-point-group") is None
 
 
-def test_element_radius_and_colormap_resolution() -> None:
+def test_element_radius_resolution() -> None:
     element_registry = load_element_registry()
-    colormap = load_colormap()
 
     oxygen = element_registry.resolve("O")
 
     assert oxygen.atomic_radius == pytest.approx(0.74)
     assert oxygen.vdw_radius == pytest.approx(1.52)
     assert oxygen.uniform_radius == pytest.approx(0.50)
-    assert colormap.resolve("O") == "#ff0300"
 
 
-def test_scene_response_shape_uses_radius_and_color_defaults() -> None:
+def test_scene_response_shape_uses_radius_defaults_without_renderer_colors() -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
 
     scene = build_scene_response(structure)
@@ -191,8 +188,8 @@ def test_scene_response_shape_uses_radius_and_color_defaults() -> None:
             "vdw": pytest.approx(2.02),
             "ionic": pytest.approx(1.26),
         },
-        "color": "#00ff27",
     }
+    assert "color" not in canonical_atoms[0]
     assert [atom["element"] for atom in canonical_atoms] == [
         "Sr",
         "Ti",
@@ -350,7 +347,7 @@ def test_scene_response_generates_polyhedra_for_complete_coordination_environmen
     assert ti_polyhedron["hullAtomIds"][0] == "Ti-1"
     assert len(ti_polyhedron["hullAtomIds"]) == 7
     assert len(ti_polyhedron["faces"]) == 8
-    assert ti_polyhedron["color"] == "#78caff"
+    assert "color" not in ti_polyhedron
     assert set(ti_polyhedron["hullAtomIds"]).issubset(atom_ids)
     assert all(len(face) == 3 for face in ti_polyhedron["faces"])
     assert all(

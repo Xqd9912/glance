@@ -1,11 +1,18 @@
 import type { SceneSpec } from "../api/scene";
+import {
+  elementColorForScheme,
+  type ColorScheme,
+} from "./colorSchemes";
 
 export interface ElementLegendEntry {
   color: string;
   element: string;
 }
 
-export function deriveElementLegendEntries(scene: SceneSpec | null): ElementLegendEntry[] {
+export function deriveElementLegendEntries(
+  scene: SceneSpec | null,
+  colorScheme: ColorScheme = "vesta",
+): ElementLegendEntry[] {
   if (!scene) {
     return [];
   }
@@ -22,7 +29,7 @@ export function deriveElementLegendEntries(scene: SceneSpec | null): ElementLege
 
     seenElements.add(atom.element);
     entries.push({
-      color: atom.color,
+      color: elementColorForScheme(atom.element, colorScheme),
       element: atom.element,
     });
   }

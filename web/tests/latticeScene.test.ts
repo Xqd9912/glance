@@ -3,7 +3,9 @@ import { describe, expect, test } from "bun:test";
 import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
   BOND_COLOR,
+  BOND_2D_RADIAL_SEGMENTS,
   BOND_RADIUS,
+  BOND_TUBE_RADIAL_SEGMENTS,
   CELL_FRAME_LINE_WIDTH_PIXELS,
   POLYHEDRON_EDGE_COLOR,
   POLYHEDRON_EDGE_OPACITY,
@@ -107,7 +109,9 @@ describe("computeSceneLayout", () => {
 
   test("uses fixed first-version bond styling", () => {
     expect(BOND_COLOR).toBe("#c7cbd1");
+    expect(BOND_2D_RADIAL_SEGMENTS).toBe(12);
     expect(BOND_RADIUS).toBe(0.14);
+    expect(BOND_TUBE_RADIAL_SEGMENTS).toBe(24);
   });
 
   test("builds polyhedron geometry from returned hull atoms and faces", () => {
@@ -122,7 +126,6 @@ describe("computeSceneLayout", () => {
         [0, 2, 3],
         [1, 2, 3],
       ],
-      color: "#9a9a9a",
       visibilityDependencies: [],
       visibilityDependencyGroups: [],
     } satisfies SceneSpec["polyhedra"][number];
@@ -149,7 +152,6 @@ describe("computeSceneLayout", () => {
           centerAtomId: "Si-0",
           hullAtomIds: ["Si-0", "missing", "Si-2"],
           faces: [[0, 1, 2]],
-          color: "#9a9a9a",
           visibilityDependencies: [],
           visibilityDependencyGroups: [],
         },
@@ -163,7 +165,6 @@ describe("computeSceneLayout", () => {
           centerAtomId: "Si-0",
           hullAtomIds: ["Si-0", "Si-1", "Si-2"],
           faces: [[0, 1, 3]],
-          color: "#9a9a9a",
           visibilityDependencies: [],
           visibilityDependencyGroups: [],
         },
@@ -239,7 +240,6 @@ function sceneWithOffCenterAtoms(): SceneSpec {
 
 function atom(id: string, position: [number, number, number]): AtomSpec {
   return {
-    color: "#9a9a9a",
     element: "Si",
     fractionalPosition: [0, 0, 0],
     id,

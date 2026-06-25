@@ -6,6 +6,7 @@ import type {
   SceneSpec,
   VisibilityDependency,
 } from "../api/scene";
+import type { ColorScheme } from "./colorSchemes";
 import type { PreviewSafeArea } from "../scene/LatticeScene";
 
 export const SETTINGS_PREVIEW_SAFE_AREA: PreviewSafeArea = {
@@ -54,19 +55,21 @@ export const COMPONENT_OPACITY_MAX: ComponentOpacityState = {
   polyhedra: 50,
 };
 
-export type BondColorMode = "neutral" | "by-atom";
+export type BondColorMode = "neutral" | "unicolor-2d" | "by-atom";
 export interface StyleState {
   atomRadius: number;
   atomRadiusModel: AtomRadiusModel;
   bondColorMode: BondColorMode;
   bondThickness: number;
+  colorScheme: ColorScheme;
 }
 
 export const DEFAULT_STYLE: StyleState = {
   atomRadius: 100,
   atomRadiusModel: "uniform",
-  bondColorMode: "neutral",
+  bondColorMode: "by-atom",
   bondThickness: 100,
+  colorScheme: "vesta",
 };
 
 export const STYLE_SCALE_MIN: Pick<StyleState, "atomRadius" | "bondThickness"> = {

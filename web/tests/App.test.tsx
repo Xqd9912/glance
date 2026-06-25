@@ -407,6 +407,9 @@ describe("App", () => {
     const bondStyleSelect = within(commonControls).getByRole("combobox", {
       name: "Bond style",
     });
+    const colorSchemeSelect = within(commonControls).getByRole("combobox", {
+      name: "Color scheme",
+    });
 
     expect(atomRadiusSlider.min).toBe("0");
     expect(atomRadiusSlider.max).toBe("200");
@@ -417,7 +420,8 @@ describe("App", () => {
     expect(bondThicknessInput.value).toBe("100");
     expect(commonControls.querySelectorAll(".opacity-slider-snap-marker")).toHaveLength(2);
     expect(atomRadiusModelSelect.textContent).toContain("Uniform");
-    expect(bondStyleSelect.textContent).toContain("Unicolor");
+    expect(bondStyleSelect.textContent).toContain("Bicolor");
+    expect(colorSchemeSelect.textContent).toContain("VESTA");
 
     await user.click(atomRadiusModelSelect);
     expect(await screen.findByText("Atom radius model")).toBeTruthy();
@@ -427,9 +431,21 @@ describe("App", () => {
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
 
     await user.click(bondStyleSelect);
-    await user.click(await screen.findByRole("option", { name: "Bicolor" }));
+    await user.click(await screen.findByRole("option", { name: "Uniform" }));
 
-    expect(bondStyleSelect.textContent).toContain("Bicolor");
+    expect(bondStyleSelect.textContent).toContain("Uniform");
+
+    await user.click(bondStyleSelect);
+    await user.click(await screen.findByRole("option", { name: "Uniform (2D)" }));
+
+    expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
+    expect(fetchCalls).toHaveLength(1);
+
+    await user.click(colorSchemeSelect);
+    await user.click(await screen.findByRole("option", { name: "Jmol" }));
+
+    expect(colorSchemeSelect.textContent).toContain("Jmol");
+    expect(fetchCalls).toHaveLength(1);
 
     fireEvent.change(atomRadiusSlider, { target: { value: "200" } });
 
@@ -476,7 +492,8 @@ describe("App", () => {
     expect(bondThicknessInput.value).toBe("100");
     expect(bondThicknessSlider.value).toBe("100");
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
-    expect(bondStyleSelect.textContent).toContain("Bicolor");
+    expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
+    expect(colorSchemeSelect.textContent).toContain("Jmol");
   });
 
   test("uses a single sliding active indicator for tab animation", async () => {
@@ -924,7 +941,6 @@ function polyhedron(id: string, hullAtomIds: string[]): SceneSpec["polyhedra"][n
     centerAtomId: hullAtomIds[0]!,
     hullAtomIds,
     faces: hullAtomIds.length >= 3 ? [[0, 1, 2]] : [],
-    color: "#fadd3d",
     visibilityDependencies: [],
     visibilityDependencyGroups: [],
   };
@@ -940,7 +956,6 @@ function atom(
   const isPeriodicImage = imageOffset.some((value) => value !== 0);
   const visibilityDependencies = Array.from(new Set(visibilityDependencyGroups.flat()));
   return {
-    color: element === "Na" ? "#fadd3d" : "#1ff01f",
     element,
     fractionalPosition: imageOffset,
     id,

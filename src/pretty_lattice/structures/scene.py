@@ -12,7 +12,6 @@ from pymatgen.core.sites import PeriodicSite
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from scipy.spatial import Delaunay, QhullError
 
-from pretty_lattice.structures.colormaps import Colormap, load_colormap
 from pretty_lattice.structures.elements import (
     ElementRecord,
     ElementRegistry,
@@ -90,7 +89,6 @@ class AtomSpec(TypedDict):
     visibilityDependencyGroups: list[list[VisibilityDependency]]
     radius: float
     radii: AtomRadiiSpec
-    color: str
 
 
 class AtomRadiiSpec(TypedDict):
@@ -113,7 +111,6 @@ class PolyhedronSpec(TypedDict):
     centerAtomId: str
     hullAtomIds: list[str]
     faces: list[list[int]]
-    color: str
     visibilityDependencies: list[VisibilityDependency]
     visibilityDependencyGroups: list[list[VisibilityDependency]]
 
@@ -140,7 +137,6 @@ class _SiteRenderData:
     fractional_position: list[float]
     radius: float
     radii: AtomRadiiSpec
-    color: str
 
 
 @dataclass
@@ -183,11 +179,9 @@ def build_scene_response(
     *,
     bond_algorithm: str | None = None,
     element_registry: ElementRegistry | None = None,
-    colormap: Colormap | None = None,
 ) -> SceneSpec:
     normalized_bond_algorithm = normalize_bond_algorithm(bond_algorithm)
     elements = element_registry or load_element_registry()
-    colors = colormap or load_colormap()
     cell_vectors = [_vector3(vector) for vector in structure.lattice.matrix]
     can_generate_periodic_images = _has_valid_3d_periodic_cell(structure)
 
@@ -199,7 +193,6 @@ def build_scene_response(
         fractional_position = _vector3(site.frac_coords)
         element = elements.resolve(symbol)
         site_id = f"{element.symbol}-{index}"
-        color = colors.resolve(element.symbol)
         canonical_fractional_position = fractional_position
         boundary_axes: tuple[int, ...] = ()
 
@@ -215,7 +208,6 @@ def build_scene_response(
             fractional_position=canonical_fractional_position,
             radius=element.uniform_radius,
             radii=_element_radii(element),
-            color=color,
         )
         site_render_data.append(site_data)
 
@@ -417,7 +409,6 @@ def _atom_record_to_spec(
         ),
         "radius": atom.site.radius,
         "radii": atom.site.radii,
-        "color": atom.site.color,
     }
 
 
@@ -578,7 +569,6 @@ def _build_polyhedra(
                 "centerAtomId": center_atom_id,
                 "hullAtomIds": hull_atom_ids,
                 "faces": faces,
-                "color": center_atom.site.color,
                 "visibilityDependencies": _ordered_visibility_dependencies(
                     visibility_dependencies
                 ),

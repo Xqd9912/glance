@@ -253,7 +253,10 @@ export function App() {
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
   );
-  const legendEntries = useMemo(() => deriveElementLegendEntries(scene), [scene]);
+  const legendEntries = useMemo(
+    () => deriveElementLegendEntries(scene, style.colorScheme),
+    [scene, style.colorScheme],
+  );
   const hasVisibleScene = visibleScene !== null;
   const errorTitle =
     errorMessage === BACKEND_UNAVAILABLE_MESSAGE

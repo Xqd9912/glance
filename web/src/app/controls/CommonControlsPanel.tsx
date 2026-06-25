@@ -36,6 +36,10 @@ import { cn } from "@/lib/utils";
 
 import type { AtomRadiusModel } from "../../api/scene";
 import {
+  COLOR_SCHEME_OPTIONS,
+  type ColorScheme,
+} from "../colorSchemes";
+import {
   COMPONENT_OPACITY_MAX,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
@@ -72,8 +76,9 @@ const STYLE_SCALE_DEFAULT_VALUE = 100;
 const STYLE_SCALE_SLIDER_SNAP_DISTANCE = 4;
 const COMMON_SLIDER_BLUR_DELAY_MS = 500;
 const BOND_COLOR_OPTIONS: { label: string; value: BondColorMode }[] = [
-  { label: "Unicolor", value: "neutral" },
   { label: "Bicolor", value: "by-atom" },
+  { label: "Uniform", value: "neutral" },
+  { label: "Uniform (2D)", value: "unicolor-2d" },
 ];
 const ATOM_RADIUS_MODEL_OPTIONS: {
   menuLabel: string;
@@ -85,8 +90,24 @@ const ATOM_RADIUS_MODEL_OPTIONS: {
   { menuLabel: "Van der Waals", triggerLabel: "vdW", value: "vdw" },
   { menuLabel: "Ionic", triggerLabel: "Ionic", value: "ionic" },
 ];
+const UNICOLOR_TOKEN_STYLE = {
+  background:
+    "linear-gradient(145deg, rgba(255, 255, 255, 0.72) 0 18%, rgba(255, 255, 255, 0.2) 19% 34%, rgba(255, 255, 255, 0) 35%), linear-gradient(180deg, #dbe0e8 0%, #aeb5c0 42%, #7d8795 100%)",
+} as const;
 const BICOLOR_TOKEN_STYLE = {
-  background: "linear-gradient(90deg, #f58c9a 0 50%, #78a7ff 50% 100%)",
+  background:
+    "linear-gradient(145deg, rgba(255, 255, 255, 0.74) 0 18%, rgba(255, 255, 255, 0.18) 19% 34%, rgba(255, 255, 255, 0) 35%), linear-gradient(90deg, #f58c9a 0 50%, #78a7ff 50% 100%)",
+} as const;
+const UNICOLOR_2D_TOKEN_STYLE = {
+  background: "linear-gradient(180deg, #a8afbb 0%, #8f96a3 100%)",
+} as const;
+const JMOL_TOKEN_STYLE = {
+  background:
+    "linear-gradient(90deg, #ffffff 0 22%, #909090 22% 44%, #3050f8 44% 66%, #ff0d0d 66% 100%)",
+} as const;
+const VESTA_TOKEN_STYLE = {
+  background:
+    "linear-gradient(90deg, #ffcccc 0 22%, #814929 22% 44%, #b0bae6 44% 66%, #ff0300 66% 100%)",
 } as const;
 
 export function CommonControlsPanel({
@@ -352,6 +373,13 @@ function StyleTabContent({
     }));
   }
 
+  function setColorScheme(colorScheme: ColorScheme) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      colorScheme,
+    }));
+  }
+
   const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
   const resetFeedbackTickRef = useRef(0);
   const resetFeedbackTimeoutRef = useRef<number | null>(null);
@@ -444,40 +472,78 @@ function StyleTabContent({
 
       <Separator />
 
-      <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
-        <span className="min-w-0 truncate leading-tight">Bond style</span>
-        <Select
-          value={style.bondColorMode}
-          onValueChange={(value) => setBondColorMode(value as BondColorMode)}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label="Bond style"
-            className="!h-6 w-full !px-2 !py-0"
+      <div className="flex flex-col gap-0.5">
+        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+          <span className="min-w-0 truncate leading-tight">Bond style</span>
+          <Select
+            value={style.bondColorMode}
+            onValueChange={(value) => setBondColorMode(value as BondColorMode)}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent
-            position="popper"
-            className="!bg-background !text-foreground"
-          >
-            <SelectGroup>
-              {BOND_COLOR_OPTIONS.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  textValue={option.label}
-                  className="min-h-6 py-0.5 text-sm"
-                >
-                  <BondStyleOptionLabel
-                    label={option.label}
+            <SelectTrigger
+              size="sm"
+              aria-label="Bond style"
+              className="!h-6 w-full !px-2 !py-0"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {BOND_COLOR_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
                     value={option.value}
-                  />
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+                    textValue={option.label}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    <BondStyleOptionLabel
+                      label={option.label}
+                      value={option.value}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+          <span className="min-w-0 truncate leading-tight">Color scheme</span>
+          <Select
+            value={style.colorScheme}
+            onValueChange={(value) => setColorScheme(value as ColorScheme)}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Color scheme"
+              className="!h-6 w-full !px-2 !py-0"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {COLOR_SCHEME_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    textValue={option.label}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    <ColorSchemeOptionLabel
+                      label={option.label}
+                      value={option.value}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
     </div>
   );
@@ -539,11 +605,40 @@ function BondStyleOptionLabel({
     <span className="inline-flex min-w-0 items-center gap-2">
       <span
         aria-hidden="true"
-        className={cn(
-          "size-3.5 shrink-0 rounded-full border border-border",
-          value === "neutral" ? "bg-[#8f96a3]" : null,
-        )}
-        style={value === "by-atom" ? BICOLOR_TOKEN_STYLE : undefined}
+        className="h-3 w-6 shrink-0 rounded-full border border-border"
+        style={bondStyleTokenStyle(value)}
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+}
+
+function bondStyleTokenStyle(value: BondColorMode): CSSProperties | undefined {
+  if (value === "neutral") {
+    return UNICOLOR_TOKEN_STYLE;
+  }
+  if (value === "by-atom") {
+    return BICOLOR_TOKEN_STYLE;
+  }
+  if (value === "unicolor-2d") {
+    return UNICOLOR_2D_TOKEN_STYLE;
+  }
+  return undefined;
+}
+
+function ColorSchemeOptionLabel({
+  label,
+  value,
+}: {
+  label: string;
+  value: ColorScheme;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="h-3 w-6 shrink-0 rounded-full border border-border"
+        style={value === "jmol" ? JMOL_TOKEN_STYLE : VESTA_TOKEN_STYLE}
       />
       <span className="min-w-0 truncate">{label}</span>
     </span>

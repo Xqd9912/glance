@@ -8,15 +8,15 @@ describe("deriveElementLegendEntries", () => {
     expect(
       deriveElementLegendEntries(
         sceneWithAtoms([
-          { element: "Na", color: "#fadd3d" },
-          { element: "Cl", color: "#1ff01f" },
-          { element: "Na", color: "#000000" },
-          { element: "O", color: "#ff0300" },
+          { element: "Na" },
+          { element: "Cl" },
+          { element: "Na" },
+          { element: "O" },
         ]),
       ),
     ).toEqual([
       { color: "#fadd3d", element: "Na" },
-      { color: "#1ff01f", element: "Cl" },
+      { color: "#32fc03", element: "Cl" },
       { color: "#ff0300", element: "O" },
     ]);
   });
@@ -29,33 +29,46 @@ describe("deriveElementLegendEntries", () => {
     expect(deriveElementLegendEntries(sceneWithAtoms([]))).toEqual([]);
   });
 
+  test("can derive legend colors from the selected Jmol scheme", () => {
+    expect(
+      deriveElementLegendEntries(
+        sceneWithAtoms([
+          { element: "Na" },
+          { element: "O" },
+        ]),
+        "jmol",
+      ),
+    ).toEqual([
+      { color: "#ab5cf2", element: "Na" },
+      { color: "#ff0d0d", element: "O" },
+    ]);
+  });
+
   test("derives entries from canonical atoms instead of periodic images", () => {
     expect(
       deriveElementLegendEntries(
         sceneWithAtoms([
-          { element: "Na", color: "#000000", isPeriodicImage: true },
-          { element: "Na", color: "#fadd3d" },
-          { element: "Cl", color: "#1ff01f", isPeriodicImage: true },
-          { element: "Cl", color: "#7aff7a" },
+          { element: "Na", isPeriodicImage: true },
+          { element: "Na" },
+          { element: "Cl", isPeriodicImage: true },
+          { element: "Cl" },
         ]),
       ),
     ).toEqual([
       { color: "#fadd3d", element: "Na" },
-      { color: "#7aff7a", element: "Cl" },
+      { color: "#32fc03", element: "Cl" },
     ]);
   });
 });
 
 interface TestAtom {
-  color: string;
   element: string;
   isPeriodicImage?: boolean;
 }
 
 function sceneWithAtoms(atoms: TestAtom[]): SceneSpec {
   return {
-    atoms: atoms.map(({ color, element, isPeriodicImage = false }, index) => ({
-      color,
+    atoms: atoms.map(({ element, isPeriodicImage = false }, index) => ({
       element,
       id: `${element}-${index}`,
       siteId: `${element}-${index}`,

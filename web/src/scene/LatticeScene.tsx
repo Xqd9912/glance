@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Box3,
   BufferGeometry,
@@ -24,6 +24,7 @@ import type {
   PolyhedronSpec,
   SceneSpec,
 } from "../api/scene";
+import { atomColorForScheme } from "../app/colorSchemes";
 import type { BondColorMode, ComponentOpacityState, StyleState } from "../app/settings";
 import { applyWheelZoomDelta, type InteractionMode } from "../app/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
@@ -48,6 +49,13 @@ export interface CameraOrientationRef {
   current: Quaternion;
 }
 
+interface OrthographicCanvasCameraProps {
+  far: number;
+  near: number;
+  position: VectorTuple;
+  zoom: number;
+}
+
 const EMPTY_SAFE_AREA: PreviewSafeArea = {
   bottom: 0,
   left: 0,
@@ -64,6 +72,8 @@ const NARROW_VIEWPORT_SAFE_AREA: PreviewSafeArea = {
 const CAMERA_TARGET = new Vector3(0, 0, 0);
 export const BOND_COLOR = "#c7cbd1";
 export const BOND_RADIUS = 0.14;
+export const BOND_2D_RADIAL_SEGMENTS = 12;
+export const BOND_TUBE_RADIAL_SEGMENTS = 24;
 const CELL_FRAME_COLOR = "#111111";
 export const CELL_FRAME_LINE_WIDTH_PIXELS = 1;
 export const POLYHEDRON_SURFACE_OPACITY = 0.25;
@@ -106,17 +116,25 @@ export function LatticeScene({
     () => computeSceneLayout(layoutSourceScene, style.atomRadiusModel),
     [layoutSourceScene, style.atomRadiusModel],
   );
+  const cameraProps = useMemo<OrthographicCanvasCameraProps>(
+    () => ({
+      position: layout.standardPose.cameraPosition,
+      zoom: 1,
+      near: 0.01,
+      far: Math.max(1000, layout.standardPose.distance + layout.span * 8),
+    }),
+    [layout.span, layout.standardPose.cameraPosition, layout.standardPose.distance],
+  );
+  const glProps = useMemo(
+    () => ({ antialias: true, alpha: true, preserveDrawingBuffer: true }),
+    [],
+  );
 
   return (
     <Canvas
       orthographic
-      camera={{
-        position: layout.standardPose.cameraPosition,
-        zoom: 1,
-        near: 0.01,
-        far: Math.max(1000, layout.standardPose.distance + layout.span * 8),
-      }}
-      gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+      camera={cameraProps}
+      gl={glProps}
       data-testid="lattice-canvas"
     >
       <ambientLight intensity={PREVIEW_AMBIENT_LIGHT_INTENSITY} />
@@ -195,11 +213,11 @@ function SceneContent({
   );
   const zoom = fitZoom * viewScale;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     applyStandardCameraPose(camera, layout.standardPose, layout.span);
   }, [camera, layout.span, layout.standardPose, resetCounter]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (camera instanceof OrthographicCamera) {
       applyOrthographicFrustum(camera, size.width, size.height, zoom, effectiveSafeArea);
     }
@@ -218,6 +236,7 @@ function SceneContent({
           <Polyhedron
             key={polyhedron.id}
             atomById={atomById}
+            colorScheme={style.colorScheme}
             opacity={componentOpacity.polyhedra / 100}
             polyhedron={polyhedron}
           />
@@ -228,6 +247,7 @@ function SceneContent({
             atomById={atomById}
             bond={bond}
             colorMode={style.bondColorMode}
+            colorScheme={style.colorScheme}
             thicknessScale={style.bondThickness / 100}
             opacity={componentOpacity.bonds / 100}
           />
@@ -237,6 +257,7 @@ function SceneContent({
               <Atom
                 key={atom.id}
                 atom={atom}
+                colorScheme={style.colorScheme}
                 radiusModel={style.atomRadiusModel}
                 radiusScale={style.atomRadius / 100}
                 opacity={componentOpacity.atoms / 100}
@@ -315,7 +336,9 @@ function InteractiveCameraControls({
         return;
       }
 
-      onViewScaleChange(applyWheelZoomDelta(viewScaleRef.current, event.deltaY));
+      const nextViewScale = applyWheelZoomDelta(viewScaleRef.current, event.deltaY);
+      viewScaleRef.current = nextViewScale;
+      onViewScaleChange(nextViewScale);
     }
 
     element.addEventListener("wheel", handleWheel, { passive: false });
@@ -385,24 +408,27 @@ function applyStandardCameraPose(
 
 function Atom({
   atom,
+  colorScheme,
   opacity,
   radiusModel,
   radiusScale,
 }: {
   atom: AtomSpec;
+  colorScheme: StyleState["colorScheme"];
   opacity: number;
   radiusModel: AtomRadiusModel;
   radiusScale: number;
 }) {
   const isTransparent = opacity < 1;
   const radius = atomRadiusForModel(atom, radiusModel);
+  const color = atomColorForScheme(atom, colorScheme);
 
   return (
     <mesh position={atom.position}>
       <sphereGeometry args={[radius * radiusScale, 48, 32]} />
       <meshLambertMaterial
         key={isTransparent ? "transparent" : "opaque"}
-        color={atom.color}
+        color={color}
         depthWrite={!isTransparent}
         opacity={opacity}
         transparent={isTransparent}
@@ -415,12 +441,14 @@ function Bond({
   atomById,
   bond,
   colorMode,
+  colorScheme,
   opacity,
   thicknessScale,
 }: {
   atomById: Map<string, AtomSpec>;
   bond: BondSpec;
   colorMode: BondColorMode;
+  colorScheme: StyleState["colorScheme"];
   opacity: number;
   thicknessScale: number;
 }) {
@@ -449,14 +477,14 @@ function Bond({
 
     return {
       center,
-      endColor: endAtom.color,
+      endColor: atomColorForScheme(endAtom, colorScheme),
       endSegmentCenter,
       length,
       quaternion,
-      startColor: startAtom.color,
+      startColor: atomColorForScheme(startAtom, colorScheme),
       startSegmentCenter,
     };
-  }, [atomById, bond.endAtomId, bond.startAtomId]);
+  }, [atomById, bond.endAtomId, bond.startAtomId, colorScheme]);
 
   if (!geometry) {
     return null;
@@ -464,6 +492,22 @@ function Bond({
 
   const isTransparent = opacity < 1;
   const radius = BOND_RADIUS * thicknessScale;
+
+  if (colorMode === "unicolor-2d") {
+    return (
+      <BondCylinder
+        color={BOND_COLOR}
+        isTransparent={isTransparent}
+        length={geometry.length}
+        material="basic"
+        opacity={opacity}
+        position={geometry.center}
+        quaternion={geometry.quaternion}
+        radialSegments={BOND_2D_RADIAL_SEGMENTS}
+        radius={radius}
+      />
+    );
+  }
 
   if (colorMode === "by-atom") {
     return (
@@ -475,6 +519,7 @@ function Bond({
           opacity={opacity}
           position={geometry.startSegmentCenter}
           quaternion={geometry.quaternion}
+          radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
           radius={radius}
         />
         <BondCylinder
@@ -484,6 +529,7 @@ function Bond({
           opacity={opacity}
           position={geometry.endSegmentCenter}
           quaternion={geometry.quaternion}
+          radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
           radius={radius}
         />
       </>
@@ -498,6 +544,7 @@ function Bond({
       opacity={opacity}
       position={geometry.center}
       quaternion={geometry.quaternion}
+      radialSegments={BOND_TUBE_RADIAL_SEGMENTS}
       radius={radius}
     />
   );
@@ -507,19 +554,30 @@ function BondCylinder({
   color,
   isTransparent,
   length,
+  material = "lambert",
   opacity,
   position,
   quaternion,
+  radialSegments,
   radius,
 }: {
   color: string;
   isTransparent: boolean;
   length: number;
+  material?: "basic" | "lambert";
   opacity: number;
   position: Vector3;
   quaternion: Quaternion;
+  radialSegments: number;
   radius: number;
 }) {
+  const materialProps = {
+    color,
+    depthWrite: !isTransparent,
+    opacity,
+    transparent: isTransparent,
+  };
+
   return (
     <mesh position={position} quaternion={quaternion}>
       <cylinderGeometry
@@ -527,26 +585,32 @@ function BondCylinder({
           radius,
           radius,
           length,
-          24,
+          radialSegments,
         ]}
       />
-      <meshLambertMaterial
-        key={isTransparent ? "transparent" : "opaque"}
-        color={color}
-        depthWrite={!isTransparent}
-        opacity={opacity}
-        transparent={isTransparent}
-      />
+      {material === "basic" ? (
+        <meshBasicMaterial
+          key={isTransparent ? "basic-transparent" : "basic-opaque"}
+          {...materialProps}
+        />
+      ) : (
+        <meshLambertMaterial
+          key={isTransparent ? "lambert-transparent" : "lambert-opaque"}
+          {...materialProps}
+        />
+      )}
     </mesh>
   );
 }
 
 function Polyhedron({
   atomById,
+  colorScheme,
   opacity,
   polyhedron,
 }: {
   atomById: Map<string, AtomSpec>;
+  colorScheme: StyleState["colorScheme"];
   opacity: number;
   polyhedron: PolyhedronSpec;
 }) {
@@ -554,6 +618,7 @@ function Polyhedron({
     () => polyhedronGeometryFromAtoms(polyhedron, atomById),
     [atomById, polyhedron],
   );
+  const centerAtom = atomById.get(polyhedron.centerAtomId);
 
   useEffect(() => {
     return () => {
@@ -561,15 +626,17 @@ function Polyhedron({
     };
   }, [geometry]);
 
-  if (!geometry) {
+  if (!geometry || !centerAtom) {
     return null;
   }
+
+  const color = atomColorForScheme(centerAtom, colorScheme);
 
   return (
     <group>
       <mesh geometry={geometry}>
         <meshLambertMaterial
-          color={polyhedron.color}
+          color={color}
           depthWrite={false}
           opacity={opacity}
           side={DoubleSide}
