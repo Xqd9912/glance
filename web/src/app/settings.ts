@@ -86,13 +86,19 @@ export const STYLE_SCALE_MAX: Pick<StyleState, "atomRadius" | "bondThickness"> =
 
 export type ExportFormat = "png" | "pdf";
 export type ExportMeshQuality = "low" | "medium" | "high" | "xhigh";
-export type ExportSupersampling = 1 | 2 | 3 | 4;
+export type ExportSupersampling = 1 | 2 | 4 | 8;
+
+export interface ExportProjectedSize {
+  height: number;
+  width: number;
+}
 
 export interface ExportSettingsState {
   aspectRatioLocked: boolean;
   format: ExportFormat;
   height: number;
   meshQuality: ExportMeshQuality;
+  pixelsPerProjectedUnit: number | null;
   supersampling: ExportSupersampling;
   width: number;
 }
@@ -106,9 +112,9 @@ export const EXPORT_DIMENSION_MIN = 64;
 export const EXPORT_DIMENSION_MAX = 6000;
 export const EXPORT_RENDER_DIMENSION_MAX = 8192;
 export const EXPORT_RENDER_PIXEL_MAX = 48_000_000;
-export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 3, 4];
+export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 4, 8];
 const EXPORT_SUPERSAMPLING_MIN: ExportSupersampling = 1;
-const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 4;
+const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 8;
 export const EXPORT_FORMAT_OPTIONS: readonly ExportFormat[] = ["png", "pdf"];
 export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
   "low",
@@ -118,10 +124,11 @@ export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
 ];
 
 export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
-  aspectRatioLocked: true,
+  aspectRatioLocked: false,
   format: "png",
-  height: 1800,
+  height: 2400,
   meshQuality: "high",
+  pixelsPerProjectedUnit: null,
   supersampling: 2,
   width: 2400,
 };
@@ -148,22 +155,29 @@ export function setExportDimension(
   settings: ExportSettingsState,
   dimension: "height" | "width",
   value: number,
-  aspectRatio = exportAspectRatioFromSettings(settings),
+  projectedSize?: ExportProjectedSize,
 ): ExportSettingsState {
   const nextValue = clampExportDimension(value);
   if (!settings.aspectRatioLocked) {
     return {
       ...settings,
       [dimension]: nextValue,
+      pixelsPerProjectedUnit: null,
     };
   }
 
-  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
+  const safeProjectedSize = normalizeExportProjectedSize(projectedSize);
+  const safeAspectRatio = safeProjectedSize
+    ? safeProjectedSize.width / safeProjectedSize.height
+    : exportAspectRatioFromSettings(settings);
   if (dimension === "width") {
     return {
       ...settings,
       width: nextValue,
       height: clampExportDimension(Math.round(nextValue / safeAspectRatio)),
+      pixelsPerProjectedUnit: safeProjectedSize
+        ? nextValue / safeProjectedSize.width
+        : settings.pixelsPerProjectedUnit,
     };
   }
 
@@ -171,34 +185,49 @@ export function setExportDimension(
     ...settings,
     height: nextValue,
     width: clampExportDimension(Math.round(nextValue * safeAspectRatio)),
+    pixelsPerProjectedUnit: safeProjectedSize
+      ? nextValue / safeProjectedSize.height
+      : settings.pixelsPerProjectedUnit,
   };
 }
 
 export function setExportAspectRatioLocked(
   settings: ExportSettingsState,
   aspectRatioLocked: boolean,
-  aspectRatio = exportAspectRatioFromSettings(settings),
+  projectedSize?: ExportProjectedSize,
 ): ExportSettingsState {
   const nextSettings = {
     ...settings,
     aspectRatioLocked,
+    pixelsPerProjectedUnit: aspectRatioLocked ? settings.pixelsPerProjectedUnit : null,
   };
 
   return aspectRatioLocked
-    ? syncExportSettingsAspectRatio(nextSettings, aspectRatio)
+    ? fitExportSettingsInsideProjectedSize(nextSettings, projectedSize)
     : nextSettings;
 }
 
-export function syncExportSettingsAspectRatio(
+export function syncExportSettingsProjectedSize(
   settings: ExportSettingsState,
-  aspectRatio: number,
+  projectedSize?: ExportProjectedSize,
 ): ExportSettingsState {
   if (!settings.aspectRatioLocked) {
     return settings;
   }
 
-  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
-  const nextHeight = clampExportDimension(Math.round(settings.width / safeAspectRatio));
+  const safeProjectedSize = normalizeExportProjectedSize(projectedSize);
+  if (safeProjectedSize && hasExportProjectedScale(settings.pixelsPerProjectedUnit)) {
+    return applyExportProjectedScale(
+      settings,
+      safeProjectedSize,
+      settings.pixelsPerProjectedUnit,
+    );
+  }
+
+  const nextHeight = clampExportDimension(
+    Math.round(settings.width / exportAspectRatioFromSettings(settings)),
+  );
+
   if (nextHeight === settings.height) {
     return settings;
   }
@@ -207,6 +236,93 @@ export function syncExportSettingsAspectRatio(
     ...settings,
     height: nextHeight,
   };
+}
+
+export function syncExportSettingsAspectRatio(
+  settings: ExportSettingsState,
+  aspectRatio: number,
+): ExportSettingsState {
+  return syncExportSettingsProjectedSize(settings, projectedSizeFromAspectRatio(aspectRatio));
+}
+
+function fitExportSettingsInsideProjectedSize(
+  settings: ExportSettingsState,
+  projectedSize?: ExportProjectedSize,
+): ExportSettingsState {
+  const safeProjectedSize = normalizeExportProjectedSize(projectedSize);
+  if (safeProjectedSize) {
+    const pixelsPerProjectedUnit = Math.min(
+      settings.width / safeProjectedSize.width,
+      settings.height / safeProjectedSize.height,
+    );
+
+    return applyExportProjectedScale(
+      {
+        ...settings,
+        pixelsPerProjectedUnit,
+      },
+      safeProjectedSize,
+      pixelsPerProjectedUnit,
+    );
+  }
+
+  return fitExportSettingsInsideAspectRatio(
+    {
+      ...settings,
+      pixelsPerProjectedUnit: null,
+    },
+    exportAspectRatioFromSettings(settings),
+  );
+}
+
+function fitExportSettingsInsideAspectRatio(
+  settings: ExportSettingsState,
+  aspectRatio: number,
+): ExportSettingsState {
+  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
+  const currentAspectRatio = settings.width / settings.height;
+
+  if (currentAspectRatio > safeAspectRatio) {
+    const nextWidth = clampExportDimension(Math.round(settings.height * safeAspectRatio));
+    return nextWidth === settings.width
+      ? settings
+      : {
+          ...settings,
+          width: nextWidth,
+        };
+  }
+
+  const nextHeight = clampExportDimension(Math.round(settings.width / safeAspectRatio));
+  return nextHeight === settings.height
+    ? settings
+    : {
+        ...settings,
+        height: nextHeight,
+      };
+}
+
+function applyExportProjectedScale(
+  settings: ExportSettingsState,
+  projectedSize: ExportProjectedSize,
+  pixelsPerProjectedUnit: number,
+): ExportSettingsState {
+  const nextSettings = {
+    ...settings,
+    height: clampExportDimension(Math.round(projectedSize.height * pixelsPerProjectedUnit)),
+    pixelsPerProjectedUnit,
+    width: clampExportDimension(Math.round(projectedSize.width * pixelsPerProjectedUnit)),
+  };
+
+  if (nextSettings.height === settings.height && nextSettings.width === settings.width) {
+    return settings.pixelsPerProjectedUnit === pixelsPerProjectedUnit
+      ? settings
+      : {
+          ...settings,
+          pixelsPerProjectedUnit,
+        };
+  }
+
+  return nextSettings;
 }
 
 export function setExportFormat(
@@ -268,7 +384,7 @@ export function validateExportSettings(
   if (!EXPORT_SUPERSAMPLING_OPTIONS.includes(settings.supersampling)) {
     return {
       valid: false,
-      message: "Supersampling must be 1x, 2x, 3x, or 4x.",
+      message: "Supersampling must be 1x, 2x, 4x, or 8x.",
     };
   }
 
@@ -443,6 +559,34 @@ function normalizeExportAspectRatio(value: number): number {
   }
 
   return value;
+}
+
+function normalizeExportProjectedSize(
+  projectedSize?: ExportProjectedSize,
+): ExportProjectedSize | null {
+  if (
+    !projectedSize ||
+    !Number.isFinite(projectedSize.width) ||
+    !Number.isFinite(projectedSize.height) ||
+    projectedSize.width <= 0 ||
+    projectedSize.height <= 0
+  ) {
+    return null;
+  }
+
+  return projectedSize;
+}
+
+function hasExportProjectedScale(value: number | null): value is number {
+  return value !== null && Number.isFinite(value) && value > 0;
+}
+
+function projectedSizeFromAspectRatio(aspectRatio: number): ExportProjectedSize {
+  const safeAspectRatio = normalizeExportAspectRatio(aspectRatio);
+  return {
+    height: 1,
+    width: safeAspectRatio,
+  };
 }
 
 function parsePositiveIntegerInput(value: string): number | null {

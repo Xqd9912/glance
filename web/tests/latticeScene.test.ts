@@ -134,10 +134,10 @@ describe("computeSceneLayout", () => {
 
   test("keeps preview mesh detail fixed while export presets scale together", () => {
     expect(PREVIEW_SCENE_MESH_DETAIL).toEqual({
-      bond2dRadialSegments: 12,
-      bondRadialSegments: 24,
-      sphereHeightSegments: 32,
-      sphereWidthSegments: 48,
+      bond2dRadialSegments: 10,
+      bondRadialSegments: 16,
+      sphereHeightSegments: 24,
+      sphereWidthSegments: 32,
     });
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.low).toEqual({
       bond2dRadialSegments: 8,
@@ -145,7 +145,13 @@ describe("computeSceneLayout", () => {
       sphereHeightSegments: 16,
       sphereWidthSegments: 24,
     });
-    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.high).toBe(PREVIEW_SCENE_MESH_DETAIL);
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.medium).toBe(PREVIEW_SCENE_MESH_DETAIL);
+    expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.high).toEqual({
+      bond2dRadialSegments: 12,
+      bondRadialSegments: 24,
+      sphereHeightSegments: 32,
+      sphereWidthSegments: 48,
+    });
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.sphereWidthSegments).toBe(72);
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.bondRadialSegments).toBe(32);
   });

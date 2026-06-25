@@ -111,10 +111,10 @@ export interface SceneMeshDetail {
 }
 
 export const PREVIEW_SCENE_MESH_DETAIL: SceneMeshDetail = {
-  bond2dRadialSegments: BOND_2D_RADIAL_SEGMENTS,
-  bondRadialSegments: BOND_TUBE_RADIAL_SEGMENTS,
-  sphereHeightSegments: 32,
-  sphereWidthSegments: 48,
+  bond2dRadialSegments: 10,
+  bondRadialSegments: 16,
+  sphereHeightSegments: 24,
+  sphereWidthSegments: 32,
 };
 
 export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMeshDetail> = {
@@ -124,13 +124,13 @@ export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMe
     sphereHeightSegments: 16,
     sphereWidthSegments: 24,
   },
-  medium: {
-    bond2dRadialSegments: 10,
-    bondRadialSegments: 16,
-    sphereHeightSegments: 24,
-    sphereWidthSegments: 32,
+  medium: PREVIEW_SCENE_MESH_DETAIL,
+  high: {
+    bond2dRadialSegments: BOND_2D_RADIAL_SEGMENTS,
+    bondRadialSegments: BOND_TUBE_RADIAL_SEGMENTS,
+    sphereHeightSegments: 32,
+    sphereWidthSegments: 48,
   },
-  high: PREVIEW_SCENE_MESH_DETAIL,
   xhigh: {
     bond2dRadialSegments: 16,
     bondRadialSegments: 32,

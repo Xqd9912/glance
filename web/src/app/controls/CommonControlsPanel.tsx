@@ -1,10 +1,11 @@
 import {
+  AlertTriangleIcon,
   ImageDown,
-  Lock,
-  LockOpen,
+  Link,
   Palette,
   RotateCcw,
   Rotate3d as CameraIcon,
+  Unlink,
   View as DisplayIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -34,7 +35,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,7 @@ import {
   type ComponentVisibilityState,
   type ExportFormat,
   type ExportMeshQuality,
+  type ExportProjectedSize,
   type ExportSettingsState,
   type ExportSupersampling,
   type StyleState,
@@ -147,7 +148,7 @@ export function CommonControlsPanel({
   componentOpacity,
   componentVisibility,
   exportError,
-  exportAspectRatio,
+  exportProjectedSize,
   exportSettings,
   hasPolyhedra,
   isExporting,
@@ -162,7 +163,7 @@ export function CommonControlsPanel({
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
   exportError: string | null;
-  exportAspectRatio?: number;
+  exportProjectedSize?: ExportProjectedSize;
   exportSettings: ExportSettingsState;
   hasPolyhedra: boolean;
   isExporting: boolean;
@@ -384,7 +385,7 @@ export function CommonControlsPanel({
             <TabsContent value="export" className="pt-1.5">
               <ExportTabContent
                 error={exportError}
-                exportAspectRatio={exportAspectRatio}
+                exportProjectedSize={exportProjectedSize}
                 isExporting={isExporting}
                 onExport={onExport}
                 onSettingsChange={onExportSettingsChange}
@@ -400,14 +401,14 @@ export function CommonControlsPanel({
 
 function ExportTabContent({
   error,
-  exportAspectRatio,
+  exportProjectedSize,
   isExporting,
   onExport,
   onSettingsChange,
   settings,
 }: {
   error: string | null;
-  exportAspectRatio?: number;
+  exportProjectedSize?: ExportProjectedSize;
   isExporting: boolean;
   onExport: () => void;
   onSettingsChange: (settings: ExportSettingsState) => void;
@@ -415,179 +416,181 @@ function ExportTabContent({
 }) {
   const validation = validateExportSettings(settings);
   const statusMessage = error ?? validation.message;
-  const actionLabel = isExporting
-    ? "Exporting"
-    : `Export ${EXPORT_FORMAT_LABELS[settings.format]}`;
+  const actionLabel = `Export ${EXPORT_FORMAT_LABELS[settings.format]}`;
 
   function setDimension(dimension: "height" | "width", value: number) {
-    onSettingsChange(setExportDimension(settings, dimension, value, exportAspectRatio));
+    onSettingsChange(setExportDimension(settings, dimension, value, exportProjectedSize));
   }
 
   return (
     <div className="flex flex-col gap-2.5">
-      <section aria-labelledby="export-output-label">
+      <section aria-labelledby="export-components-label">
         <h2
-          id="export-output-label"
+          id="export-components-label"
           className="px-1.5 text-xs font-bold leading-tight text-muted-foreground"
         >
-          Output
+          Components
         </h2>
-        <div className="mt-1.5 grid grid-cols-[1fr_1.75rem_1fr] items-end gap-1.5 px-1.5">
-          <ExportSizeInput
-            label="W"
-            accessibleLabel="Export width"
-            value={settings.width}
-            onCommit={(value) => setDimension("width", value)}
-          />
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={
-                  settings.aspectRatioLocked
-                    ? "Unlock aspect ratio"
-                    : "Lock aspect ratio"
-                }
-                aria-pressed={settings.aspectRatioLocked}
-                className={cn(TOOL_ICON_BUTTON_CLASS, "mb-0.5 size-7")}
-                onClick={() =>
-                  onSettingsChange(
-                    setExportAspectRatioLocked(
-                      settings,
-                      !settings.aspectRatioLocked,
-                      exportAspectRatio,
-                    ),
-                  )}
-              >
-                {settings.aspectRatioLocked ? (
-                  <Lock aria-hidden="true" />
-                ) : (
-                  <LockOpen aria-hidden="true" />
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top">
-              {settings.aspectRatioLocked ? "Unlock ratio" : "Lock ratio"}
-            </TooltipContent>
-          </Tooltip>
-
-          <ExportSizeInput
-            label="H"
-            accessibleLabel="Export height"
-            value={settings.height}
-            onCommit={(value) => setDimension("height", value)}
-          />
-        </div>
       </section>
-
-      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
-        <span className="min-w-0 truncate leading-tight">Supersampling</span>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          spacing={0}
-          value={String(settings.supersampling)}
-          className="w-full"
-          onValueChange={(value) => {
-            if (value) {
-              onSettingsChange(setExportSupersampling(settings, Number(value)));
-            }
-          }}
-        >
-          {EXPORT_SUPERSAMPLING_OPTIONS.map((option) => (
-            <ToggleGroupItem
-              key={option}
-              value={String(option)}
-              aria-label={`${option}x supersampling`}
-              className="h-6 flex-1 px-1 text-[0.68rem]"
-            >
-              {option}x
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
 
       <Separator className="my-0.5" />
 
-      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
-        <span className="min-w-0 truncate leading-tight">3D mesh</span>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          spacing={0}
+      <section aria-labelledby="export-quality-label" className="flex flex-col gap-2.5">
+        <h2
+          id="export-quality-label"
+          className="px-1.5 text-xs font-bold leading-tight text-muted-foreground"
+        >
+          Quality
+        </h2>
+
+        <div className="flex items-end justify-between gap-3 px-1.5">
+          <div className="grid grid-cols-[2.75rem_1.25rem_2.75rem] items-end gap-[0.1875rem]">
+            <ExportSizeInput
+              label="Width"
+              accessibleLabel="Export width"
+              value={settings.width}
+              onCommit={(value) => setDimension("width", value)}
+            />
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={
+                    settings.aspectRatioLocked
+                      ? "Unlock aspect ratio"
+                      : "Lock aspect ratio"
+                  }
+                  aria-pressed={settings.aspectRatioLocked}
+                  className="mb-0 inline-flex h-6 w-full items-center justify-center rounded-md bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none [&_svg]:size-3.5"
+                  onClick={() =>
+                    onSettingsChange(
+                      setExportAspectRatioLocked(
+                        settings,
+                        !settings.aspectRatioLocked,
+                        exportProjectedSize,
+                      ),
+                    )}
+                >
+                  {settings.aspectRatioLocked ? (
+                    <Link aria-hidden="true" />
+                  ) : (
+                    <Unlink aria-hidden="true" />
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                {settings.aspectRatioLocked ? "Unlock ratio" : "Lock ratio"}
+              </TooltipContent>
+            </Tooltip>
+
+            <ExportSizeInput
+              label="Height"
+              accessibleLabel="Export height"
+              value={settings.height}
+              onCommit={(value) => setDimension("height", value)}
+            />
+          </div>
+
+          <ExportSupersamplingControl
+            value={settings.supersampling}
+            onCommit={(value) =>
+              onSettingsChange(setExportSupersampling(settings, value))
+            }
+          />
+        </div>
+
+        <ExportMeshQualityControl
           value={settings.meshQuality}
-          className="w-full"
-          onValueChange={(value) => {
-            if (value) {
-              onSettingsChange(
-                setExportMeshQuality(settings, value as ExportMeshQuality),
-              );
-            }
-          }}
-        >
-          {EXPORT_MESH_QUALITY_OPTIONS.map((option) => (
-            <ToggleGroupItem
-              key={option}
-              value={option}
-              aria-label={`${EXPORT_MESH_QUALITY_LABELS[option]} mesh quality`}
-              className="h-6 flex-1 px-1 text-[0.64rem]"
-            >
-              {EXPORT_MESH_QUALITY_LABELS[option]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
-      </div>
+          onCommit={(value) =>
+            onSettingsChange(setExportMeshQuality(settings, value))
+          }
+        />
+      </section>
 
-      <div className="grid min-h-7 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
-        <span className="min-w-0 truncate leading-tight">Format</span>
-        <ToggleGroup
-          type="single"
-          variant="outline"
-          size="sm"
-          spacing={0}
+      <Separator className="my-0.5" />
+
+      <div className="mb-1.5 flex min-h-7 items-center justify-between gap-2 px-0">
+        <Select
           value={settings.format}
-          className="w-full"
-          onValueChange={(value) => {
-            if (value) {
-              onSettingsChange(setExportFormat(settings, value as ExportFormat));
-            }
-          }}
+          onValueChange={(value) =>
+            onSettingsChange(setExportFormat(settings, value as ExportFormat))
+          }
         >
-          {EXPORT_FORMAT_OPTIONS.map((option) => (
-            <ToggleGroupItem
-              key={option}
-              value={option}
-              aria-label={`${EXPORT_FORMAT_LABELS[option]} format`}
-              className="h-6 flex-1 px-2 text-[0.68rem]"
+          <SelectTrigger
+            size="sm"
+            aria-label="Format"
+            className="!h-7 w-24 !px-2 !py-0 text-xs"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent
+            position="popper"
+            className="!bg-background !text-foreground"
+          >
+            <SelectGroup>
+              {EXPORT_FORMAT_OPTIONS.map((option) => (
+                <SelectItem
+                  key={option}
+                  value={option}
+                  textValue={EXPORT_FORMAT_LABELS[option]}
+                  className="min-h-6 py-0.5 text-sm"
+                >
+                  {EXPORT_FORMAT_LABELS[option]}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+
+        <div className="flex items-center gap-1.5">
+          {statusMessage ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  role="status"
+                  tabIndex={0}
+                  aria-label={statusMessage}
+                  className="inline-flex size-6 items-center justify-center rounded-md text-amber-600 outline-none focus-visible:ring-[3px] focus-visible:ring-amber-400/40 [&_svg]:size-4"
+                >
+                  <AlertTriangleIcon aria-hidden="true" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-52">
+                {statusMessage}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
+
+          <Button
+            size="sm"
+            aria-label={actionLabel}
+            className="h-7 gap-1.5 rounded-full px-2.5 text-xs transition-colors duration-150 ease-out active:bg-primary/80 [&_svg]:size-3.5"
+            disabled={!validation.valid}
+            onClick={onExport}
+          >
+            <span
+              aria-hidden="true"
+              data-icon="inline-start"
+              className="relative inline-flex size-3.5 shrink-0"
             >
-              {EXPORT_FORMAT_LABELS[option]}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+              <ImageDown
+                className={cn(
+                  "absolute inset-0 transition-[opacity,transform] duration-150 ease-out",
+                  isExporting ? "scale-90 opacity-0" : "scale-100 opacity-100",
+                )}
+              />
+              <span
+                className={cn(
+                  "absolute inset-0 rounded-full border-2 border-primary-foreground/35 border-t-primary-foreground transition-opacity duration-150 ease-out motion-safe:animate-spin motion-safe:[animation-duration:450ms]",
+                  isExporting ? "opacity-100" : "opacity-0",
+                )}
+              />
+            </span>
+            Export
+          </Button>
+        </div>
       </div>
-
-      <Button
-        size="sm"
-        className="mx-1.5 h-8"
-        disabled={isExporting || !validation.valid}
-        onClick={onExport}
-      >
-        <ImageDown aria-hidden="true" data-icon="inline-start" />
-        {actionLabel}
-      </Button>
-
-      {statusMessage ? (
-        <p
-          role="status"
-          className="min-h-4 px-1.5 text-xs leading-snug text-muted-foreground"
-        >
-          {statusMessage}
-        </p>
-      ) : null}
     </div>
   );
 }
@@ -634,8 +637,8 @@ function ExportSizeInput({
   }
 
   return (
-    <label className="grid min-w-0 gap-1">
-      <span className="px-0.5 text-[0.68rem] font-bold leading-none text-muted-foreground">
+    <label className="grid min-w-0 justify-items-start gap-1">
+      <span className="px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
         {label}
       </span>
       <Input
@@ -643,11 +646,85 @@ function ExportSizeInput({
         inputMode="numeric"
         value={valueText}
         aria-label={accessibleLabel}
-        className="h-7 px-2 text-center font-mono text-xs tabular-nums"
+        className="h-6 w-11 px-1.5 text-left font-mono text-[0.68rem] tabular-nums focus-visible:border-ring/20 focus-visible:bg-background/80 focus-visible:ring-[1px] focus-visible:ring-ring/20 md:text-[0.68rem]"
         onBlur={commitValueText}
         onChange={(event) => setValueText(event.target.value)}
         onKeyDown={handleValueKeyDown}
       />
+    </label>
+  );
+}
+
+function ExportSupersamplingControl({
+  onCommit,
+  value,
+}: {
+  onCommit: (value: number) => void;
+  value: ExportSupersampling;
+}) {
+  return (
+    <label className="ml-auto grid min-w-0 justify-items-end gap-1">
+      <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+        Super Sampling
+      </span>
+      <Tabs
+        value={String(value)}
+        className="w-32 gap-0"
+        onValueChange={(nextValue) => onCommit(Number(nextValue))}
+      >
+        <TabsList
+          aria-label="Export supersampling"
+          className="!h-6 w-full rounded-md p-0.5"
+        >
+          {EXPORT_SUPERSAMPLING_OPTIONS.map((option) => (
+            <TabsTrigger
+              key={option}
+              value={String(option)}
+              aria-label={`${option}x supersampling`}
+              className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.68rem] font-medium md:text-[0.68rem]"
+            >
+              {option}x
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </label>
+  );
+}
+
+function ExportMeshQualityControl({
+  onCommit,
+  value,
+}: {
+  onCommit: (value: ExportMeshQuality) => void;
+  value: ExportMeshQuality;
+}) {
+  return (
+    <label className="mt-0.5 grid min-w-0 gap-1 px-1.5">
+      <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+        3D mesh
+      </span>
+      <Tabs
+        value={value}
+        className="w-full gap-0"
+        onValueChange={(nextValue) => onCommit(nextValue as ExportMeshQuality)}
+      >
+        <TabsList
+          aria-label="Export mesh quality"
+          className="!h-6 w-full rounded-md p-0.5"
+        >
+          {EXPORT_MESH_QUALITY_OPTIONS.map((option) => (
+            <TabsTrigger
+              key={option}
+              value={option}
+              aria-label={`${EXPORT_MESH_QUALITY_LABELS[option]} mesh quality`}
+              className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.68rem] font-medium md:text-[0.68rem]"
+            >
+              {EXPORT_MESH_QUALITY_LABELS[option]}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
     </label>
   );
 }

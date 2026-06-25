@@ -30,7 +30,7 @@ import {
   previewSafeAreaForViewport,
 } from "../scene/LatticeScene";
 import { createCameraPoseSnapshot } from "../scene/cameraPose";
-import { computeStructureExportAspectRatio } from "../scene/exportFrame";
+import { computeStructureExportProjectedSize } from "../scene/exportFrame";
 import { OrientationGizmo } from "../scene/OrientationGizmo";
 import {
   CommonControlsPanel,
@@ -62,7 +62,7 @@ import {
   hasPolyhedra,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
-  syncExportSettingsAspectRatio,
+  syncExportSettingsProjectedSize,
   visibleSceneForComponents,
 } from "./settings";
 import {
@@ -275,12 +275,12 @@ export function App() {
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
   );
-  const exportAspectRatio = useMemo(() => {
+  const exportProjectedSize = useMemo(() => {
     if (!visibleScene) {
       return null;
     }
 
-    return computeStructureExportAspectRatio({
+    return computeStructureExportProjectedSize({
       cameraPose: createCameraPoseSnapshot(cameraOrientationRef.current),
       componentOpacity,
       scene: visibleScene,
@@ -320,14 +320,14 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (exportAspectRatio === null) {
+    if (exportProjectedSize === null) {
       return;
     }
 
     setExportSettings((currentSettings) =>
-      syncExportSettingsAspectRatio(currentSettings, exportAspectRatio),
+      syncExportSettingsProjectedSize(currentSettings, exportProjectedSize),
     );
-  }, [exportAspectRatio]);
+  }, [exportProjectedSize]);
 
   const handleExportSettingsChange = useCallback(
     (nextExportSettings: ExportSettingsState) => {
@@ -596,7 +596,7 @@ export function App() {
             <CommonControlsPanel
               componentOpacity={componentOpacity}
               style={style}
-              exportAspectRatio={exportAspectRatio ?? undefined}
+              exportProjectedSize={exportProjectedSize ?? undefined}
               componentVisibility={componentVisibility}
               exportError={exportError}
               exportSettings={exportSettings}

@@ -576,12 +576,23 @@ describe("App", () => {
     const heightInput = within(commonControls).getByRole("textbox", {
       name: "Export height",
     }) as HTMLInputElement;
+    const twoXSupersampling = within(commonControls).getByRole("tab", {
+      name: "2x supersampling",
+    });
+    const oneXSupersampling = within(commonControls).getByRole("tab", {
+      name: "1x supersampling",
+    });
+    const formatSelect = within(commonControls).getByRole("combobox", {
+      name: "Format",
+    });
     const exportPngButton = within(commonControls).getByRole("button", {
       name: "Export PNG",
     });
 
     expect(widthInput.value).toBe("2400");
-    expect(heightInput.value).toBe("1800");
+    expect(heightInput.value).toBe("2400");
+    expect(twoXSupersampling.getAttribute("aria-selected")).toBe("true");
+    expect(formatSelect.textContent).toContain("PNG");
     expect(exportPngButton.isConnected).toBe(true);
 
     await user.click(exportPngButton);
@@ -595,22 +606,24 @@ describe("App", () => {
     await user.type(widthInput, "3000{Enter}");
 
     expect(widthInput.value).toBe("3000");
-    expect(heightInput.value).toBe("2250");
+    expect(heightInput.value).toBe("2400");
 
     await user.click(
-      within(commonControls).getByRole("button", { name: "Unlock aspect ratio" }),
+      within(commonControls).getByRole("button", { name: "Lock aspect ratio" }),
     );
     await user.clear(heightInput);
     await user.type(heightInput, "1000{Enter}");
 
-    expect(widthInput.value).toBe("3000");
+    expect(widthInput.value).toBe("1333");
     expect(heightInput.value).toBe("1000");
 
-    await user.click(within(commonControls).getByRole("radio", { name: "1x supersampling" }));
+    await user.click(oneXSupersampling);
     await user.click(
-      within(commonControls).getByRole("radio", { name: "XHigh mesh quality" }),
+      within(commonControls).getByRole("tab", { name: "XHigh mesh quality" }),
     );
-    await user.click(within(commonControls).getByRole("radio", { name: "PDF format" }));
+    await user.click(formatSelect);
+    await user.click(await screen.findByRole("option", { name: "PDF" }));
+    expect(formatSelect.textContent).toContain("PDF");
 
     const exportPdfButton = within(commonControls).getByRole("button", {
       name: "Export PDF",
@@ -619,11 +632,12 @@ describe("App", () => {
     await waitFor(() => expect(exportRequests).toHaveLength(2));
 
     expect(exportRequests[1]?.settings).toMatchObject({
+      aspectRatioLocked: true,
       format: "pdf",
       height: 1000,
       meshQuality: "xhigh",
       supersampling: 1,
-      width: 3000,
+      width: 1333,
     });
     expect(exportDownloads[1]?.fileName).toBe("NaCl.pdf");
   });
@@ -639,9 +653,11 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("button", { name: "Export PNG" }));
 
     await waitFor(() =>
-      expect(within(commonControls).getByRole("status").textContent).toContain(
-        "WebGL export failed.",
-      ),
+      expect(
+        within(commonControls)
+          .getByRole("status")
+          .getAttribute("aria-label"),
+      ).toContain("WebGL export failed."),
     );
     expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
     expect(exportDownloads).toHaveLength(0);

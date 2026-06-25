@@ -50,32 +50,48 @@ The `Export` tab SHALL expose compact controls for output width, output height, 
 - **WHEN** the user selects `PDF` as the output format
 - **THEN** the primary action is labeled for PDF export
 
-### Requirement: Export size supports locked and unlocked tight-box aspect ratios
+### Requirement: Export size supports locked and unlocked projected scale
 
-The frontend SHALL maintain export width and height as explicit pixel values. When aspect-ratio lock is enabled, editing either size field SHALL update the other size field using the projected tight-box aspect ratio for the current preview orientation and currently visible exported elements. The tight box SHALL reflect component visibility, including periodic-image visibility choices such as one-hop bonded atoms. When aspect-ratio lock is disabled, width and height SHALL be independently editable.
+The frontend SHALL maintain export width and height as explicit pixel values. When the size link is enabled, the frontend SHALL establish a pixel-per-projected-unit scale from the current projected tight box and current export pixel dimensions. While linked, rotating the preview or changing currently visible exported elements SHALL recompute width and height from the current projected tight-box dimensions using that locked scale. Editing either linked size field SHALL update the locked scale and update the other field from the current projected tight box. The tight box SHALL reflect component visibility, including periodic-image visibility choices such as one-hop bonded atoms. When the size link is disabled, width and height SHALL be independently editable.
 
-#### Scenario: Locked width edit updates height
+#### Scenario: Enabling link captures projected scale
 
-- **GIVEN** aspect-ratio lock is enabled
+- **GIVEN** the size link is disabled
+- **WHEN** the user enables the size link
+- **THEN** the frontend stores a pixel-per-projected-unit scale from the current tight-box projection and export dimensions
+- **AND** neither linked export dimension grows beyond the dimensions that existed before enabling the link
+
+#### Scenario: Linked width edit updates height and scale
+
+- **GIVEN** the size link is enabled
 - **WHEN** the user edits the export width to a valid positive value
-- **THEN** the export height updates to preserve the current projected tight-box aspect ratio
+- **THEN** the export height updates from the current projected tight-box dimensions
+- **AND** the locked pixel-per-projected-unit scale updates from the edited width
 
-#### Scenario: Locked height edit updates width
+#### Scenario: Linked height edit updates width and scale
 
-- **GIVEN** aspect-ratio lock is enabled
+- **GIVEN** the size link is enabled
 - **WHEN** the user edits the export height to a valid positive value
-- **THEN** the export width updates to preserve the current projected tight-box aspect ratio
+- **THEN** the export width updates from the current projected tight-box dimensions
+- **AND** the locked pixel-per-projected-unit scale updates from the edited height
 
-#### Scenario: Visible periodic images affect locked aspect ratio
+#### Scenario: Linked orientation changes preserve projected scale
 
-- **GIVEN** aspect-ratio lock is enabled
+- **GIVEN** the size link is enabled
+- **WHEN** the user rotates the preview and the projected tight-box dimensions change
+- **THEN** the export width and height update from the new projected dimensions using the locked scale
+- **AND** repeated orientation changes do not progressively shrink the export dimensions beyond that scale
+
+#### Scenario: Visible periodic images affect linked projected size
+
+- **GIVEN** the size link is enabled
 - **WHEN** the user shows or hides one-hop bonded atoms
 - **THEN** the projected tight box is recomputed from the visible exportable scene elements
-- **AND** later locked size edits use the updated tight-box aspect ratio
+- **AND** the export width and height update from the recomputed projected dimensions using the locked scale
 
 #### Scenario: Unlocked size edits are independent
 
-- **GIVEN** aspect-ratio lock is disabled
+- **GIVEN** the size link is disabled
 - **WHEN** the user edits the export width or export height to a valid positive value
 - **THEN** the other size field keeps its current value
 

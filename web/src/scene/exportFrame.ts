@@ -33,6 +33,11 @@ export interface StructureExportFramePlan {
   zoom: number;
 }
 
+export interface StructureExportProjectedSize {
+  height: number;
+  width: number;
+}
+
 export interface ExportFrameLine {
   end: ExportFramePoint;
   start: ExportFramePoint;
@@ -76,6 +81,20 @@ export function computeStructureExportAspectRatio(
 ): number {
   const bounds = computeStructureProjectedBounds(options);
   return bounds ? normalizeAspectRatio(bounds.width / bounds.height) : FALLBACK_EXPORT_ASPECT_RATIO;
+}
+
+export function computeStructureExportProjectedSize(
+  options: StructureExportGeometryOptions,
+): StructureExportProjectedSize | null {
+  const bounds = computeStructureProjectedBounds(options);
+  if (!bounds) {
+    return null;
+  }
+
+  return {
+    height: bounds.height,
+    width: bounds.width,
+  };
 }
 
 export function computeStructureExportFramePlan({
