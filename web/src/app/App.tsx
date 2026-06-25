@@ -1,4 +1,4 @@
-import { CircleAlert } from "lucide-react";
+import { AlertTriangleIcon } from "lucide-react";
 import { Quaternion } from "three";
 import {
   type ChangeEvent,
@@ -15,6 +15,12 @@ import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   DEFAULT_BOND_ALGORITHM,
+  BACKEND_UNAVAILABLE_TITLE,
+  BACKEND_UNAVAILABLE_MESSAGE,
+  STATIC_SCENE_PREVIEW_NAME,
+  hasStaticScenePreview,
+  isBackendUnavailablePreviewError,
+  loadStaticScenePreview,
   uploadStructurePreview,
   type BondAlgorithm,
   type SceneSpec,
@@ -73,7 +79,9 @@ interface LockedInteractionPointer {
 
 export function App() {
   const [scene, setScene] = useState<SceneSpec | null>(null);
-  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>("idle");
+  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>(() =>
+    hasStaticScenePreview() ? "loading" : "idle",
+  );
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -116,6 +124,44 @@ export function App() {
     setViewState(resetPreviewViewState);
   }, []);
 
+  useEffect(() => {
+    if (!hasStaticScenePreview()) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    async function loadExampleScene() {
+      try {
+        const nextScene = await loadStaticScenePreview();
+        if (!isCurrent || !nextScene) {
+          return;
+        }
+
+        setScene(nextScene);
+        setSelectedFileName(STATIC_SCENE_PREVIEW_NAME);
+        setPreviewStatus("ready");
+        setErrorMessage(null);
+        setComponentVisibility(createDefaultComponentVisibility(nextScene));
+      } catch {
+        if (!isCurrent) {
+          return;
+        }
+
+        setScene(null);
+        setSelectedFileName(null);
+        setPreviewStatus("error");
+        setErrorMessage("Static example could not be loaded.");
+      }
+    }
+
+    void loadExampleScene();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
+
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -152,20 +198,26 @@ export function App() {
       setScene(nextScene);
       setComponentVisibility(createDefaultComponentVisibility(nextScene));
       setPreviewStatus("ready");
-    } catch {
+    } catch (error) {
       setScene(null);
       setCurrentFile(null);
       setSelectedFileName(null);
       setIsSettingsOpen(false);
       setPreviewStatus("error");
-      setErrorMessage(STRUCTURE_PARSE_ERROR_MESSAGE);
+      setErrorMessage(
+        isBackendUnavailablePreviewError(error)
+          ? error.message
+          : STRUCTURE_PARSE_ERROR_MESSAGE,
+      );
     }
   }
 
   const handleBondAlgorithmChange = useCallback(
     async (nextBondAlgorithm: BondAlgorithm) => {
-      setBondAlgorithm(nextBondAlgorithm);
       if (!currentFile) {
+        if (scene) {
+          setErrorMessage(BACKEND_UNAVAILABLE_MESSAGE);
+        }
         return;
       }
 
@@ -176,9 +228,16 @@ export function App() {
         const nextScene = await uploadStructurePreview(currentFile, {
           bondAlgorithm: nextBondAlgorithm,
         });
+        setBondAlgorithm(nextBondAlgorithm);
         setScene(nextScene);
         setPreviewStatus("ready");
-      } catch {
+      } catch (error) {
+        if (isBackendUnavailablePreviewError(error)) {
+          setPreviewStatus(scene ? "ready" : "error");
+          setErrorMessage(error.message);
+          return;
+        }
+
         setScene(null);
         setCurrentFile(null);
         setSelectedFileName(null);
@@ -187,7 +246,7 @@ export function App() {
         setErrorMessage(STRUCTURE_PARSE_ERROR_MESSAGE);
       }
     },
-    [currentFile],
+    [currentFile, scene],
   );
 
   const visibleScene = useMemo(
@@ -196,6 +255,10 @@ export function App() {
   );
   const legendEntries = useMemo(() => deriveElementLegendEntries(scene), [scene]);
   const hasVisibleScene = visibleScene !== null;
+  const errorTitle =
+    errorMessage === BACKEND_UNAVAILABLE_MESSAGE
+      ? BACKEND_UNAVAILABLE_TITLE
+      : "Unsupported file";
   const previewSafeArea = previewSafeAreaForSettings();
   const effectivePreviewSafeArea = useMemo(
     () => previewSafeAreaForViewport(previewSafeArea, viewportSize.width),
@@ -422,16 +485,6 @@ export function App() {
           selectedFileName={selectedFileName}
         />
 
-        {errorMessage ? (
-          <Alert
-            className="rounded-xl shadow-sm shadow-foreground/5 [&>svg]:text-destructive"
-          >
-            <CircleAlert aria-hidden="true" />
-            <AlertTitle className="font-semibold">Unsupported file</AlertTitle>
-            <AlertDescription>{errorMessage}</AlertDescription>
-          </Alert>
-        ) : null}
-
         {scene ? (
           <div ref={commonControlsPanelRef}>
             <CommonControlsPanel
@@ -449,6 +502,21 @@ export function App() {
           </div>
         ) : null}
       </div>
+
+      {errorMessage ? (
+        <Alert
+          className={cn(
+            "absolute top-4 z-20 w-[320px] rounded-xl shadow-sm shadow-foreground/5",
+            scene ? "left-[386px]" : "left-[328px]",
+            "max-[760px]:left-4 max-[760px]:right-4 max-[760px]:top-[10rem] max-[760px]:w-auto",
+          )}
+          onDismiss={() => setErrorMessage(null)}
+        >
+          <AlertTriangleIcon aria-hidden="true" />
+          <AlertTitle className="font-semibold">{errorTitle}</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
+        </Alert>
+      ) : null}
 
       {scene ? (
         <>

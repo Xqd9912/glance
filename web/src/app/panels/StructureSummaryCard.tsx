@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, FolderOpen } from "lucide-react";
+import { AlertTriangleIcon, ChevronDown, ChevronUp, FolderOpen } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -40,13 +40,25 @@ export function StructureSummaryCard({
   const expandableContentId = useId();
   const expandableContentRef = useRef<HTMLDivElement>(null);
   const [expandableContentHeight, setExpandableContentHeight] = useState<number | null>(null);
+  const [dismissedWarningCodes, setDismissedWarningCodes] = useState<Set<string>>(
+    () => new Set(),
+  );
   const hasExpandableContent = Boolean(scene);
+  const visibleWarnings = useMemo(
+    () =>
+      scene?.warnings?.filter((warning) => !dismissedWarningCodes.has(warning.code)) ?? [],
+    [dismissedWarningCodes, scene?.warnings],
+  );
   const toggleDetailsLabel = isCollapsed ? "Expand details" : "Collapse details";
   const expandableContentStyle = {
     height: hasExpandableContent && !isCollapsed
       ? (expandableContentHeight === null ? "auto" : `${expandableContentHeight}px`)
       : "0px",
   } as CSSProperties;
+
+  useEffect(() => {
+    setDismissedWarningCodes(new Set());
+  }, [scene]);
 
   useEffect(() => {
     const expandableContentElement = expandableContentRef.current;
@@ -170,8 +182,18 @@ export function StructureSummaryCard({
             aria-hidden={isCollapsed ? "true" : undefined}
             className="pt-2.5"
           >
-            {scene?.warnings?.map((warning) => (
-              <Alert key={warning.code} className="rounded-md px-2.5 py-2">
+            {visibleWarnings.map((warning) => (
+              <Alert
+                key={warning.code}
+                className="rounded-md px-2.5 py-2"
+                onDismiss={() => {
+                  setDismissedWarningCodes(
+                    (currentWarningCodes) =>
+                      new Set(currentWarningCodes).add(warning.code),
+                  );
+                }}
+              >
+                <AlertTriangleIcon aria-hidden="true" />
                 <AlertDescription className="text-xs leading-snug">
                   {warning.message}
                 </AlertDescription>

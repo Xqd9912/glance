@@ -1,7 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "fastapi",
-  "installCommand": "pip install .",
-  "buildCommand": "cd web && bun install --frozen-lockfile && bun run build",
+  "framework": "vite",
+  "installCommand": "cd web && bun install --frozen-lockfile",
+  "buildCommand": "cd web && bun run build:static",
+  "outputDirectory": "web/dist",
   "bunVersion": "1.3.13"
 }

@@ -174,6 +174,23 @@ describe("App", () => {
     ).toEqual(["Atoms", "Bonds", "Unit cell", "Polyhedra"]);
   });
 
+  test("does not restore a previously uploaded scene after the app remounts", async () => {
+    const user = userEvent.setup();
+    queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
+    const { unmount } = render(<App />);
+
+    await user.upload(getFileInput(), structureFile());
+    await screen.findByTestId("lattice-canvas");
+
+    unmount();
+    render(<App />);
+
+    expect(fetchCalls).toHaveLength(1);
+    expect(screen.getByText("No structure loaded").isConnected).toBe(true);
+    expect(screen.queryByTestId("lattice-canvas")).toBeNull();
+    expect(screen.queryByText("NaCl.cif")).toBeNull();
+  });
+
   test("lets display controls change image visibility and advanced settings change rotation mode", async () => {
     const user = userEvent.setup();
 
@@ -591,6 +608,25 @@ describe("App", () => {
     expect(polyhedraCheckbox.getAttribute("aria-checked")).toBe("true");
   });
 
+  test("keeps the loaded scene and places backend alerts beside the view rail", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+    await user.click(screen.getByRole("button", { name: "Open advanced settings" }));
+    await user.click(screen.getByRole("combobox", { name: "Bond algorithm" }));
+    await user.click(await screen.findByRole("option", { name: "Minimum distance" }));
+
+    await waitFor(() => expect(fetchCalls).toHaveLength(2));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Python backend is unavailable");
+    expect(alert.className).toContain("top-4");
+    expect(alert.className).toContain("left-[386px]");
+    expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
+    expect(screen.getByRole("combobox", { name: "Bond algorithm" }).textContent).toContain(
+      "CrystalNN",
+    );
+  });
+
   test("keeps view controls wired to lock, zoom, and reset state", async () => {
     const user = userEvent.setup();
 
@@ -630,21 +666,76 @@ describe("App", () => {
     expect(alert.textContent).not.toContain("long backend parser detail");
     const alertIcon = alert.querySelector("svg");
     expect(alertIcon).not.toBeNull();
-    expect(alertIcon?.getAttribute("class")).not.toContain("text-destructive");
-    expect(alert.className).toContain("[&>svg]:text-destructive");
+    expect(alertIcon?.getAttribute("class")).toContain("lucide-triangle-alert");
+    expect(alert.className).toContain("border-amber-200");
+    expect(alert.className).toContain("bg-amber-50");
+    expect(alert.className).toContain("text-amber-900");
     expect(alert.className).toContain("rounded-xl");
     expect(alert.className).toContain("shadow-sm");
     expect(alert.className).toContain("shadow-foreground/5");
-    expect(alert.className).not.toContain("right-4");
-    expect(alert.className).not.toContain("top-4");
+    expect(alert.className).toContain("top-4");
+    expect(alert.className).toContain("left-[328px]");
     const structureCard = screen.getByRole("complementary", { name: "Current structure" });
-    expect(alert.parentElement).toBe(structureCard.parentElement);
+    expect(alert.parentElement?.tagName).toBe("MAIN");
     expect(within(structureCard).queryByRole("alert")).toBeNull();
     expect(screen.queryByText("File")).toBeNull();
     expect(screen.queryByText("bad.cif")).toBeNull();
     expect(screen.getByText("No structure loaded").isConnected).toBe(true);
     expect(screen.queryByTestId("lattice-canvas")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open advanced settings" })).toBeNull();
+  });
+
+  test("shows a backend unavailable alert when the Python server cannot be reached", async () => {
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    await user.upload(getFileInput(), structureFile());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Python backend is unavailable");
+    expect(alert.textContent).toContain(
+      "Start Pretty Lattice locally to upload or recompute structures.",
+    );
+    expect(alert.textContent).not.toContain("Backend is unavailable.");
+    expect(alert.textContent).not.toContain("Unsupported file");
+    expect(alert.className).toContain("top-4");
+    expect(alert.className).toContain("left-[328px]");
+    expect(fetchCalls).toHaveLength(1);
+
+    await user.click(screen.getByRole("button", { name: "Dismiss alert" }));
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  test("shows a backend unavailable alert when a static host returns an HTML API miss", async () => {
+    const user = userEvent.setup();
+    queueFetchResponse(htmlResponse(405));
+
+    render(<App />);
+
+    await user.upload(getFileInput(), structureFile());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Python backend is unavailable");
+    expect(alert.textContent).toContain(
+      "Start Pretty Lattice locally to upload or recompute structures.",
+    );
+    expect(alert.textContent).not.toContain("Backend is unavailable.");
+    expect(alert.textContent).not.toContain("pymatgen could not parse this file.");
+  });
+
+  test("shows a backend unavailable alert when a static fallback returns HTML as 200", async () => {
+    const user = userEvent.setup();
+    queueFetchResponse(htmlResponse(200));
+
+    render(<App />);
+
+    await user.upload(getFileInput(), structureFile());
+
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Python backend is unavailable");
+    expect(alert.textContent).not.toContain("pymatgen could not parse this file.");
   });
 
   test("rejects oversized files before uploading", async () => {
@@ -688,6 +779,17 @@ describe("App", () => {
     expect((await screen.findByRole("alert")).textContent).toContain(
       "Bond analysis with CrystalNN failed",
     );
+    const alert = screen.getByRole("alert");
+    expect(alert.className).toContain("border-amber-200");
+    expect(alert.className).toContain("bg-amber-50");
+    expect(alert.querySelector("svg")?.getAttribute("class")).toContain(
+      "lucide-triangle-alert",
+    );
+    expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
+
+    await user.click(screen.getByRole("button", { name: "Dismiss alert" }));
+
+    expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
   });
 });
@@ -715,6 +817,7 @@ function getFileInput(): HTMLInputElement {
 
 function jsonResponse(body: unknown): Response {
   return {
+    headers: new Headers({ "content-type": "application/json" }),
     json: async () => body,
     ok: true,
   } as Response;
@@ -722,10 +825,22 @@ function jsonResponse(body: unknown): Response {
 
 function errorResponse(message: string): Response {
   return {
+    headers: new Headers({ "content-type": "application/json" }),
     json: async () => ({ detail: { message } }),
     ok: false,
     status: 422,
   } as Response;
+}
+
+function htmlResponse(status: number): Response {
+  return {
+    headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
+    json: async () => {
+      throw new SyntaxError("Unexpected token < in JSON at position 0");
+    },
+    ok: status >= 200 && status < 300,
+    status,
+  } as unknown as Response;
 }
 
 function structureFile(name = "NaCl.cif"): File {
