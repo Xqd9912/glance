@@ -70,17 +70,15 @@ describe("crystal camera math", () => {
     expect(rolledState.rollDegrees).toBe(90);
   });
 
-  test("manual secondary vectors recompute the nearest signed roll", () => {
+  test("manual secondary vectors recompute the nearest roll angle", () => {
     const state = stateFromViewVectors(
       CUBIC_CELL,
       "upward",
       new Vector3(0, 0, 1),
       new Vector3(-1, 0, 0),
-      true,
     );
 
     expect(state.primary).toBe("upward");
-    expect(state.vectorsExpanded).toBe(true);
     expect(state.rollDegrees).toBeCloseTo(90);
     expect(state.direct).toEqual([0, 0, 1]);
     expect(state.reciprocal).toEqual([-1, 0, 0]);

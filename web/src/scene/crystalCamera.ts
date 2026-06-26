@@ -15,7 +15,6 @@ export interface CrystalCameraState {
   primary: CrystalCameraPrimaryDirection;
   reciprocal: VectorTuple;
   rollDegrees: number;
-  vectorsExpanded: boolean;
 }
 
 export interface CrystalCameraPose {
@@ -53,7 +52,6 @@ export function createDefaultCrystalCameraState(): CrystalCameraState {
     primary: "outward",
     reciprocal: DEFAULT_RECIPROCAL,
     rollDegrees: 0,
-    vectorsExpanded: false,
   };
 }
 
@@ -180,11 +178,10 @@ export function stateWithPrimaryDirection(
   vectors: VectorTuple[],
   quaternion: Quaternion,
   primary: CrystalCameraPrimaryDirection,
-  vectorsExpanded: boolean,
 ): CrystalCameraState {
   const poseVectors = vectorsFromCameraQuaternion(quaternion);
 
-  return stateFromViewVectors(vectors, primary, poseVectors.up, poseVectors.outward, vectorsExpanded);
+  return stateFromViewVectors(vectors, primary, poseVectors.up, poseVectors.outward);
 }
 
 export function stateFromViewVectors(
@@ -192,7 +189,6 @@ export function stateFromViewVectors(
   primary: CrystalCameraPrimaryDirection,
   up: Vector3,
   outward: Vector3,
-  vectorsExpanded = false,
 ): CrystalCameraState {
   const basis = computeCrystalBasisVectors(vectors);
   const primaryVector = primary === "upward" ? up : outward;
@@ -207,7 +203,6 @@ export function stateFromViewVectors(
     primary,
     reciprocal: normalizeCoefficients(vectorToReciprocalCoefficients(safeSecondary, basis)),
     rollDegrees: normalizeRollDegrees(rollDegrees),
-    vectorsExpanded,
   };
 }
 

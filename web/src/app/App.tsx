@@ -88,7 +88,6 @@ import {
   createPreviewViewState,
   resetPreviewViewState,
   setPreviewCameraState,
-  setPreviewCameraVectorsExpanded,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
   type InteractionMode,
@@ -162,14 +161,7 @@ export function App() {
     [componentVisibility, scene],
   );
   const cameraControlsPanelState = useMemo<CrystalCameraState>(() => {
-    if (!cameraControlsFrozenState) {
-      return viewState.camera;
-    }
-
-    return {
-      ...cameraControlsFrozenState,
-      vectorsExpanded: viewState.camera.vectorsExpanded,
-    };
+    return cameraControlsFrozenState ?? viewState.camera;
   }, [cameraControlsFrozenState, viewState.camera]);
 
   const syncCameraOrientationToViewState = useCallback(() => {
@@ -187,7 +179,6 @@ export function App() {
           currentViewState.camera.primary,
           poseVectors.up,
           poseVectors.outward,
-          currentViewState.camera.vectorsExpanded,
         ),
       );
     });
@@ -289,7 +280,6 @@ export function App() {
             visibleScene.cell.vectors,
             cameraOrientationRef.current,
             primary,
-            currentViewState.camera.vectorsExpanded,
           ),
         ),
       );
@@ -340,22 +330,13 @@ export function App() {
       setViewState((currentViewState) =>
         setPreviewCameraState(
           currentViewState,
-          {
-            ...nextCameraState,
-            vectorsExpanded: currentViewState.camera.vectorsExpanded,
-          },
+          nextCameraState,
         ),
       );
       setCameraCommandVersion((version) => version + 1);
     },
     [viewState.camera, visibleScene],
   );
-
-  const handleCameraVectorsExpandedChange = useCallback((vectorsExpanded: boolean) => {
-    setViewState((currentViewState) =>
-      setPreviewCameraVectorsExpanded(currentViewState, vectorsExpanded),
-    );
-  }, []);
 
   const handleGizmoAxisClick = useCallback(
     (axis: CrystalAxisLabel) => {
@@ -951,7 +932,6 @@ export function App() {
               onCameraRollPreviewStart={handleCameraRollPreviewStart}
               onCameraRollChange={handleCameraRollChange}
               onCameraStateChange={handleCameraStateChange}
-              onCameraVectorsExpandedChange={handleCameraVectorsExpandedChange}
               onComponentOpacityChange={setComponentOpacity}
               onExport={handleExportFigure}
               onExportSettingsChange={handleExportSettingsChange}

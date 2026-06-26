@@ -80,19 +80,6 @@ export function setPreviewCameraRoll(
   };
 }
 
-export function setPreviewCameraVectorsExpanded(
-  state: PreviewViewState,
-  vectorsExpanded: boolean,
-): PreviewViewState {
-  return {
-    ...state,
-    camera: {
-      ...state.camera,
-      vectorsExpanded,
-    },
-  };
-}
-
 export function setPreviewInteractionMode(
   state: PreviewViewState,
   interactionMode: InteractionMode,

@@ -1581,7 +1581,6 @@ function createFallbackCrystalCameraState(): CrystalCameraState {
     primary: "outward",
     reciprocal: [0, 1, 0],
     rollDegrees: 0,
-    vectorsExpanded: false,
   };
 }
 

@@ -11,8 +11,8 @@ interface AngleSliderProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "o
   value: number;
 }
 
-const ANGLE_SLIDER_MIN = -180;
-const ANGLE_SLIDER_MAX = 180;
+const ANGLE_SLIDER_MIN = 0;
+const ANGLE_SLIDER_MAX = 360;
 
 function AngleSlider({
   className,
@@ -29,7 +29,7 @@ function AngleSlider({
   const isPointerActiveRef = React.useRef(false);
   const latestValueRef = React.useRef(normalizeAngleValue(value));
   const angle = valueToAngle(value);
-  const displayValue = Math.round(normalizeAngleValue(value));
+  const displayValue = displayAngleValue(value);
 
   React.useEffect(() => {
     if (!isPointerActiveRef.current) {
@@ -152,7 +152,7 @@ function AngleSlider({
     >
       <div
         aria-hidden="true"
-        className="absolute inset-1 rounded-full border bg-background/65 shadow-inner"
+        className="absolute inset-[8px] rounded-full border-[8px] border-muted-foreground/16 bg-transparent"
         data-slot="angle-slider-track"
       />
       <div
@@ -162,19 +162,10 @@ function AngleSlider({
         style={{ transform: "rotate(var(--angle-slider-angle))" }}
       >
         <div
-          className="absolute bottom-1/2 left-1/2 top-2 w-0.5 -translate-x-1/2 rounded-full bg-foreground/28"
-          data-slot="angle-slider-needle"
-        />
-        <div
-          className="absolute left-1/2 top-0 size-4 -translate-x-1/2 rounded-full border-[3px] border-background bg-foreground shadow-sm transition-shadow"
+          className="absolute left-1/2 top-[6px] size-3.5 -translate-x-1/2 rounded-full border-[1.5px] border-foreground/85 bg-background shadow-[0_1px_3px_rgb(0_0_0/0.2)] transition-shadow"
           data-slot="angle-slider-thumb"
         />
       </div>
-      <div
-        aria-hidden="true"
-        className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/28"
-        data-slot="angle-slider-center"
-      />
     </div>
   );
 }
@@ -192,8 +183,13 @@ function normalizeAngleValue(value: number): number {
     return 0;
   }
 
-  const normalized = ((((value + 180) % 360) + 360) % 360) - 180;
+  const normalized = ((value % 360) + 360) % 360;
   return Math.abs(normalized) < 0.000001 ? 0 : normalized;
+}
+
+function displayAngleValue(value: number): number {
+  const roundedValue = Math.round(normalizeAngleValue(value));
+  return roundedValue >= ANGLE_SLIDER_MAX ? ANGLE_SLIDER_MIN : roundedValue;
 }
 
 function snapValue(value: number, step: number): number {

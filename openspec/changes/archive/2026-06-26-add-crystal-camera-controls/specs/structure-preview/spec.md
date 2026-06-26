@@ -2,26 +2,27 @@
 
 ### Requirement: Camera tab provides crystal-aware direction controls
 
-The frontend SHALL replace the reserved `Camera` tab content with crystal-aware camera controls after a valid structure scene is loaded. The tab SHALL expose a `Primary direction` tab control with `Outward` and `Upward`, SHALL default to `Outward`, SHALL expose a live Roll control, and SHALL expose precise vector input inside a collapsed `Vectors` section. The controls SHALL use the existing common-controls panel styling, including tab-like segmented controls and existing numeric input styling.
+The frontend SHALL replace the reserved `Camera` tab content with crystal-aware camera controls after a valid structure scene is loaded. The tab SHALL expose a `Fixed-axis rotation` section with a `Primary Axis` tab control for `Outward` and `Upward`, SHALL default to `Outward`, SHALL expose a live Roll control with a `Reset roll` action, and SHALL expose precise vector input inside a fixed `Manual` section. The controls SHALL use the existing common-controls panel styling, including tab-like segmented controls and existing numeric input styling.
 
 #### Scenario: Show implemented Camera tab controls
 
 - **WHEN** a structure scene has loaded successfully and the user opens `Camera`
-- **THEN** the tab shows a `Primary direction` control with `Outward` and `Upward`
+- **THEN** the tab shows a `Fixed-axis rotation` section
+- **AND** the tab shows a `Primary Axis` control with `Outward` and `Upward`
 - **AND** `Outward` is selected by default
-- **AND** the tab shows a Roll control
-- **AND** the tab shows a collapsed `Vectors` section
+- **AND** the tab shows a Roll control and `Reset roll` action
+- **AND** the tab shows a fixed `Manual` section
 - **AND** the tab does not show a reserved-state message
 
-#### Scenario: Switch primary direction without rotating the preview
+#### Scenario: Switch Primary Axis without rotating the preview
 
-- **WHEN** the user switches `Primary direction` between `Upward` and `Outward`
+- **WHEN** the user switches `Primary Axis` between `Upward` and `Outward`
 - **THEN** the current preview orientation remains visually unchanged
-- **AND** subsequent gizmo clicks and Roll edits use the newly selected primary direction
+- **AND** subsequent gizmo clicks and Roll edits use the newly selected Primary Axis
 
 ### Requirement: Crystal camera defaults use VESTA-like direct and reciprocal directions
 
-The frontend SHALL initialize and reset loaded previews to a reproducible crystal camera pose with `Primary direction = Outward`, `Outward = c`, `Upward = b*`, and `Roll = 0°`. The frontend SHALL derive the rendered Three.js camera orientation from these crystal-direction controls and SHALL continue to expose the live rendered pose for export through the existing camera-pose snapshot boundary.
+The frontend SHALL initialize and reset loaded previews to a reproducible crystal camera pose with `Primary Axis = Outward`, `Outward = c`, `Upward = b*`, and `Roll = 0°`. The frontend SHALL derive the rendered Three.js camera orientation from these crystal-direction controls and SHALL continue to expose the live rendered pose for export through the existing camera-pose snapshot boundary.
 
 #### Scenario: Load scene with VESTA-like camera default
 
@@ -39,7 +40,7 @@ The frontend SHALL initialize and reset loaded previews to a reproducible crysta
 
 ### Requirement: Roll uses a VESTA-like reproducible anchor
 
-The frontend SHALL define Roll around the current primary direct-lattice direction. For `Roll = 0°`, the frontend SHALL choose the first usable reciprocal secondary direction from `c*`, then `b*`, then `a*`, after projecting the candidate onto the plane perpendicular to the primary direction. Changing Roll SHALL rotate the secondary reciprocal direction around the primary direct direction. Applying a manual secondary vector SHALL update Roll to the nearest equivalent signed angle.
+The frontend SHALL define Roll around the current primary direct-lattice direction. For `Roll = 0°`, the frontend SHALL choose the first usable reciprocal secondary direction from `c*`, then `b*`, then `a*`, after projecting the candidate onto the plane perpendicular to the primary direction. Changing Roll SHALL rotate the secondary reciprocal direction around the primary direct direction. Applying a manual secondary vector SHALL update Roll to the nearest equivalent canonical 0-360 degree angle.
 
 #### Scenario: Roll anchor follows VESTA-like fallback order
 
@@ -55,25 +56,27 @@ The frontend SHALL define Roll around the current primary direct-lattice directi
 - **AND** the primary direct direction remains fixed
 - **AND** the secondary reciprocal direction changes according to the Roll angle
 
-### Requirement: Vectors editor batch-applies direct and reciprocal coefficients
+### Requirement: Manual vector editor batch-applies direct and reciprocal coefficients
 
-The `Vectors` section SHALL be collapsed by default. When expanded, it SHALL show `Upward` and `Outward` semantic rows with the selected primary row first. The row matching the selected primary direction SHALL use direct basis labels `a`, `b`, and `c`; the other row SHALL use reciprocal basis labels `a*`, `b*`, and `c*`. Switching primary direction SHALL put the newly selected primary row first and update basis labels. Editing vector fields SHALL create a draft that does not rotate the preview until the user applies all vector fields together.
+The `Manual` section SHALL remain visible in the Camera tab. It SHALL show `Outward` and `Upward` semantic rows in that order. The row matching the selected `Primary Axis` SHALL use direct basis labels `a`, `b`, and `c`; the other row SHALL use reciprocal basis labels `a*`, `b*`, and `c*`. Switching `Primary Axis` SHALL keep the row order fixed, swap the direct and reciprocal basis labels, and visually highlight the selected primary row. Editing vector fields SHALL create a draft that does not rotate the preview until the user applies all vector fields together.
 
-#### Scenario: Expand vectors in Upward primary mode
+#### Scenario: Show Manual in Upward primary mode
 
-- **GIVEN** `Primary direction` is `Upward`
-- **WHEN** the user expands `Vectors`
+- **GIVEN** `Primary Axis` is `Upward`
+- **WHEN** the user opens `Camera`
 - **THEN** the `Upward` row shows coefficients for `a`, `b`, and `c`
 - **AND** the `Outward` row shows coefficients for `a*`, `b*`, and `c*`
-- **AND** the `Upward` row is first
+- **AND** the `Outward` row remains first
+- **AND** the `Upward` row is visually highlighted
 
-#### Scenario: Expand vectors in Outward primary mode
+#### Scenario: Show Manual in Outward primary mode
 
-- **GIVEN** `Primary direction` is `Outward`
-- **WHEN** the user expands `Vectors`
+- **GIVEN** `Primary Axis` is `Outward`
+- **WHEN** the user opens `Camera`
 - **THEN** the `Outward` row shows coefficients for `a`, `b`, and `c`
 - **AND** the `Upward` row shows coefficients for `a*`, `b*`, and `c*`
 - **AND** the `Outward` row is first
+- **AND** the `Outward` row is visually highlighted
 
 #### Scenario: Draft edits do not rotate until apply
 
@@ -89,9 +92,9 @@ The `Vectors` section SHALL be collapsed by default. When expanded, it SHALL sho
 - **THEN** the displayed vector is normalized so the maximum absolute coefficient is 1
 - **AND** coefficients close to simple integers are snapped for display
 
-### Requirement: Orientation gizmo axes can apply the primary direction
+### Requirement: Orientation gizmo axes can apply the Primary Axis
 
-The orientation gizmo SHALL allow single-click axis alignment for loaded previews. Hovering `a`, `b`, or `c` SHALL visually brighten that axis and use a pointer cursor. Clicking an axis SHALL apply that direct axis to the selected primary direction. The gizmo SHALL NOT require double-click, SHALL NOT show tooltips for these axis actions, and SHALL NOT keep a persistent active axis highlight.
+The orientation gizmo SHALL allow single-click axis alignment for loaded previews. Hovering `a`, `b`, or `c` SHALL visually brighten that axis and use a pointer cursor. Clicking an axis SHALL apply that direct axis to the selected `Primary Axis`. The gizmo SHALL NOT require double-click, SHALL NOT show tooltips for these axis actions, and SHALL NOT keep a persistent active axis highlight.
 
 #### Scenario: Hover highlights clickable axis
 
@@ -101,14 +104,14 @@ The orientation gizmo SHALL allow single-click axis alignment for loaded preview
 
 #### Scenario: Click axis in Upward primary mode
 
-- **GIVEN** `Primary direction` is `Upward`
+- **GIVEN** `Primary Axis` is `Upward`
 - **WHEN** the user clicks the gizmo `c` axis
 - **THEN** the preview updates so direct `c` is the screen-up direction
 - **AND** the secondary outward direction is resolved from the current camera state or the VESTA-like fallback
 
 #### Scenario: Click axis in Outward primary mode
 
-- **GIVEN** `Primary direction` is `Outward`
+- **GIVEN** `Primary Axis` is `Outward`
 - **WHEN** the user clicks the gizmo `a` axis
 - **THEN** the preview updates so direct `a` is the screen-outward direction
 - **AND** the secondary upward direction is resolved from the current camera state or the VESTA-like fallback
@@ -154,7 +157,7 @@ The frontend SHALL provide a canvas interaction lock and a reset control for loa
 #### Scenario: Reset restores VESTA-like crystal camera default
 
 - **WHEN** the user activates the reset control after rotating or zooming the preview
-- **THEN** the preview returns to `Primary direction = Outward`
+- **THEN** the preview returns to `Primary Axis = Outward`
 - **AND** the preview returns to `Outward = c`, `Upward = b*`, and `Roll = 0°`
 - **AND** the zoom value returns to 100%
 - **AND** the preview target returns to centered framing
