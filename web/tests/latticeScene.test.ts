@@ -32,6 +32,10 @@ import {
   createCameraPoseSnapshot,
 } from "../src/scene/cameraPose";
 import {
+  createDefaultCrystalCameraState,
+  stateWithDirectAxis,
+} from "../src/scene/crystalCamera";
+import {
   computeStructureExportAspectRatio,
   computeStructureExportFramePlan,
   projectCellFrameLinesToExportFrame,
@@ -78,17 +82,16 @@ describe("computeSceneLayout", () => {
       {
         projectedHeight: 17,
         projectedWidth: 17,
-        span: 10,
       },
       1000,
       800,
       safeArea,
     );
 
-    expect(zoom).toBeCloseTo(404 / 17);
+    expect(zoom).toBeCloseTo(404 / (17 * 1.08));
   });
 
-  test("gives slender standard projections a capped visual boost", () => {
+  test("fits directly from the projected size instead of a 3D span cap", () => {
     const safeArea = {
       bottom: 132,
       left: 420,
@@ -99,14 +102,13 @@ describe("computeSceneLayout", () => {
       {
         projectedHeight: 2,
         projectedWidth: 4,
-        span: 10,
       },
       1000,
       800,
       safeArea,
     );
 
-    expect(zoom).toBeCloseTo((404 / 17) * 1.5);
+    expect(zoom).toBeCloseTo(404 / (4 * 1.08));
   });
 
   test("offsets the orthographic frustum toward the safe-area center", () => {
@@ -189,9 +191,34 @@ describe("computeSceneLayout", () => {
   test("tracks the VESTA-like projected fit size for slender structures", () => {
     const layout = computeSceneLayout(sceneWithLongCell());
 
-    expect(layout.cameraFitBounds.span).toBeCloseTo(layout.span);
     expect(layout.cameraFitBounds.projectedWidth).toBeCloseTo(layout.span);
     expect(layout.cameraFitBounds.projectedHeight).toBeLessThan(layout.span);
+  });
+
+  test("uses the default c-outward projected footprint for 100 percent fit", () => {
+    const layout = computeSceneLayout(sceneWithLongC());
+
+    expect(layout.span).toBeGreaterThan(10);
+    expect(layout.cameraFitBounds.projectedWidth).toBeLessThan(3);
+    expect(layout.cameraFitBounds.projectedHeight).toBeLessThan(3);
+  });
+
+  test("keeps the projected fit size fixed after the initial default view", () => {
+    const scene = sceneWithLongC();
+    const cOutwardLayout = computeSceneLayout(scene);
+    const aOutwardLayout = computeSceneLayout(
+      scene,
+      "uniform",
+      stateWithDirectAxis(
+        scene.cell.vectors,
+        createDefaultCrystalCameraState(),
+        "a",
+      ),
+    );
+
+    expectVectorClose(aOutwardLayout.cameraPose.outward, [1, 0, 0]);
+    expect(cOutwardLayout.cameraFitBounds.projectedHeight).toBeLessThan(3);
+    expect(aOutwardLayout.cameraFitBounds).toEqual(cOutwardLayout.cameraFitBounds);
   });
 
   test("uses fixed first-version bond styling", () => {
@@ -579,6 +606,27 @@ function sceneWithLongCell(): SceneSpec {
         [10, 0, 0],
         [0, 1, 0],
         [0, 0, 1],
+      ],
+    },
+    summary: {
+      ...sceneWithOffCenterAtoms().summary,
+      atomCount: 2,
+    },
+  };
+}
+
+function sceneWithLongC(): SceneSpec {
+  return {
+    ...sceneWithOffCenterAtoms(),
+    atoms: [
+      atom("Si-0", [0, 0, 0]),
+      atom("Si-1", [0, 0, 10]),
+    ],
+    cell: {
+      vectors: [
+        [1, 0, 0],
+        [0, 1, 0],
+        [0, 0, 10],
       ],
     },
     summary: {

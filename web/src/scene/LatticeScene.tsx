@@ -52,6 +52,7 @@ import { CameraHeadlight } from "./CameraHeadlight";
 import { applyCameraPoseSnapshot, type CameraPoseSnapshot } from "./cameraPose";
 import {
   computeCrystalCameraPose,
+  createDefaultCrystalCameraState,
   type CrystalCameraState,
   type CrystalCameraPose,
 } from "./crystalCamera";
@@ -1781,14 +1782,15 @@ export function computeSceneLayout(
   cameraState?: CrystalCameraState,
 ): SceneLayout {
   const structureLayout = computeSceneStructureLayout(scene, atomRadiusModel);
+  const cameraPose = computeCrystalCameraPose(
+    scene.cell.vectors,
+    cameraState ?? createDefaultCrystalCameraState(),
+    structureLayout.span,
+  );
 
   return {
     ...structureLayout,
-    cameraPose: computeCrystalCameraPose(
-      scene.cell.vectors,
-      cameraState ?? createFallbackCrystalCameraState(),
-      structureLayout.span,
-    ),
+    cameraPose,
   };
 }
 
@@ -1811,41 +1813,33 @@ export function computeSceneStructureLayout(
   const span = Math.max(1, size.x, size.y, size.z);
   const standardPose = computeStandardCameraPose(scene.cell.vectors, span);
   const groupPosition: VectorTuple = [-center.x, -center.y, -center.z];
-  const projectedFitSize = computeStandardProjectedFitSize(
-    scene,
-    atomRadiusModel,
-    groupPosition,
-    standardPose,
+  const defaultCameraPose = computeCrystalCameraPose(
+    scene.cell.vectors,
+    createDefaultCrystalCameraState(),
+    span,
   );
 
   return {
-    cameraFitBounds: {
-      ...projectedFitSize,
-      span,
-    },
+    cameraFitBounds: computeProjectedCameraFitBounds(
+      scene,
+      atomRadiusModel,
+      groupPosition,
+      defaultCameraPose,
+    ),
     groupPosition,
     span,
     standardPose,
   };
 }
 
-function createFallbackCrystalCameraState(): CrystalCameraState {
-  return {
-    direct: [0, 0, 1],
-    primary: "outward",
-    reciprocal: [0, 1, 0],
-    rollDegrees: 0,
-  };
-}
-
-function computeStandardProjectedFitSize(
+function computeProjectedCameraFitBounds(
   scene: SceneSpec,
   atomRadiusModel: AtomRadiusModel,
   groupPosition: VectorTuple,
-  standardPose: StandardCameraPose,
-): Pick<CameraFitBounds, "projectedHeight" | "projectedWidth"> {
-  const outward = new Vector3(...standardPose.outward).normalize();
-  const cameraUp = new Vector3(...standardPose.cameraUp).normalize();
+  cameraPose: Pick<CrystalCameraPose, "cameraUp" | "outward">,
+): CameraFitBounds {
+  const outward = new Vector3(...cameraPose.outward).normalize();
+  const cameraUp = new Vector3(...cameraPose.cameraUp).normalize();
   const right = cameraUp.clone().cross(outward).normalize();
   const screenUp = outward.clone().cross(right).normalize();
   const offset = new Vector3(...groupPosition);
