@@ -145,8 +145,6 @@ export function App() {
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
   const viewportSize = useViewportSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const leftOverlayRef = useRef<HTMLDivElement>(null);
-  const commonControlsPanelRef = useRef<HTMLDivElement>(null);
   const cameraOrientationRef = useRef(new Quaternion());
   const cameraControlFreezeCandidateRef = useRef<CrystalCameraState | null>(null);
   const cameraControlFreezeRequestRef = useRef(0);
@@ -671,19 +669,6 @@ export function App() {
     style,
   ]);
 
-  const collapseStructureSummaryIfControlsOverflow = useCallback(() => {
-    const commonControlsPanelElement = commonControlsPanelRef.current;
-    if (!commonControlsPanelElement || isStructureSummaryCollapsed) {
-      return;
-    }
-
-    const controlsRect = commonControlsPanelElement.getBoundingClientRect();
-    const safeBottom = window.innerHeight - 16;
-    if (controlsRect.bottom > safeBottom) {
-      setIsStructureSummaryCollapsed(true);
-    }
-  }, [isStructureSummaryCollapsed]);
-
   const clearLockedInteractionWheelGate = useCallback(() => {
     if (lockedInteractionWheelIdleTimeoutRef.current === null) {
       return;
@@ -694,40 +679,6 @@ export function App() {
   }, []);
 
   useEffect(() => () => clearLockedInteractionWheelGate(), [clearLockedInteractionWheelGate]);
-
-  useEffect(() => {
-    if (!scene || isStructureSummaryCollapsed) {
-      return;
-    }
-
-    const leftOverlayElement = leftOverlayRef.current;
-    const commonControlsPanelElement = commonControlsPanelRef.current;
-    if (!leftOverlayElement || !commonControlsPanelElement) {
-      return;
-    }
-
-    collapseStructureSummaryIfControlsOverflow();
-    const animationFrame = window.requestAnimationFrame(collapseStructureSummaryIfControlsOverflow);
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", collapseStructureSummaryIfControlsOverflow);
-      return () => {
-        window.cancelAnimationFrame(animationFrame);
-        window.removeEventListener("resize", collapseStructureSummaryIfControlsOverflow);
-      };
-    }
-
-    const resizeObserver = new ResizeObserver(collapseStructureSummaryIfControlsOverflow);
-    resizeObserver.observe(leftOverlayElement);
-    resizeObserver.observe(commonControlsPanelElement);
-    window.addEventListener("resize", collapseStructureSummaryIfControlsOverflow);
-
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", collapseStructureSummaryIfControlsOverflow);
-    };
-  }, [collapseStructureSummaryIfControlsOverflow, isStructureSummaryCollapsed, scene]);
 
   useEffect(() => {
     if (!hasVisibleScene || !viewState.interactionLocked) {
@@ -896,7 +847,6 @@ export function App() {
       ) : null}
 
       <div
-        ref={leftOverlayRef}
         className={cn(
           "absolute left-4 top-4 flex w-[296px] max-w-[calc(100vw-2rem)] flex-col gap-4",
           isInspectorOpen ? "max-[760px]:hidden" : null,
@@ -912,7 +862,7 @@ export function App() {
         />
 
         {scene ? (
-          <div ref={commonControlsPanelRef}>
+          <div>
             <CommonControlsPanel
               cameraState={cameraControlsPanelState}
               cellVectors={scene.cell.vectors}

@@ -1185,6 +1185,44 @@ describe("App", () => {
     expect(detailsRegion?.style.height).toBe("0px");
   });
 
+  test("keeps manually expanded structure details open when controls overflow the viewport", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+
+    const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = () => ({
+      bottom: 4096,
+      height: 4096,
+      left: 0,
+      right: 296,
+      top: 0,
+      width: 296,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    try {
+      const structureCard = screen.getByRole("complementary", { name: "Current structure" });
+      const expandButton = within(structureCard).getByRole("button", {
+        name: "Expand details",
+      });
+
+      await user.click(expandButton);
+      fireEvent(window, new Event("resize"));
+
+      await waitFor(() => {
+        const collapseButton = within(structureCard).getByRole("button", {
+          name: "Collapse details",
+        });
+        expect(collapseButton.getAttribute("aria-expanded")).toBe("true");
+      });
+    } finally {
+      Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
   test("keeps atom radius model local and reuploads when the bond algorithm changes", async () => {
     const user = userEvent.setup();
 
