@@ -594,7 +594,7 @@ function ExportTabContent({
             <SelectTrigger
               size="sm"
               aria-label="Format"
-              className="!h-6 w-24 !px-2 !py-0 text-xs"
+              className="!h-6 w-20 !px-2 !py-0 text-xs"
             >
               <SelectValue />
             </SelectTrigger>
@@ -622,7 +622,7 @@ function ExportTabContent({
           <Button
             size="sm"
             aria-label={actionLabel}
-            className="h-7 gap-1.5 rounded-full px-2.5 text-xs transition-colors duration-150 ease-out active:bg-primary/80 [&_svg]:size-3.5"
+            className="h-7 gap-1.5 rounded-full px-2.5 text-xs transition-[background-color,transform] duration-100 ease-out active:translate-y-[0.5px] active:bg-primary/80 [&_svg]:size-3.5"
             disabled={!validation.valid}
             onClick={onExport}
           >
