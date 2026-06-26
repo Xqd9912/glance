@@ -483,12 +483,15 @@ function ExportTabContent({
 
       <section aria-labelledby="export-quality-label" className="flex flex-col gap-2.5">
         <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
-          <h2
-            id="export-quality-label"
-            className="text-xs font-bold leading-tight text-muted-foreground"
-          >
-            Quality
-          </h2>
+          <div className="flex min-w-0 items-center gap-1">
+            <h2
+              id="export-quality-label"
+              className="text-xs font-bold leading-tight text-muted-foreground"
+            >
+              Quality
+            </h2>
+            <ExportStatusIndicator message={statusMessage} />
+          </div>
           <span aria-hidden="true" />
           <Tooltip>
             <TooltipTrigger asChild>
@@ -577,60 +580,45 @@ function ExportTabContent({
         />
       </section>
 
-      <Separator className="my-0.5" />
-
-      <div className="mb-1.5 flex min-h-7 items-center justify-between gap-2 px-0">
-        <Select
-          value={settings.format}
-          onValueChange={(value) =>
-            onSettingsChange(setExportFormat(settings, value as ExportFormat))
-          }
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label="Format"
-            className="!h-7 w-24 !px-2 !py-0 text-xs"
+      <div className="mb-1.5 flex min-h-8 items-end justify-between gap-2 px-1.5">
+        <label className="grid min-w-0 gap-1">
+          <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+            Format
+          </span>
+          <Select
+            value={settings.format}
+            onValueChange={(value) =>
+              onSettingsChange(setExportFormat(settings, value as ExportFormat))
+            }
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent
-            position="popper"
-            className="!bg-background !text-foreground"
-          >
-            <SelectGroup>
-              {EXPORT_FORMAT_OPTIONS.map((option) => (
-                <SelectItem
-                  key={option}
-                  value={option}
-                  textValue={EXPORT_FORMAT_LABELS[option]}
-                  className="min-h-6 py-0.5 text-sm"
-                >
-                  {EXPORT_FORMAT_LABELS[option]}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              size="sm"
+              aria-label="Format"
+              className="!h-6 w-24 !px-2 !py-0 text-xs"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {EXPORT_FORMAT_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option}
+                    value={option}
+                    textValue={EXPORT_FORMAT_LABELS[option]}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    {EXPORT_FORMAT_LABELS[option]}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </label>
 
         <div className="flex items-center gap-1.5">
-          {statusMessage ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  role="status"
-                  tabIndex={0}
-                  aria-label={statusMessage}
-                  className="inline-flex size-6 items-center justify-center rounded-md text-amber-600 outline-none focus-visible:ring-[3px] focus-visible:ring-amber-400/40 [&_svg]:size-4"
-                >
-                  <AlertTriangleIcon aria-hidden="true" />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top" className="max-w-52">
-                {statusMessage}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-
           <Button
             size="sm"
             aria-label={actionLabel}
@@ -661,6 +649,30 @@ function ExportTabContent({
         </div>
       </div>
     </div>
+  );
+}
+
+function ExportStatusIndicator({ message }: { message: string | null }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          role="status"
+          tabIndex={0}
+          aria-label={message}
+          className="inline-flex size-4 items-center justify-center rounded-md text-amber-600 outline-none focus-visible:ring-[3px] focus-visible:ring-amber-400/40 [&_svg]:size-3.5"
+        >
+          <AlertTriangleIcon aria-hidden="true" />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-52">
+        {message}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

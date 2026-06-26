@@ -604,8 +604,8 @@ describe("App", () => {
       name: "Export PNG",
     });
 
-    expect(widthInput.value).toBe("2400");
-    expect(heightInput.value).toBe("2400");
+    expect(widthInput.value).toBe("2000");
+    expect(heightInput.value).toBe("2000");
     expect(twoXSupersampling.getAttribute("aria-selected")).toBe("true");
     expect(highMeshQuality.getAttribute("aria-selected")).toBe("true");
     expect(formatSelect.textContent).toContain("PNG");
@@ -622,7 +622,7 @@ describe("App", () => {
     await user.type(widthInput, "3000{Enter}");
 
     expect(widthInput.value).toBe("3000");
-    expect(heightInput.value).toBe("2400");
+    expect(heightInput.value).toBe("2000");
 
     await user.click(
       within(commonControls).getByRole("button", { name: "Lock aspect ratio" }),
@@ -644,8 +644,8 @@ describe("App", () => {
     await user.click(resetQualityButton);
 
     expect(resetQualityButton.className).toContain("tool-icon-button-reset-feedback");
-    expect(widthInput.value).toBe("2400");
-    expect(heightInput.value).toBe("2400");
+    expect(widthInput.value).toBe("2000");
+    expect(heightInput.value).toBe("2000");
     expect(twoXSupersampling.getAttribute("aria-selected")).toBe("true");
     expect(highMeshQuality.getAttribute("aria-selected")).toBe("true");
     expect(formatSelect.textContent).toContain("PDF");
@@ -662,10 +662,10 @@ describe("App", () => {
     expect(exportRequests[1]?.settings).toMatchObject({
       aspectRatioLocked: false,
       format: "pdf",
-      height: 2400,
+      height: 2000,
       meshQuality: "high",
       supersampling: 2,
-      width: 2400,
+      width: 2000,
     });
     expect(exportDownloads[1]?.fileName).toBe("NaCl.pdf");
   });

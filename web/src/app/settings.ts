@@ -111,7 +111,7 @@ export interface ExportSettingsValidation {
 export const EXPORT_DIMENSION_MIN = 64;
 export const EXPORT_DIMENSION_MAX = 6000;
 export const EXPORT_RENDER_DIMENSION_MAX = 8192;
-export const EXPORT_RENDER_PIXEL_MAX = 48_000_000;
+export const EXPORT_RENDER_PIXEL_MAX = EXPORT_RENDER_DIMENSION_MAX * EXPORT_RENDER_DIMENSION_MAX;
 export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 2, 4];
 const EXPORT_SUPERSAMPLING_MIN: ExportSupersampling = 1;
 const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 4;
@@ -126,11 +126,11 @@ export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
 export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
   aspectRatioLocked: false,
   format: "png",
-  height: 2400,
+  height: 2000,
   meshQuality: "high",
   pixelsPerProjectedUnit: null,
   supersampling: 2,
-  width: 2400,
+  width: 2000,
 };
 
 export function createDefaultComponentVisibility(

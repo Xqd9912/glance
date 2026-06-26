@@ -42,11 +42,11 @@ describe("settings", () => {
     expect(createDefaultExportSettings()).toEqual({
       aspectRatioLocked: false,
       format: "png",
-      height: 2400,
+      height: 2000,
       meshQuality: "high",
       pixelsPerProjectedUnit: null,
       supersampling: 2,
-      width: 2400,
+      width: 2000,
     });
   });
 
@@ -61,9 +61,9 @@ describe("settings", () => {
     );
 
     expect(lockedSettings).toMatchObject({
-      height: 2400,
-      pixelsPerProjectedUnit: 2400,
-      width: 2400,
+      height: 2000,
+      pixelsPerProjectedUnit: 2000,
+      width: 2000,
     });
     expect(setExportDimension(lockedSettings, "width", 3000, squareProjectedSize)).toMatchObject({
       height: 3000,
@@ -81,8 +81,8 @@ describe("settings", () => {
       width: 3000,
     });
     expect(syncExportSettingsProjectedSize(lockedSettings, squareProjectedSize)).toMatchObject({
-      height: 2400,
-      width: 2400,
+      height: 2000,
+      width: 2000,
     });
 
     const wideLockedSettings = setExportAspectRatioLocked(
@@ -91,14 +91,14 @@ describe("settings", () => {
       wideProjectedSize,
     );
     expect(wideLockedSettings).toMatchObject({
-      height: 1200,
-      pixelsPerProjectedUnit: 1200,
-      width: 2400,
+      height: 1000,
+      pixelsPerProjectedUnit: 1000,
+      width: 2000,
     });
     expect(syncExportSettingsProjectedSize(wideLockedSettings, squareProjectedSize)).toMatchObject({
-      height: 1200,
-      pixelsPerProjectedUnit: 1200,
-      width: 1200,
+      height: 1000,
+      pixelsPerProjectedUnit: 1000,
+      width: 1000,
     });
     expect(
       syncExportSettingsProjectedSize(
@@ -106,14 +106,14 @@ describe("settings", () => {
         wideProjectedSize,
       ),
     ).toMatchObject({
-      height: 1200,
-      pixelsPerProjectedUnit: 1200,
-      width: 2400,
+      height: 1000,
+      pixelsPerProjectedUnit: 1000,
+      width: 2000,
     });
 
     expect(setExportAspectRatioLocked(defaultSettings, true, wideProjectedSize)).toMatchObject({
-      height: 1200,
-      width: 2400,
+      height: 1000,
+      width: 2000,
     });
     expect(
       setExportAspectRatioLocked(defaultSettings, true, {
@@ -121,14 +121,14 @@ describe("settings", () => {
         width: 1,
       }),
     ).toMatchObject({
-      height: 2400,
-      width: 1200,
+      height: 2000,
+      width: 1000,
     });
 
     expect(setExportDimension(defaultSettings, "height", 1200)).toMatchObject({
       height: 1200,
       pixelsPerProjectedUnit: null,
-      width: 2400,
+      width: 2000,
     });
     expect(syncExportSettingsProjectedSize(defaultSettings, squareProjectedSize)).toBe(
       defaultSettings,
@@ -148,6 +148,10 @@ describe("settings", () => {
       format: "pdf",
     });
     expect(validateExportSettings(defaultSettings).valid).toBe(true);
+    expect(validateExportSettings({
+      ...defaultSettings,
+      supersampling: 4,
+    }).valid).toBe(true);
     expect(
       validateExportSettings({
         ...defaultSettings,
