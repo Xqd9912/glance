@@ -133,6 +133,9 @@ export function App() {
   const [cameraCommandVersion, setCameraCommandVersion] = useState(0);
   const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
   const [cameraOrientationVersion, setCameraOrientationVersion] = useState(0);
+  const [isCameraCommandAnimationActive, setIsCameraCommandAnimationActive] = useState(false);
+  const [cameraControlsFrozenState, setCameraControlsFrozenState] =
+    useState<CrystalCameraState | null>(null);
   const [viewState, setViewState] = useState(createPreviewViewState);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
@@ -141,12 +144,55 @@ export function App() {
   const leftOverlayRef = useRef<HTMLDivElement>(null);
   const commonControlsPanelRef = useRef<HTMLDivElement>(null);
   const cameraOrientationRef = useRef(new Quaternion());
+  const cameraControlFreezeCandidateRef = useRef<CrystalCameraState | null>(null);
+  const cameraControlFreezeRequestRef = useRef(0);
+  const isCameraCommandAnimationActiveRef = useRef(false);
   const lockedInteractionPointerRef = useRef<LockedInteractionPointer | null>(null);
   const lockedInteractionWheelIdleTimeoutRef = useRef<number | null>(null);
   const visibleScene = useMemo(
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
   );
+  const cameraControlsPanelState = useMemo<CrystalCameraState>(() => {
+    if (!cameraControlsFrozenState) {
+      return viewState.camera;
+    }
+
+    return {
+      ...cameraControlsFrozenState,
+      vectorsExpanded: viewState.camera.vectorsExpanded,
+    };
+  }, [cameraControlsFrozenState, viewState.camera]);
+
+  const clearCameraCommandAnimationState = useCallback(() => {
+    cameraControlFreezeRequestRef.current += 1;
+    cameraControlFreezeCandidateRef.current = null;
+    isCameraCommandAnimationActiveRef.current = false;
+    setIsCameraCommandAnimationActive(false);
+    setCameraControlsFrozenState(null);
+  }, []);
+
+  const startAnimatedCameraCommand = useCallback((cameraState: CrystalCameraState) => {
+    const frozenCameraState = cameraControlsPanelState;
+    const freezeRequest = cameraControlFreezeRequestRef.current + 1;
+    cameraControlFreezeRequestRef.current = freezeRequest;
+    cameraControlFreezeCandidateRef.current = frozenCameraState;
+    setCameraControlsFrozenState(frozenCameraState);
+    queueMicrotask(() => {
+      if (
+        cameraControlFreezeRequestRef.current !== freezeRequest ||
+        isCameraCommandAnimationActiveRef.current
+      ) {
+        return;
+      }
+
+      cameraControlFreezeCandidateRef.current = null;
+      setCameraControlsFrozenState(null);
+    });
+    setViewState((currentViewState) => setPreviewCameraState(currentViewState, cameraState));
+    setCameraCommandVersion((version) => version + 1);
+    setCameraAnimatedCommandVersion((version) => version + 1);
+  }, [cameraControlsPanelState]);
 
   const handleViewScaleChange = useCallback((viewScale: number) => {
     setViewState((currentViewState) => setPreviewViewScale(currentViewState, viewScale));
@@ -176,11 +222,16 @@ export function App() {
   );
 
   const handleResetView = useCallback(() => {
+    clearCameraCommandAnimationState();
     setViewState(resetPreviewViewState);
     setCameraCommandVersion((version) => version + 1);
-  }, []);
+  }, [clearCameraCommandAnimationState]);
 
   const handleCameraOrientationChange = useCallback(() => {
+    if (isCameraCommandAnimationActiveRef.current) {
+      return;
+    }
+
     setCameraOrientationVersion((version) => version + 1);
     setViewState((currentViewState) => {
       if (!visibleScene) {
@@ -202,10 +253,8 @@ export function App() {
   }, [visibleScene]);
 
   const handleCameraStateChange = useCallback((cameraState: CrystalCameraState) => {
-    setViewState((currentViewState) => setPreviewCameraState(currentViewState, cameraState));
-    setCameraCommandVersion((version) => version + 1);
-    setCameraAnimatedCommandVersion((version) => version + 1);
-  }, []);
+    startAnimatedCameraCommand(cameraState);
+  }, [startAnimatedCameraCommand]);
 
   const handleCameraPrimaryChange = useCallback(
     (primary: CrystalCameraPrimaryDirection) => {
@@ -213,6 +262,7 @@ export function App() {
         return;
       }
 
+      clearCameraCommandAnimationState();
       setViewState((currentViewState) =>
         setPreviewCameraState(
           currentViewState,
@@ -225,7 +275,7 @@ export function App() {
         ),
       );
     },
-    [visibleScene],
+    [clearCameraCommandAnimationState, visibleScene],
   );
 
   const handleCameraRollChange = useCallback(
@@ -234,6 +284,7 @@ export function App() {
         return;
       }
 
+      clearCameraCommandAnimationState();
       setViewState((currentViewState) =>
         setPreviewCameraState(
           currentViewState,
@@ -242,7 +293,7 @@ export function App() {
       );
       setCameraCommandVersion((version) => version + 1);
     },
-    [visibleScene],
+    [clearCameraCommandAnimationState, visibleScene],
   );
 
   const handleCameraVectorsExpandedChange = useCallback((vectorsExpanded: boolean) => {
@@ -257,17 +308,27 @@ export function App() {
         return;
       }
 
-      setViewState((currentViewState) =>
-        setPreviewCameraState(
-          currentViewState,
-          stateWithDirectAxis(visibleScene.cell.vectors, currentViewState.camera, axis),
-        ),
+      startAnimatedCameraCommand(
+        stateWithDirectAxis(visibleScene.cell.vectors, viewState.camera, axis),
       );
-      setCameraCommandVersion((version) => version + 1);
-      setCameraAnimatedCommandVersion((version) => version + 1);
     },
-    [visibleScene],
+    [startAnimatedCameraCommand, viewState.camera, visibleScene],
   );
+
+  const handleCameraCommandAnimationActiveChange = useCallback((isActive: boolean) => {
+    isCameraCommandAnimationActiveRef.current = isActive;
+    setIsCameraCommandAnimationActive(isActive);
+
+    if (isActive) {
+      setCameraControlsFrozenState(cameraControlFreezeCandidateRef.current);
+      return;
+    }
+
+    cameraControlFreezeRequestRef.current += 1;
+    cameraControlFreezeCandidateRef.current = null;
+    setCameraControlsFrozenState(null);
+    setCameraOrientationVersion((version) => version + 1);
+  }, []);
 
   useEffect(() => {
     if (!isStaticScenePreview) {
@@ -372,6 +433,11 @@ export function App() {
     setExportSettings(createDefaultExportSettings());
     setExportError(null);
     cameraOrientationRef.current.identity();
+    cameraControlFreezeRequestRef.current += 1;
+    cameraControlFreezeCandidateRef.current = null;
+    isCameraCommandAnimationActiveRef.current = false;
+    setIsCameraCommandAnimationActive(false);
+    setCameraControlsFrozenState(null);
     setCameraCommandVersion((version) => version + 1);
     setCameraOrientationVersion((version) => version + 1);
     setViewState(createPreviewViewState());
@@ -697,6 +763,8 @@ export function App() {
             cameraState={viewState.camera}
             cameraOrientationRef={cameraOrientationRef}
             onCameraOrientationChange={handleCameraOrientationChange}
+            onCameraCommandAnimationActiveChange={handleCameraCommandAnimationActiveChange}
+            suspendCameraOrientationUpdates={isCameraCommandAnimationActive}
             interactionLocked={viewState.interactionLocked}
             interactionMode={viewState.interactionMode}
             layoutScene={scene ?? visibleScene}
@@ -769,7 +837,7 @@ export function App() {
         {scene ? (
           <div ref={commonControlsPanelRef}>
             <CommonControlsPanel
-              cameraState={viewState.camera}
+              cameraState={cameraControlsPanelState}
               cellVectors={scene.cell.vectors}
               componentOpacity={componentOpacity}
               style={style}

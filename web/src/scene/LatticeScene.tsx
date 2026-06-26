@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
   Box3,
   BufferGeometry,
@@ -166,6 +166,7 @@ export function LatticeScene({
   interactionMode,
   layoutScene,
   onViewScaleChange,
+  onCameraCommandAnimationActiveChange,
   onCameraOrientationChange,
   resetCounter,
   renderBackend,
@@ -174,6 +175,7 @@ export function LatticeScene({
   showAtoms = true,
   showUnitCell = true,
   style,
+  suspendCameraOrientationUpdates = false,
   viewScale,
 }: {
   cameraOrientationRef?: CameraOrientationRef;
@@ -184,6 +186,7 @@ export function LatticeScene({
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   layoutScene?: SceneSpec;
+  onCameraCommandAnimationActiveChange?: (isActive: boolean) => void;
   onCameraOrientationChange?: () => void;
   onViewScaleChange: (viewScale: number) => void;
   resetCounter: number;
@@ -193,6 +196,7 @@ export function LatticeScene({
   showAtoms?: boolean;
   showUnitCell?: boolean;
   style: StyleState;
+  suspendCameraOrientationUpdates?: boolean;
   viewScale: number;
 }) {
   const layoutSourceScene = layoutScene ?? scene;
@@ -231,6 +235,7 @@ export function LatticeScene({
         interactionLocked={interactionLocked}
         interactionMode={interactionMode}
         layout={layout}
+        onCameraCommandAnimationActiveChange={onCameraCommandAnimationActiveChange}
         onViewScaleChange={onViewScaleChange}
         resetCounter={resetCounter}
         safeArea={safeArea}
@@ -248,6 +253,7 @@ export function LatticeScene({
       <CameraOrientationTracker
         cameraOrientationRef={cameraOrientationRef}
         onCameraOrientationChange={onCameraOrientationChange}
+        suspendUpdates={suspendCameraOrientationUpdates}
       />
     </Canvas>
   );
@@ -256,9 +262,11 @@ export function LatticeScene({
 function CameraOrientationTracker({
   cameraOrientationRef,
   onCameraOrientationChange,
+  suspendUpdates,
 }: {
   cameraOrientationRef?: CameraOrientationRef;
   onCameraOrientationChange?: () => void;
+  suspendUpdates: boolean;
 }) {
   const { camera } = useThree();
   const lastNotifiedOrientationRef = useRef(new Quaternion());
@@ -268,12 +276,14 @@ function CameraOrientationTracker({
     cameraOrientationRef?.current.copy(camera.quaternion);
     lastNotifiedOrientationRef.current.copy(camera.quaternion);
     lastNotificationTimeRef.current = performance.now();
-    onCameraOrientationChange?.();
-  }, [camera, cameraOrientationRef, onCameraOrientationChange]);
+    if (!suspendUpdates) {
+      onCameraOrientationChange?.();
+    }
+  }, [camera, cameraOrientationRef, onCameraOrientationChange, suspendUpdates]);
 
   useFrame(() => {
     cameraOrientationRef?.current.copy(camera.quaternion);
-    if (!onCameraOrientationChange) {
+    if (!onCameraOrientationChange || suspendUpdates) {
       return;
     }
 
@@ -450,6 +460,7 @@ function PreviewCameraController({
   interactionLocked,
   interactionMode,
   layout,
+  onCameraCommandAnimationActiveChange,
   onViewScaleChange,
   resetCounter,
   safeArea,
@@ -461,6 +472,7 @@ function PreviewCameraController({
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   layout: SceneLayout;
+  onCameraCommandAnimationActiveChange?: (isActive: boolean) => void;
   onViewScaleChange: (viewScale: number) => void;
   resetCounter: number;
   safeArea: PreviewSafeArea;
@@ -469,6 +481,8 @@ function PreviewCameraController({
   const { camera, gl, size } = useThree();
   const controlsRef = useRef<CameraControls | null>(null);
   const cameraAnimationRef = useRef<CameraPoseAnimation | null>(null);
+  const isCameraAnimationActiveRef = useRef(false);
+  const onCameraCommandAnimationActiveChangeRef = useRef(onCameraCommandAnimationActiveChange);
   const cameraPoseRef = useRef(cameraPose);
   const hasAppliedInitialPoseRef = useRef(false);
   const lastCameraAnimatedCommandVersionRef = useRef(cameraAnimatedCommandVersion);
@@ -484,6 +498,19 @@ function PreviewCameraController({
   const fitZoom = useMemo(
     () => computeCameraFitZoom(layout.cameraFitBounds, size.width, size.height, effectiveSafeArea),
     [effectiveSafeArea, layout.cameraFitBounds, size.height, size.width],
+  );
+  onCameraCommandAnimationActiveChangeRef.current = onCameraCommandAnimationActiveChange;
+
+  const setCameraAnimationActive = useCallback(
+    (isActive: boolean, forceNotify = false) => {
+      if (isCameraAnimationActiveRef.current === isActive && !forceNotify) {
+        return;
+      }
+
+      isCameraAnimationActiveRef.current = isActive;
+      onCameraCommandAnimationActiveChangeRef.current?.(isActive);
+    },
+    [],
   );
 
   useEffect(() => {
@@ -512,14 +539,23 @@ function PreviewCameraController({
 
     if (shouldAnimate) {
       cameraAnimationRef.current = createCameraPoseAnimation(camera, cameraPoseRef.current, layout.span);
+      setCameraAnimationActive(true);
       return;
     }
 
     cameraAnimationRef.current = null;
+    setCameraAnimationActive(false, commandChanged && animatedCommandChanged);
     applyStandardCameraPose(camera, cameraPoseRef.current, layout.span);
     controlsRef.current?.target.copy(CAMERA_TARGET);
     controlsRef.current?.update();
-  }, [camera, cameraAnimatedCommandVersion, cameraCommandVersion, layout.span, resetCounter]);
+  }, [
+    camera,
+    cameraAnimatedCommandVersion,
+    cameraCommandVersion,
+    layout.span,
+    resetCounter,
+    setCameraAnimationActive,
+  ]);
 
   useLayoutEffect(() => {
     if (!(camera instanceof OrthographicCamera)) {
@@ -538,6 +574,7 @@ function PreviewCameraController({
         : new OrbitControls(camera, gl.domElement);
     function handleControlsStart() {
       cameraAnimationRef.current = null;
+      setCameraAnimationActive(false);
     }
 
     configureCameraControls(controls, interactionMode, interactionLocked, fitZoom);
@@ -554,7 +591,11 @@ function PreviewCameraController({
         controlsRef.current = null;
       }
     };
-  }, [camera, gl.domElement, interactionMode, resetCounter]);
+  }, [camera, gl.domElement, interactionMode, resetCounter, setCameraAnimationActive]);
+
+  useEffect(() => {
+    return () => setCameraAnimationActive(false);
+  }, [setCameraAnimationActive]);
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -605,6 +646,7 @@ function PreviewCameraController({
       const isComplete = applyCameraPoseAnimationFrame(camera, animation, performance.now());
       if (isComplete) {
         cameraAnimationRef.current = null;
+        setCameraAnimationActive(false);
       }
       controlsRef.current?.target.copy(CAMERA_TARGET);
       controlsRef.current?.update();

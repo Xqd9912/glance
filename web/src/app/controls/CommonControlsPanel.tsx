@@ -23,6 +23,7 @@ import {
   useState,
 } from "react";
 
+import { AngleSlider } from "@/components/ui/angle-slider";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -1170,44 +1171,50 @@ function CameraTabContent({
 }) {
   return (
     <div className="flex flex-col gap-2.5">
-      <section aria-labelledby="camera-primary-label" className="grid gap-1.5 px-1.5">
-        <h2
-          id="camera-primary-label"
-          className="text-xs font-bold leading-tight text-muted-foreground"
+      <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-3 px-1.5">
+        <section
+          aria-labelledby="camera-primary-label"
+          className="flex min-w-[9rem] flex-col items-start gap-2"
         >
-          Primary direction
-        </h2>
-        <Tabs
-          value={cameraState.primary}
-          className="w-full gap-0"
-          onValueChange={(value) =>
-            onCameraPrimaryChange(value as CrystalCameraPrimaryDirection)
-          }
-        >
-          <TabsList
-            aria-label="Primary direction"
-            className="!h-7 w-full rounded-md p-0.5"
+          <h2
+            id="camera-primary-label"
+            className="whitespace-nowrap px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground"
           >
-            <TabsTrigger
-              value="outward"
-              className="!h-6 rounded-[4px] px-2 py-0 text-xs font-medium"
+            Primary direction
+          </h2>
+          <Tabs
+            value={cameraState.primary}
+            orientation="vertical"
+            className="gap-0"
+            onValueChange={(value) =>
+              onCameraPrimaryChange(value as CrystalCameraPrimaryDirection)
+            }
+          >
+            <TabsList
+              aria-label="Primary direction"
+              className="h-auto w-[5.25rem] flex-col items-stretch rounded-md p-0.5"
             >
-              Outward
-            </TabsTrigger>
-            <TabsTrigger
-              value="upward"
-              className="!h-6 rounded-[4px] px-2 py-0 text-xs font-medium"
-            >
-              Upward
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </section>
+              <TabsTrigger
+                value="outward"
+                className="!h-[26px] !min-h-[26px] justify-center rounded-[4px] px-1.5 py-0 text-center text-xs font-medium leading-none"
+              >
+                Outward
+              </TabsTrigger>
+              <TabsTrigger
+                value="upward"
+                className="!h-[26px] !min-h-[26px] justify-center rounded-[4px] px-1.5 py-0 text-center text-xs font-medium leading-none"
+              >
+                Upward
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </section>
 
-      <RollControl
-        value={cameraState.rollDegrees}
-        onValueChange={onCameraRollChange}
-      />
+        <RollControl
+          value={cameraState.rollDegrees}
+          onValueChange={onCameraRollChange}
+        />
+      </div>
 
       <Separator className="my-0.5" />
 
@@ -1229,11 +1236,6 @@ function RollControl({
   value: number;
 }) {
   const [valueText, setValueText] = useState(formatRollValue(value));
-  const sliderBlur = useAutoBlurSlider();
-  const sliderPosition = (normalizeRollDegrees(value) + 180) / 360;
-  const sliderStyle = {
-    "--opacity-slider-position": `${Math.min(100, Math.max(0, sliderPosition * 100))}%`,
-  } as CSSProperties;
 
   useEffect(() => {
     setValueText(formatRollValue(value));
@@ -1273,37 +1275,17 @@ function RollControl({
   return (
     <section
       aria-labelledby="camera-roll-label"
-      className="grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.25rem_2.8rem] items-center gap-2 rounded-md px-1.5 text-sm"
+      className="flex min-w-0 items-center justify-end gap-2"
     >
-      <h2 id="camera-roll-label" className="min-w-0 truncate leading-tight">
+      <h2 id="camera-roll-label" className="sr-only">
         Roll
       </h2>
-      <div
-        className="opacity-slider-shell relative mr-3 h-5"
-        data-disabled="false"
-        style={sliderStyle}
-      >
-        <input
-          type="range"
-          min={-180}
-          max={180}
-          step={1}
-          value={Math.round(normalizeRollDegrees(value))}
-          aria-label="Roll"
-          aria-valuetext={`${formatRollValue(value)}°`}
-          className="opacity-slider absolute inset-0 z-10 h-full w-full"
-          ref={sliderBlur.ref}
-          onChange={(event) => onValueChange(normalizeRollDegrees(Number(event.target.value)))}
-          onMouseDown={sliderBlur.handlePointerDown}
-          onMouseUp={sliderBlur.handlePointerEnd}
-          onPointerCancel={sliderBlur.handlePointerEnd}
-          onPointerDown={sliderBlur.handlePointerDown}
-          onPointerUp={sliderBlur.handlePointerEnd}
-        />
-        <span aria-hidden="true" className="opacity-slider-track pointer-events-none" />
-        <span aria-hidden="true" className="opacity-slider-fill pointer-events-none" />
-        <span aria-hidden="true" className="opacity-slider-thumb pointer-events-none" />
-      </div>
+      <AngleSlider
+        aria-label="Roll"
+        className="size-[84px]"
+        value={normalizeRollDegrees(value)}
+        onValueChange={(nextValue) => onValueChange(normalizeRollDegrees(nextValue))}
+      />
       <label className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150">
         <span className="sr-only">Roll value</span>
         <input

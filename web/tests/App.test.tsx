@@ -877,12 +877,15 @@ describe("App", () => {
     expect(within(commonControls).queryByText("No controls")).toBeNull();
     expect(within(commonControls).getByText("Primary direction").isConnected).toBe(true);
     expect(
+      within(commonControls)
+        .getByRole("tablist", { name: "Primary direction" })
+        .getAttribute("aria-orientation"),
+    ).toBe("vertical");
+    expect(
       within(commonControls).getByRole("tab", { name: "Outward" }).getAttribute("aria-selected"),
     ).toBe("true");
-    expect(within(commonControls).getByRole("slider", { name: "Roll" })).toHaveProperty(
-      "value",
-      "0",
-    );
+    expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuenow"))
+      .toBe("0");
     expect(
       within(commonControls).getByRole("textbox", { name: "Roll value" }),
     ).toHaveProperty("value", "0");

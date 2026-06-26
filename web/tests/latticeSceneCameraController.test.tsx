@@ -156,6 +156,7 @@ describe("LatticeScene camera commands", () => {
       style: createDefaultStyle(),
       viewScale: 1,
     };
+    const animationActiveChanges: boolean[] = [];
 
     try {
       const { rerender } = render(<LatticeScene {...props} />);
@@ -168,10 +169,14 @@ describe("LatticeScene camera commands", () => {
           cameraAnimatedCommandVersion={1}
           cameraCommandVersion={1}
           cameraState={aCamera}
+          onCameraCommandAnimationActiveChange={(isActive) => {
+            animationActiveChanges.push(isActive);
+          }}
         />,
       );
       expect(Math.abs(mockCamera.position.x)).toBeLessThan(1e-8);
       expect(mockCamera.position.z).toBeGreaterThan(0);
+      expect(animationActiveChanges).toEqual([true]);
 
       now = 130;
       act(() => latestFrameCallback?.());
@@ -183,6 +188,7 @@ describe("LatticeScene camera commands", () => {
       expect(mockCamera.position.x).toBeGreaterThan(0);
       expect(Math.abs(mockCamera.position.y)).toBeLessThan(1e-8);
       expect(Math.abs(mockCamera.position.z)).toBeLessThan(1e-8);
+      expect(animationActiveChanges).toEqual([true, false]);
     } finally {
       nowSpy.mockRestore();
     }
