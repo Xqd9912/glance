@@ -19,8 +19,10 @@ import {
   POLYHEDRON_EDGE_OPACITY,
   POLYHEDRON_SURFACE_OPACITY,
   PREVIEW_SCENE_MESH_DETAIL,
+  SCENE_FOG_COLOR,
   cellFrameLinePositions,
   computeSceneLayout,
+  createSceneFog,
   polyhedronGeometryFromAtoms,
   previewSafeAreaForViewport,
   twoToneBondCylinderGeometry,
@@ -283,6 +285,26 @@ describe("computeSceneLayout", () => {
     expect(camera.up.z).toBeCloseTo(0);
     expect(camera.near).toBeCloseTo(0.01);
     expect(camera.far).toBeGreaterThanOrEqual(1000);
+  });
+
+  test("maps fog start and strength to a linear scene fog range", () => {
+    expect(createSceneFog(40, 10, 25, 0)).toBeNull();
+
+    const earlyFog = createSceneFog(40, 10, 0, 100);
+    const lateFog = createSceneFog(40, 10, 100, 100);
+    const softFog = createSceneFog(40, 10, 25, 25);
+    const strongFog = createSceneFog(40, 10, 25, 100);
+
+    expect(earlyFog).not.toBeNull();
+    expect(lateFog).not.toBeNull();
+    expect(softFog).not.toBeNull();
+    expect(strongFog).not.toBeNull();
+    expect(earlyFog?.color.getHexString()).toBe(SCENE_FOG_COLOR.slice(1));
+    expect(earlyFog!.near).toBeLessThan(35);
+    expect(lateFog!.near).toBeGreaterThan(earlyFog!.near);
+    expect(lateFog!.far).toBeGreaterThan(earlyFog!.far);
+    expect(strongFog!.near).toBeCloseTo(softFog!.near);
+    expect(strongFog!.far).toBeLessThan(softFog!.far);
   });
 
   test("derives export aspect from the projected currently visible content", () => {

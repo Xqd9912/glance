@@ -63,6 +63,10 @@ import {
   EXPORT_FORMAT_OPTIONS,
   EXPORT_MESH_QUALITY_OPTIONS,
   EXPORT_SUPERSAMPLING_OPTIONS,
+  STYLE_FOG_START_MAX,
+  STYLE_FOG_START_MIN,
+  STYLE_FOG_STRENGTH_MAX,
+  STYLE_FOG_STRENGTH_MIN,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
   createDefaultComponentOpacity,
@@ -883,14 +887,49 @@ function StyleTabContent({
     }));
   }
 
+  function setFogEnabled(fogEnabled: boolean) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogEnabled,
+    }));
+  }
+
+  function setFogStart(fogStart: number) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStart: clampPercentValue(
+        fogStart,
+        STYLE_FOG_START_MIN,
+        STYLE_FOG_START_MAX,
+      ),
+    }));
+  }
+
+  function setFogStrength(fogStrength: number) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStrength: clampPercentValue(
+        fogStrength,
+        STYLE_FOG_STRENGTH_MIN,
+        STYLE_FOG_STRENGTH_MAX,
+      ),
+    }));
+  }
+
   const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
   const resetFeedbackTickRef = useRef(0);
   const resetFeedbackTimeoutRef = useRef<number | null>(null);
+  const [fogResetFeedbackPhase, setFogResetFeedbackPhase] = useState<"a" | "b" | null>(null);
+  const fogResetFeedbackTickRef = useRef(0);
+  const fogResetFeedbackTimeoutRef = useRef<number | null>(null);
 
   useEffect(
     () => () => {
       if (resetFeedbackTimeoutRef.current !== null) {
         window.clearTimeout(resetFeedbackTimeoutRef.current);
+      }
+      if (fogResetFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(fogResetFeedbackTimeoutRef.current);
       }
     },
     [],
@@ -912,6 +951,25 @@ function StyleTabContent({
     resetFeedbackTimeoutRef.current = window.setTimeout(() => {
       setResetFeedbackPhase(null);
       resetFeedbackTimeoutRef.current = null;
+    }, TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS);
+  }
+
+  function handleResetFogClick() {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStart: createDefaultStyle().fogStart,
+      fogStrength: createDefaultStyle().fogStrength,
+    }));
+
+    if (fogResetFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(fogResetFeedbackTimeoutRef.current);
+    }
+
+    fogResetFeedbackTickRef.current += 1;
+    setFogResetFeedbackPhase(fogResetFeedbackTickRef.current % 2 === 0 ? "b" : "a");
+    fogResetFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setFogResetFeedbackPhase(null);
+      fogResetFeedbackTimeoutRef.current = null;
     }, TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS);
   }
 
@@ -969,6 +1027,79 @@ function StyleTabContent({
             min={STYLE_SCALE_MIN.bondThickness}
             value={style.bondThickness}
             onValueChange={(value) => setStyleScale("bondThickness", value)}
+          />
+        </div>
+      </section>
+
+      <Separator />
+
+      <section aria-labelledby="style-fog-label">
+        <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2
+              id="style-fog-label"
+              className="text-xs font-bold leading-tight text-muted-foreground"
+            >
+              Fog
+            </h2>
+            <Switch
+              checked={style.fogEnabled}
+              aria-label="Fog"
+              className="h-4 w-7 p-0.5"
+              thumbClassName="size-3 data-[state=checked]:translate-x-3"
+              onCheckedChange={setFogEnabled}
+            />
+          </div>
+          <span aria-hidden="true" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reset fog"
+                  className={cn(
+                    TOOL_ICON_BUTTON_CLASS,
+                    fogResetFeedbackPhase === "a"
+                      ? TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS
+                      : null,
+                    fogResetFeedbackPhase === "b"
+                      ? TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS
+                      : null,
+                  )}
+                  onClick={handleResetFogClick}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">Reset fog</TooltipContent>
+          </Tooltip>
+        </div>
+        <div className={cn("mt-1", style.fogEnabled ? null : "opacity-55")}>
+          <PercentSliderRow
+            accessibleLabel="Fog"
+            allowZero
+            disabled={!style.fogEnabled}
+            label="Start"
+            max={STYLE_FOG_START_MAX}
+            min={STYLE_FOG_START_MIN}
+            showSnapMarker={false}
+            value={style.fogStart}
+            valueLabel="start"
+            onValueChange={setFogStart}
+          />
+          <PercentSliderRow
+            accessibleLabel="Fog"
+            allowZero
+            disabled={!style.fogEnabled}
+            label="Strength"
+            max={STYLE_FOG_STRENGTH_MAX}
+            min={STYLE_FOG_STRENGTH_MIN}
+            showSnapMarker={false}
+            value={style.fogStrength}
+            valueLabel="strength"
+            onValueChange={setFogStrength}
           />
         </div>
       </section>
@@ -2111,18 +2242,26 @@ function ComponentOpacityRow({
 
 function PercentSliderRow({
   accessibleLabel,
+  allowZero = false,
+  disabled = false,
   label,
   max,
   min,
   onValueChange,
+  showSnapMarker = true,
   value,
+  valueLabel = "scale",
 }: {
   accessibleLabel: string;
+  allowZero?: boolean;
+  disabled?: boolean;
   label: ReactNode;
   max: number;
   min: number;
   onValueChange: (value: number) => void;
+  showSnapMarker?: boolean;
   value: number;
+  valueLabel?: string;
 }) {
   const [valueText, setValueText] = useState(formatPercentValue(value));
   const sliderBlur = useAutoBlurSlider();
@@ -2136,7 +2275,7 @@ function PercentSliderRow({
   }, [value]);
 
   function commitValueText() {
-    const nextValue = parsePercentInput(valueText);
+    const nextValue = parsePercentInput(valueText, { allowZero });
     if (nextValue === null) {
       setValueText(formatPercentValue(value));
       return;
@@ -2173,7 +2312,7 @@ function PercentSliderRow({
 
       <div
         className="opacity-slider-shell relative mr-3 h-5"
-        data-disabled="false"
+        data-disabled={disabled ? "true" : "false"}
         style={sliderStyle}
       >
         <input
@@ -2182,12 +2321,17 @@ function PercentSliderRow({
           max={max}
           step={1}
           value={clampPercentValue(value, min, max)}
-          aria-label={`${accessibleLabel} scale`}
+          aria-label={`${accessibleLabel} ${valueLabel}`}
           aria-valuetext={`${formatPercentValue(value)}%`}
           className="opacity-slider absolute inset-0 z-10 h-full w-full"
+          disabled={disabled}
           ref={sliderBlur.ref}
           onChange={(event) =>
-            onValueChange(snapSliderPercentValue(Number(event.target.value), min, max))
+            onValueChange(
+              showSnapMarker
+                ? snapSliderPercentValue(Number(event.target.value), min, max)
+                : clampPercentValue(Number(event.target.value), min, max),
+            )
           }
           onMouseDown={sliderBlur.handlePointerDown}
           onMouseUp={sliderBlur.handlePointerEnd}
@@ -2196,22 +2340,25 @@ function PercentSliderRow({
           onPointerUp={sliderBlur.handlePointerEnd}
         />
         <span aria-hidden="true" className="opacity-slider-track pointer-events-none" />
-        <span aria-hidden="true" className="opacity-slider-snap-marker pointer-events-none" />
+        {showSnapMarker ? (
+          <span aria-hidden="true" className="opacity-slider-snap-marker pointer-events-none" />
+        ) : null}
         <span aria-hidden="true" className="opacity-slider-fill pointer-events-none" />
         <span aria-hidden="true" className="opacity-slider-thumb pointer-events-none" />
       </div>
 
       <label
         className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150"
-        data-disabled="false"
+        data-disabled={disabled ? "true" : "false"}
       >
-        <span className="sr-only">{accessibleLabel} scale value</span>
+        <span className="sr-only">{accessibleLabel} {valueLabel} value</span>
         <input
           type="text"
           inputMode="numeric"
           value={valueText}
-          aria-label={`${accessibleLabel} scale value`}
+          aria-label={`${accessibleLabel} ${valueLabel} value`}
           className="opacity-value-input h-full w-[1.35rem] border-0 bg-transparent px-0 text-center font-mono text-[0.68rem] leading-none tabular-nums outline-none"
+          disabled={disabled}
           onBlur={commitValueText}
           onChange={(event) => setValueText(event.target.value)}
           onKeyDown={handleValueKeyDown}
@@ -2338,18 +2485,24 @@ function formatPercentValue(value: number): string {
   return String(Math.round(value));
 }
 
-function parsePercentInput(value: string): number | null {
-  return parsePercentNumberInput(value);
+function parsePercentInput(
+  value: string,
+  { allowZero = false }: { allowZero?: boolean } = {},
+): number | null {
+  return parsePercentNumberInput(value, { allowZero });
 }
 
-function parsePercentNumberInput(value: string): number | null {
+function parsePercentNumberInput(
+  value: string,
+  { allowZero = false }: { allowZero?: boolean } = {},
+): number | null {
   const trimmedValue = value.trim().replace(/%$/, "").trim();
   if (trimmedValue === "") {
     return null;
   }
 
   const parsedValue = Number(trimmedValue);
-  if (!Number.isFinite(parsedValue) || parsedValue <= 0) {
+  if (!Number.isFinite(parsedValue) || parsedValue < 0 || (!allowZero && parsedValue <= 0)) {
     return null;
   }
 

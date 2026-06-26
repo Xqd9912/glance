@@ -6,6 +6,7 @@ import {
   Color,
   DoubleSide,
   Float32BufferAttribute,
+  Fog,
   MOUSE,
   OrthographicCamera,
   Quaternion,
@@ -122,6 +123,11 @@ export const POLYHEDRON_EDGE_COLOR = "#f2f5f9";
 export const POLYHEDRON_EDGE_OPACITY = 0.8;
 const POLYHEDRON_EDGE_OPACITY_RATIO =
   POLYHEDRON_EDGE_OPACITY / POLYHEDRON_SURFACE_OPACITY;
+export const SCENE_FOG_COLOR = "#fafafa";
+const FOG_START_OFFSET_EARLY = -0.7;
+const FOG_START_OFFSET_LATE = 0.35;
+const FOG_FALLOFF_SPAN_STRONG = 0.35;
+const FOG_FALLOFF_SPAN_SOFT = 1.15;
 
 export {
   BOND_RADIUS,
@@ -350,16 +356,19 @@ function PreviewSceneContent({
   const atomById = useMemo(() => new Map(scene.atoms.map((atom) => [atom.id, atom])), [scene]);
 
   return (
-    <MemoizedStructureSceneObjects
-      atomById={atomById}
-      componentOpacity={componentOpacity}
-      groupPosition={layout.groupPosition}
-      meshDetail={meshDetail}
-      scene={scene}
-      showAtoms={showAtoms}
-      showUnitCell={showUnitCell}
-      style={style}
-    />
+    <>
+      <SceneFog layout={layout} style={style} />
+      <MemoizedStructureSceneObjects
+        atomById={atomById}
+        componentOpacity={componentOpacity}
+        groupPosition={layout.groupPosition}
+        meshDetail={meshDetail}
+        scene={scene}
+        showAtoms={showAtoms}
+        showUnitCell={showUnitCell}
+        style={style}
+      />
+    </>
   );
 }
 
@@ -398,17 +407,99 @@ export function ExportSceneContent({
   }, [camera, exportFramePlan]);
 
   return (
-    <MemoizedStructureSceneObjects
-      atomById={atomById}
-      componentOpacity={componentOpacity}
-      groupPosition={layout.groupPosition}
-      meshDetail={meshDetail}
-      scene={scene}
-      showAtoms={showAtoms}
-      showUnitCell={showUnitCell}
-      style={style}
-    />
+    <>
+      <SceneFog layout={layout} style={style} />
+      <MemoizedStructureSceneObjects
+        atomById={atomById}
+        componentOpacity={componentOpacity}
+        groupPosition={layout.groupPosition}
+        meshDetail={meshDetail}
+        scene={scene}
+        showAtoms={showAtoms}
+        showUnitCell={showUnitCell}
+        style={style}
+      />
+    </>
   );
+}
+
+function SceneFog({
+  layout,
+  style,
+}: {
+  layout: SceneLayout;
+  style: StyleState;
+}) {
+  const { scene } = useThree();
+  const fog = useMemo(
+    () =>
+      style.fogEnabled
+        ? createSceneFog(
+            layout.standardPose.distance,
+            layout.span,
+            style.fogStart,
+            style.fogStrength,
+          )
+        : null,
+    [
+      layout.span,
+      layout.standardPose.distance,
+      style.fogEnabled,
+      style.fogStart,
+      style.fogStrength,
+    ],
+  );
+
+  useLayoutEffect(() => {
+    const previousFog = scene.fog;
+    scene.fog = fog;
+
+    return () => {
+      if (scene.fog === fog) {
+        scene.fog = previousFog;
+      }
+    };
+  }, [fog, scene]);
+
+  return null;
+}
+
+export function createSceneFog(
+  cameraDistance: number,
+  span: number,
+  start: number,
+  strength: number,
+): Fog | null {
+  const safeStart = Number.isFinite(start) ? start : 0;
+  const safeStrength = Number.isFinite(strength) ? strength : 0;
+  const normalizedStart = Math.min(1, Math.max(0, safeStart / 100));
+  const normalizedStrength = Math.min(1, Math.max(0, safeStrength / 100));
+  if (normalizedStrength <= 0) {
+    return null;
+  }
+
+  const safeSpan = Number.isFinite(span) ? Math.max(1, span) : 1;
+  const safeCameraDistance = Number.isFinite(cameraDistance)
+    ? Math.max(0.01, cameraDistance)
+    : 0.01;
+  const startOffset = lerp(
+    FOG_START_OFFSET_EARLY,
+    FOG_START_OFFSET_LATE,
+    normalizedStart,
+  );
+  const falloffSpan = lerp(
+    FOG_FALLOFF_SPAN_SOFT,
+    FOG_FALLOFF_SPAN_STRONG,
+    normalizedStrength,
+  );
+  const near = safeCameraDistance + safeSpan * startOffset;
+  const far = near + safeSpan * falloffSpan;
+
+  return new Fog(SCENE_FOG_COLOR, near, far);
+}
+
+function lerp(start: number, end: number, amount: number): number {
+  return start + (end - start) * amount;
 }
 
 function StructureSceneObjects({

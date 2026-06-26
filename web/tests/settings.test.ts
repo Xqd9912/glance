@@ -4,6 +4,10 @@ import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
   DEFAULT_RENDER_BACKEND,
   RENDER_BACKEND_OPTIONS,
+  STYLE_FOG_START_MAX,
+  STYLE_FOG_START_MIN,
+  STYLE_FOG_STRENGTH_MAX,
+  STYLE_FOG_STRENGTH_MIN,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
   createDefaultExportSettings,
@@ -35,7 +39,14 @@ describe("settings", () => {
       bondColorMode: "by-atom",
       bondThickness: 100,
       colorScheme: "vesta-soft",
+      fogEnabled: false,
+      fogStart: 50,
+      fogStrength: 50,
     });
+    expect(STYLE_FOG_START_MIN).toBe(0);
+    expect(STYLE_FOG_START_MAX).toBe(100);
+    expect(STYLE_FOG_STRENGTH_MIN).toBe(0);
+    expect(STYLE_FOG_STRENGTH_MAX).toBe(100);
     expect(STYLE_SCALE_MIN.atomRadius).toBe(0);
     expect(STYLE_SCALE_MAX.bondThickness).toBe(200);
   });

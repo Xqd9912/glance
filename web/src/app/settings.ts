@@ -64,6 +64,9 @@ export interface StyleState {
   bondColorMode: BondColorMode;
   bondThickness: number;
   colorScheme: ColorScheme;
+  fogEnabled: boolean;
+  fogStart: number;
+  fogStrength: number;
 }
 
 export const DEFAULT_STYLE: StyleState = {
@@ -72,6 +75,9 @@ export const DEFAULT_STYLE: StyleState = {
   bondColorMode: "by-atom",
   bondThickness: 100,
   colorScheme: "vesta-soft",
+  fogEnabled: false,
+  fogStart: 50,
+  fogStrength: 50,
 };
 
 export const STYLE_SCALE_MIN: Pick<StyleState, "atomRadius" | "bondThickness"> = {
@@ -83,6 +89,10 @@ export const STYLE_SCALE_MAX: Pick<StyleState, "atomRadius" | "bondThickness"> =
   atomRadius: 200,
   bondThickness: 200,
 };
+export const STYLE_FOG_STRENGTH_MIN = 0;
+export const STYLE_FOG_STRENGTH_MAX = 100;
+export const STYLE_FOG_START_MIN = 0;
+export const STYLE_FOG_START_MAX = 100;
 
 export type ExportFormat = "png" | "pdf";
 export type ExportMeshQuality = "low" | "medium" | "high" | "xhigh";

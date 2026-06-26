@@ -593,6 +593,24 @@ describe("App", () => {
     const colorSchemeSelect = within(commonControls).getByRole("combobox", {
       name: "Color scheme",
     });
+    const fogSwitch = within(commonControls).getByRole("switch", {
+      name: "Fog",
+    });
+    const fogStartSlider = within(commonControls).getByRole("slider", {
+      name: "Fog start",
+    }) as HTMLInputElement;
+    const fogStartInput = within(commonControls).getByRole("textbox", {
+      name: "Fog start value",
+    }) as HTMLInputElement;
+    const fogStrengthSlider = within(commonControls).getByRole("slider", {
+      name: "Fog strength",
+    }) as HTMLInputElement;
+    const fogStrengthInput = within(commonControls).getByRole("textbox", {
+      name: "Fog strength value",
+    }) as HTMLInputElement;
+    const resetFogButton = within(commonControls).getByRole("button", {
+      name: "Reset fog",
+    }) as HTMLButtonElement;
 
     expect(atomRadiusSlider.min).toBe("0");
     expect(atomRadiusSlider.max).toBe("200");
@@ -605,6 +623,15 @@ describe("App", () => {
     expect(atomRadiusModelSelect.textContent).toContain("Uniform");
     expect(bondStyleSelect.textContent).toContain("By atom");
     expect(colorSchemeSelect.textContent).toContain("VESTA Soft");
+    expect(fogSwitch.getAttribute("aria-checked")).toBe("false");
+    expect(fogStartSlider.value).toBe("50");
+    expect(fogStartInput.value).toBe("50");
+    expect(fogStrengthSlider.value).toBe("50");
+    expect(fogStrengthInput.value).toBe("50");
+    expect(fogStartSlider.disabled).toBe(true);
+    expect(fogStartInput.disabled).toBe(true);
+    expect(fogStrengthSlider.disabled).toBe(true);
+    expect(fogStrengthInput.disabled).toBe(true);
 
     await user.click(atomRadiusModelSelect);
     expect(await screen.findByText("Atom radius model")).toBeTruthy();
@@ -629,6 +656,21 @@ describe("App", () => {
 
     expect(colorSchemeSelect.textContent).toContain("Jmol");
     expect(fetchCalls).toHaveLength(1);
+
+    await user.click(fogSwitch);
+    expect(fogSwitch.getAttribute("aria-checked")).toBe("true");
+    expect(fogStartSlider.disabled).toBe(false);
+    expect(fogStartInput.disabled).toBe(false);
+    expect(fogStrengthSlider.disabled).toBe(false);
+    expect(fogStrengthInput.disabled).toBe(false);
+
+    fireEvent.change(fogStartSlider, { target: { value: "18" } });
+    fireEvent.change(fogStrengthSlider, { target: { value: "72" } });
+
+    expect(fogStartInput.value).toBe("18");
+    expect(fogStartSlider.value).toBe("18");
+    expect(fogStrengthInput.value).toBe("72");
+    expect(fogStrengthSlider.value).toBe("72");
 
     fireEvent.change(atomRadiusSlider, { target: { value: "200" } });
 
@@ -677,6 +719,18 @@ describe("App", () => {
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
     expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
     expect(colorSchemeSelect.textContent).toContain("Jmol");
+    expect(fogSwitch.getAttribute("aria-checked")).toBe("true");
+    expect(fogStartInput.value).toBe("18");
+    expect(fogStrengthInput.value).toBe("72");
+
+    await user.click(resetFogButton);
+
+    expect(resetFogButton.className).toContain("tool-icon-button-reset-feedback");
+    expect(fogSwitch.getAttribute("aria-checked")).toBe("true");
+    expect(fogStartInput.value).toBe("50");
+    expect(fogStartSlider.value).toBe("50");
+    expect(fogStrengthInput.value).toBe("50");
+    expect(fogStrengthSlider.value).toBe("50");
   });
 
   test("lets export controls update settings and route PNG and PDF actions", async () => {
