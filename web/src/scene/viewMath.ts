@@ -32,7 +32,7 @@ const DEFAULT_CELL_VECTORS: readonly [VectorTuple, VectorTuple, VectorTuple] = [
 
 const FALLBACK_OUTWARD = new Vector3(0, 0, 1).normalize();
 const FALLBACK_UP = new Vector3(0, 1, 0).normalize();
-const PROJECTED_FIT_PADDING_RATIO = 1.08;
+const PROJECTED_FIT_PADDING_RATIO = 1.15;
 
 export function computeStandardCameraPose(
   vectors: VectorTuple[],

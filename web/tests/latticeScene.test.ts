@@ -88,7 +88,7 @@ describe("computeSceneLayout", () => {
       safeArea,
     );
 
-    expect(zoom).toBeCloseTo(404 / (17 * 1.08));
+    expect(zoom).toBeCloseTo(404 / (17 * 1.15));
   });
 
   test("fits directly from the projected size instead of a 3D span cap", () => {
@@ -108,7 +108,7 @@ describe("computeSceneLayout", () => {
       safeArea,
     );
 
-    expect(zoom).toBeCloseTo(404 / (4 * 1.08));
+    expect(zoom).toBeCloseTo(404 / (4 * 1.15));
   });
 
   test("offsets the orthographic frustum toward the safe-area center", () => {
