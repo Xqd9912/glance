@@ -13,22 +13,44 @@ class MockControls {
   enabled = true;
   maxZoom = Infinity;
   minZoom = 0;
+  keyState = -1;
   mouseButtons: Record<string, unknown> = {};
   noPan = false;
   noRotate = false;
   noZoom = false;
+  state = -1;
   target = new Vector3();
   touches: Record<string, unknown> = {};
+  updateCalls = 0;
+  private listeners = new Map<string, Set<() => void>>();
 
-  addEventListener() {}
+  constructor() {
+    latestControls = this;
+  }
+
+  addEventListener(type: string, listener: () => void) {
+    const listeners = this.listeners.get(type) ?? new Set<() => void>();
+    listeners.add(listener);
+    this.listeners.set(type, listeners);
+  }
 
   dispose() {}
 
   handleResize() {}
 
-  removeEventListener() {}
+  removeEventListener(type: string, listener: () => void) {
+    this.listeners.get(type)?.delete(listener);
+  }
 
-  update() {}
+  dispatchTestEvent(type: string) {
+    for (const listener of this.listeners.get(type) ?? []) {
+      listener();
+    }
+  }
+
+  update() {
+    this.updateCalls += 1;
+  }
 }
 
 class MockOrbitControls extends MockControls {}
@@ -37,10 +59,12 @@ class MockTrackballControls extends MockControls {}
 
 let mockCamera = new OrthographicCamera();
 let latestFrameCallback: (() => void) | null = null;
+let latestControls: MockControls | null = null;
 
 function resetMockCamera() {
   mockCamera = new OrthographicCamera();
   latestFrameCallback = null;
+  latestControls = null;
 }
 
 mock.module("@react-three/fiber", () => ({
@@ -82,6 +106,7 @@ mock.module("three/examples/jsm/controls/TrackballControls.js", () => ({
 }));
 
 const { createDefaultComponentOpacity, createDefaultStyle } = await import("../src/app/settings");
+const { createCameraInteractionStore } = await import("../src/app/cameraInteractionStore");
 const { LatticeScene } = await import("../src/scene/LatticeScene");
 const { createDefaultCrystalCameraState, stateWithDirectAxis } = await import(
   "../src/scene/crystalCamera"
@@ -99,16 +124,15 @@ describe("LatticeScene camera commands", () => {
     const bCamera = stateWithDirectAxis(scene.cell.vectors, defaultCamera, "b");
     const props = {
       cameraCommandVersion: 0,
+      cameraInteractionStore: createCameraInteractionStore(),
       cameraState: defaultCamera,
       componentOpacity: createDefaultComponentOpacity(),
       interactionLocked: false,
       interactionMode: "trackball" as const,
-      onViewScaleChange: () => {},
       renderBackend: "webgl" as const,
       resetCounter: 0,
       scene,
       style: createDefaultStyle(),
-      viewScale: 1,
     };
 
     const { rerender } = render(<LatticeScene {...props} />);
@@ -145,16 +169,15 @@ describe("LatticeScene camera commands", () => {
     const props = {
       cameraAnimatedCommandVersion: 0,
       cameraCommandVersion: 0,
+      cameraInteractionStore: createCameraInteractionStore(),
       cameraState: defaultCamera,
       componentOpacity: createDefaultComponentOpacity(),
       interactionLocked: false,
       interactionMode: "trackball" as const,
-      onViewScaleChange: () => {},
       renderBackend: "webgl" as const,
       resetCounter: 0,
       scene,
       style: createDefaultStyle(),
-      viewScale: 1,
     };
     const animationActiveChanges: boolean[] = [];
 
@@ -192,6 +215,160 @@ describe("LatticeScene camera commands", () => {
     } finally {
       nowSpy.mockRestore();
     }
+  });
+
+  test("applies external zoom without advancing control damping", () => {
+    const scene = orthogonalScene();
+    const defaultCamera = createDefaultCrystalCameraState();
+    const cameraInteractionStore = createCameraInteractionStore();
+    const props = {
+      cameraCommandVersion: 0,
+      cameraInteractionStore,
+      cameraState: defaultCamera,
+      componentOpacity: createDefaultComponentOpacity(),
+      interactionLocked: false,
+      interactionMode: "trackball" as const,
+      renderBackend: "webgl" as const,
+      resetCounter: 0,
+      scene,
+      style: createDefaultStyle(),
+    };
+
+    render(<LatticeScene {...props} />);
+    const controls = latestControls;
+    expect(controls).not.toBeNull();
+    if (!controls) {
+      return;
+    }
+
+    controls.updateCalls = 0;
+    const initialZoom = mockCamera.zoom;
+    act(() => cameraInteractionStore.requestViewScale(2));
+
+    expect(mockCamera.zoom).toBeCloseTo(initialZoom * 2);
+    expect(controls.updateCalls).toBe(0);
+  });
+
+  test("syncs control zoom to the interaction store without emitting commands", () => {
+    const scene = orthogonalScene();
+    const defaultCamera = createDefaultCrystalCameraState();
+    const cameraInteractionStore = createCameraInteractionStore();
+    const viewScaleSnapshots: number[] = [];
+    cameraInteractionStore.subscribeViewScale(() => {
+      viewScaleSnapshots.push(cameraInteractionStore.getViewScaleSnapshot());
+    });
+    const initialCommandVersion =
+      cameraInteractionStore.getViewScaleCommandSnapshot().version;
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={cameraInteractionStore}
+        cameraState={defaultCamera}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        renderBackend="webgl"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    const initialZoom = mockCamera.zoom;
+    mockCamera.zoom = initialZoom * 1.006;
+    act(() => latestControls?.dispatchTestEvent("change"));
+    expect(viewScaleSnapshots).toHaveLength(1);
+    expect(viewScaleSnapshots[0]).toBeCloseTo(1.006);
+    expect(cameraInteractionStore.getViewScaleCommandSnapshot().version).toBe(
+      initialCommandVersion,
+    );
+  });
+
+  test("keeps user camera interaction active until inertia settles", () => {
+    const scene = orthogonalScene();
+    const defaultCamera = createDefaultCrystalCameraState();
+    const interactionChanges: {
+      isActive: boolean;
+      quaternionW: number | null;
+    }[] = [];
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={defaultCamera}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        onCameraControlsInteractionActiveChange={(isActive, quaternionSnapshot) => {
+          interactionChanges.push({
+            isActive,
+            quaternionW: quaternionSnapshot?.w ?? null,
+          });
+        }}
+        renderBackend="webgl"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    if (latestControls) {
+      latestControls.state = 0;
+    }
+    act(() => latestControls?.dispatchTestEvent("start"));
+    act(() => latestControls?.dispatchTestEvent("end"));
+    expect(interactionChanges).toEqual([{ isActive: true, quaternionW: null }]);
+
+    mockCamera.quaternion.set(0, 0, 0.15, 0.85).normalize();
+    act(() => latestFrameCallback?.());
+    expect(interactionChanges).toEqual([{ isActive: true, quaternionW: null }]);
+
+    mockCamera.quaternion.set(0, 0, 0.25, 0.75).normalize();
+    act(() => latestFrameCallback?.());
+    expect(interactionChanges).toEqual([{ isActive: true, quaternionW: null }]);
+
+    act(() => latestFrameCallback?.());
+
+    expect(interactionChanges).toEqual([
+      { isActive: true, quaternionW: null },
+      { isActive: false, quaternionW: mockCamera.quaternion.w },
+    ]);
+  });
+
+  test("does not report pure zoom controls as camera direction interaction", () => {
+    const scene = orthogonalScene();
+    const defaultCamera = createDefaultCrystalCameraState();
+    const interactionChanges: boolean[] = [];
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={defaultCamera}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        onCameraControlsInteractionActiveChange={(isActive) => {
+          interactionChanges.push(isActive);
+        }}
+        renderBackend="webgl"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    act(() => latestControls?.dispatchTestEvent("start"));
+    act(() => latestControls?.dispatchTestEvent("end"));
+    if (latestControls) {
+      latestControls.state = 1;
+    }
+    act(() => latestControls?.dispatchTestEvent("start"));
+    act(() => latestControls?.dispatchTestEvent("end"));
+
+    expect(interactionChanges).toEqual([]);
   });
 });
 

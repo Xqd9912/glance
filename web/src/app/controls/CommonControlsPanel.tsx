@@ -1174,7 +1174,7 @@ function CameraTabContent({
       <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-3 px-1.5">
         <section
           aria-labelledby="camera-primary-label"
-          className="flex min-w-[9rem] flex-col items-start gap-2"
+          className="flex min-h-[96px] min-w-[8.5rem] flex-col items-start justify-center gap-2"
         >
           <h2
             id="camera-primary-label"
@@ -1275,18 +1275,18 @@ function RollControl({
   return (
     <section
       aria-labelledby="camera-roll-label"
-      className="flex min-w-0 items-center justify-end gap-2"
+      className="relative flex min-h-[104px] min-w-0 justify-center pr-12"
     >
       <h2 id="camera-roll-label" className="sr-only">
         Roll
       </h2>
       <AngleSlider
         aria-label="Roll"
-        className="size-[84px]"
+        className="size-24"
         value={normalizeRollDegrees(value)}
         onValueChange={(nextValue) => onValueChange(normalizeRollDegrees(nextValue))}
       />
-      <label className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150">
+      <label className="opacity-value-control group absolute bottom-2 right-0 flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150">
         <span className="sr-only">Roll value</span>
         <input
           type="text"

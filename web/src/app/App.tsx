@@ -51,6 +51,7 @@ import {
   CommonControlsPanel,
 } from "./controls/CommonControlsPanel";
 import { ViewControlRail } from "./controls/ViewControlRail";
+import { createCameraInteractionStore } from "./cameraInteractionStore";
 import { deriveElementLegendEntries } from "./elementLegend";
 import {
   createFigureExportFile,
@@ -83,13 +84,13 @@ import {
   visibleSceneForComponents,
 } from "./settings";
 import {
+  DEFAULT_VIEW_SCALE,
   createPreviewViewState,
   resetPreviewViewState,
   setPreviewCameraState,
   setPreviewCameraVectorsExpanded,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
-  setPreviewViewScale,
   type InteractionMode,
 } from "./viewState";
 
@@ -134,9 +135,12 @@ export function App() {
   const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
   const [cameraOrientationVersion, setCameraOrientationVersion] = useState(0);
   const [isCameraCommandAnimationActive, setIsCameraCommandAnimationActive] = useState(false);
+  const [isCameraControlsInteractionActive, setIsCameraControlsInteractionActive] =
+    useState(false);
   const [cameraControlsFrozenState, setCameraControlsFrozenState] =
     useState<CrystalCameraState | null>(null);
   const [viewState, setViewState] = useState(createPreviewViewState);
+  const [cameraInteractionStore] = useState(createCameraInteractionStore);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
   const viewportSize = useViewportSize();
@@ -147,6 +151,7 @@ export function App() {
   const cameraControlFreezeCandidateRef = useRef<CrystalCameraState | null>(null);
   const cameraControlFreezeRequestRef = useRef(0);
   const isCameraCommandAnimationActiveRef = useRef(false);
+  const isCameraControlsInteractionActiveRef = useRef(false);
   const lockedInteractionPointerRef = useRef<LockedInteractionPointer | null>(null);
   const lockedInteractionWheelIdleTimeoutRef = useRef<number | null>(null);
   const visibleScene = useMemo(
@@ -164,11 +169,34 @@ export function App() {
     };
   }, [cameraControlsFrozenState, viewState.camera]);
 
-  const clearCameraCommandAnimationState = useCallback(() => {
+  const syncCameraOrientationToViewState = useCallback(() => {
+    setCameraOrientationVersion((version) => version + 1);
+    setViewState((currentViewState) => {
+      if (!visibleScene) {
+        return currentViewState;
+      }
+
+      const poseVectors = vectorsFromCameraQuaternion(cameraOrientationRef.current);
+      return setPreviewCameraState(
+        currentViewState,
+        stateFromViewVectors(
+          visibleScene.cell.vectors,
+          currentViewState.camera.primary,
+          poseVectors.up,
+          poseVectors.outward,
+          currentViewState.camera.vectorsExpanded,
+        ),
+      );
+    });
+  }, [visibleScene]);
+
+  const clearCameraDerivedUiFreezeState = useCallback(() => {
     cameraControlFreezeRequestRef.current += 1;
     cameraControlFreezeCandidateRef.current = null;
     isCameraCommandAnimationActiveRef.current = false;
+    isCameraControlsInteractionActiveRef.current = false;
     setIsCameraCommandAnimationActive(false);
+    setIsCameraControlsInteractionActive(false);
     setCameraControlsFrozenState(null);
   }, []);
 
@@ -181,7 +209,8 @@ export function App() {
     queueMicrotask(() => {
       if (
         cameraControlFreezeRequestRef.current !== freezeRequest ||
-        isCameraCommandAnimationActiveRef.current
+        isCameraCommandAnimationActiveRef.current ||
+        isCameraControlsInteractionActiveRef.current
       ) {
         return;
       }
@@ -193,10 +222,6 @@ export function App() {
     setCameraCommandVersion((version) => version + 1);
     setCameraAnimatedCommandVersion((version) => version + 1);
   }, [cameraControlsPanelState]);
-
-  const handleViewScaleChange = useCallback((viewScale: number) => {
-    setViewState((currentViewState) => setPreviewViewScale(currentViewState, viewScale));
-  }, []);
 
   const handleInteractionModeChange = useCallback((interactionMode: InteractionMode) => {
     setViewState((currentViewState) =>
@@ -222,35 +247,22 @@ export function App() {
   );
 
   const handleResetView = useCallback(() => {
-    clearCameraCommandAnimationState();
+    clearCameraDerivedUiFreezeState();
+    cameraInteractionStore.requestViewScale(DEFAULT_VIEW_SCALE);
     setViewState(resetPreviewViewState);
     setCameraCommandVersion((version) => version + 1);
-  }, [clearCameraCommandAnimationState]);
+  }, [cameraInteractionStore, clearCameraDerivedUiFreezeState]);
 
   const handleCameraOrientationChange = useCallback(() => {
-    if (isCameraCommandAnimationActiveRef.current) {
+    if (
+      isCameraCommandAnimationActiveRef.current ||
+      isCameraControlsInteractionActiveRef.current
+    ) {
       return;
     }
 
-    setCameraOrientationVersion((version) => version + 1);
-    setViewState((currentViewState) => {
-      if (!visibleScene) {
-        return currentViewState;
-      }
-
-      const poseVectors = vectorsFromCameraQuaternion(cameraOrientationRef.current);
-      return setPreviewCameraState(
-        currentViewState,
-        stateFromViewVectors(
-          visibleScene.cell.vectors,
-          currentViewState.camera.primary,
-          poseVectors.up,
-          poseVectors.outward,
-          currentViewState.camera.vectorsExpanded,
-        ),
-      );
-    });
-  }, [visibleScene]);
+    syncCameraOrientationToViewState();
+  }, [syncCameraOrientationToViewState]);
 
   const handleCameraStateChange = useCallback((cameraState: CrystalCameraState) => {
     startAnimatedCameraCommand(cameraState);
@@ -262,7 +274,7 @@ export function App() {
         return;
       }
 
-      clearCameraCommandAnimationState();
+      clearCameraDerivedUiFreezeState();
       setViewState((currentViewState) =>
         setPreviewCameraState(
           currentViewState,
@@ -275,7 +287,7 @@ export function App() {
         ),
       );
     },
-    [clearCameraCommandAnimationState, visibleScene],
+    [clearCameraDerivedUiFreezeState, visibleScene],
   );
 
   const handleCameraRollChange = useCallback(
@@ -284,7 +296,7 @@ export function App() {
         return;
       }
 
-      clearCameraCommandAnimationState();
+      clearCameraDerivedUiFreezeState();
       setViewState((currentViewState) =>
         setPreviewCameraState(
           currentViewState,
@@ -293,7 +305,7 @@ export function App() {
       );
       setCameraCommandVersion((version) => version + 1);
     },
-    [clearCameraCommandAnimationState, visibleScene],
+    [clearCameraDerivedUiFreezeState, visibleScene],
   );
 
   const handleCameraVectorsExpandedChange = useCallback((vectorsExpanded: boolean) => {
@@ -326,9 +338,36 @@ export function App() {
 
     cameraControlFreezeRequestRef.current += 1;
     cameraControlFreezeCandidateRef.current = null;
-    setCameraControlsFrozenState(null);
-    setCameraOrientationVersion((version) => version + 1);
+    if (!isCameraControlsInteractionActiveRef.current) {
+      setCameraControlsFrozenState(null);
+      setCameraOrientationVersion((version) => version + 1);
+    }
   }, []);
+
+  const handleCameraControlsInteractionActiveChange = useCallback(
+    (isActive: boolean, quaternionSnapshot?: Quaternion) => {
+      isCameraControlsInteractionActiveRef.current = isActive;
+      setIsCameraControlsInteractionActive(isActive);
+
+      if (isActive) {
+        cameraControlFreezeRequestRef.current += 1;
+        cameraControlFreezeCandidateRef.current = cameraControlsPanelState;
+        setCameraControlsFrozenState(cameraControlsPanelState);
+        return;
+      }
+
+      cameraControlFreezeRequestRef.current += 1;
+      cameraControlFreezeCandidateRef.current = null;
+      if (quaternionSnapshot) {
+        cameraOrientationRef.current.copy(quaternionSnapshot);
+      }
+      syncCameraOrientationToViewState();
+      if (!isCameraCommandAnimationActiveRef.current) {
+        setCameraControlsFrozenState(null);
+      }
+    },
+    [cameraControlsPanelState, syncCameraOrientationToViewState],
+  );
 
   useEffect(() => {
     if (!isStaticScenePreview) {
@@ -436,7 +475,9 @@ export function App() {
     cameraControlFreezeRequestRef.current += 1;
     cameraControlFreezeCandidateRef.current = null;
     isCameraCommandAnimationActiveRef.current = false;
+    isCameraControlsInteractionActiveRef.current = false;
     setIsCameraCommandAnimationActive(false);
+    setIsCameraControlsInteractionActive(false);
     setCameraControlsFrozenState(null);
     setCameraCommandVersion((version) => version + 1);
     setCameraOrientationVersion((version) => version + 1);
@@ -764,11 +805,16 @@ export function App() {
             cameraOrientationRef={cameraOrientationRef}
             onCameraOrientationChange={handleCameraOrientationChange}
             onCameraCommandAnimationActiveChange={handleCameraCommandAnimationActiveChange}
-            suspendCameraOrientationUpdates={isCameraCommandAnimationActive}
+            onCameraControlsInteractionActiveChange={
+              handleCameraControlsInteractionActiveChange
+            }
+            cameraInteractionStore={cameraInteractionStore}
+            suspendCameraOrientationUpdates={
+              isCameraCommandAnimationActive || isCameraControlsInteractionActive
+            }
             interactionLocked={viewState.interactionLocked}
             interactionMode={viewState.interactionMode}
             layoutScene={scene ?? visibleScene}
-            onViewScaleChange={handleViewScaleChange}
             resetCounter={viewState.resetCounter}
             renderBackend={renderBackend}
             safeArea={previewSafeArea}
@@ -777,7 +823,6 @@ export function App() {
             style={style}
             showAtoms={componentVisibility.atoms}
             showUnitCell={componentVisibility.unitCell}
-            viewScale={viewState.viewScale}
           />
         ) : (
           <div
@@ -887,8 +932,7 @@ export function App() {
             lockedInteractionFeedbackCount={lockedInteractionFeedbackCount}
             onInteractionLockedChange={handleInteractionLockedChange}
             onResetView={handleResetView}
-            onViewScaleChange={handleViewScaleChange}
-            viewScale={viewState.viewScale}
+            cameraInteractionStore={cameraInteractionStore}
           />
 
           <InspectorToggle

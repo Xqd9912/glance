@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import {
   TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS,
   TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS,
 } from "../surface";
+import type { CameraInteractionStore } from "../cameraInteractionStore";
 import {
   formatZoomPercent,
   parseZoomPercentInput,
@@ -35,22 +37,25 @@ const ZOOM_SLIDER_HEIGHT_PX = 180;
 const ZOOM_SLIDER_THUMB_SIZE_PX = 14;
 
 export function ViewControlRail({
+  cameraInteractionStore,
   className,
   interactionLocked,
   lockedInteractionFeedbackCount,
   onInteractionLockedChange,
   onResetView,
-  onViewScaleChange,
-  viewScale,
 }: {
+  cameraInteractionStore: CameraInteractionStore;
   className?: string;
   interactionLocked: boolean;
   lockedInteractionFeedbackCount: number;
   onInteractionLockedChange: (interactionLocked: boolean) => void;
   onResetView: () => void;
-  onViewScaleChange: (viewScale: number) => void;
-  viewScale: number;
 }) {
+  const viewScale = useSyncExternalStore(
+    cameraInteractionStore.subscribeViewScale,
+    cameraInteractionStore.getViewScaleSnapshot,
+    cameraInteractionStore.getViewScaleSnapshot,
+  );
   const [lockFeedbackPhase, setLockFeedbackPhase] = useState<"a" | "b" | null>(null);
   const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
   const [zoomText, setZoomText] = useState(formatZoomPercent(viewScale));
@@ -170,7 +175,7 @@ export function ViewControlRail({
       return;
     }
 
-    onViewScaleChange(nextScale);
+    cameraInteractionStore.requestViewScale(nextScale);
   }
 
   function handleZoomKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -262,7 +267,9 @@ export function ViewControlRail({
               onChange={(event) => {
                 const snappedPosition = snapZoomSliderPosition(Number(event.target.value) / 1000);
 
-                onViewScaleChange(sliderPositionToViewScale(snappedPosition));
+                cameraInteractionStore.requestViewScale(
+                  sliderPositionToViewScale(snappedPosition),
+                );
                 if (isZoomSliderPointerActiveRef.current) {
                   scheduleZoomSliderBlur();
                 }

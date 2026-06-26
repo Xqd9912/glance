@@ -8,7 +8,6 @@ import {
   resetPreviewViewState,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
-  setPreviewViewScale,
   sliderPositionToViewScale,
   snapZoomSliderPosition,
   viewScaleToSliderPosition,
@@ -22,13 +21,12 @@ describe("preview view state", () => {
       interactionLocked: false,
       interactionMode: "trackball",
       resetCounter: 0,
-      viewScale: 1,
     });
   });
 
-  test("resets zoom and emits a reset signal without changing lock or mode", () => {
+  test("emits a reset signal without changing lock or mode", () => {
     const state = setPreviewInteractionLocked(
-      setPreviewInteractionMode(setPreviewViewScale(createPreviewViewState(), 3), "orbit"),
+      setPreviewInteractionMode(createPreviewViewState(), "orbit"),
       true,
     );
 
@@ -37,7 +35,6 @@ describe("preview view state", () => {
       interactionLocked: true,
       interactionMode: "orbit",
       resetCounter: 1,
-      viewScale: 1,
     });
   });
 

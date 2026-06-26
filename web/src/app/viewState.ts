@@ -13,7 +13,6 @@ export interface PreviewViewState {
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   resetCounter: number;
-  viewScale: number;
 }
 
 export const MIN_VIEW_SCALE = 0.2;
@@ -36,7 +35,6 @@ export function createPreviewViewState(): PreviewViewState {
     interactionLocked: false,
     interactionMode: "trackball",
     resetCounter: 0,
-    viewScale: DEFAULT_VIEW_SCALE,
   };
 }
 
@@ -45,7 +43,6 @@ export function resetPreviewViewState(state: PreviewViewState): PreviewViewState
     ...state,
     camera: createDefaultCrystalCameraState(),
     resetCounter: state.resetCounter + 1,
-    viewScale: DEFAULT_VIEW_SCALE,
   };
 }
 
@@ -93,16 +90,6 @@ export function setPreviewCameraVectorsExpanded(
       ...state.camera,
       vectorsExpanded,
     },
-  };
-}
-
-export function setPreviewViewScale(
-  state: PreviewViewState,
-  viewScale: number,
-): PreviewViewState {
-  return {
-    ...state,
-    viewScale: clampViewScale(viewScale),
   };
 }
 
