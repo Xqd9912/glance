@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-import pretty_lattice.structures.scene as scene_module
+import pretty_lattice.structures.connectivity as connectivity_module
 from pretty_lattice.server.app import create_app
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "structures"
@@ -140,7 +140,7 @@ async def test_structure_preview_upload_endpoint_returns_bond_warning(monkeypatc
     def fail_bonds(**_kwargs: object) -> list[dict[str, object]]:
         raise RuntimeError("neighbor graph unavailable")
 
-    monkeypatch.setattr(scene_module, "_build_bonds", fail_bonds)
+    monkeypatch.setattr(connectivity_module, "build_bonds", fail_bonds)
 
     async with AsyncClient(
         transport=ASGITransport(app=create_app()), base_url="http://testserver"

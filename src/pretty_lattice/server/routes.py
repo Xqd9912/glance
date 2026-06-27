@@ -5,9 +5,9 @@ from urllib.parse import unquote
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from pretty_lattice.structures.readers import StructureReadError, read_structure_bytes
-from pretty_lattice.structures.scene import (
+from pretty_lattice.structures.scene_builder import build_scene_response
+from pretty_lattice.structures.schema import (
     UnsupportedBondAlgorithmError,
-    build_scene_response,
     normalize_bond_algorithm,
 )
 

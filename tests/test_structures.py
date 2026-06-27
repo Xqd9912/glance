@@ -5,16 +5,17 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Lattice, Structure
 
-import pretty_lattice.structures.scene as scene_module
+import pretty_lattice.structures.connectivity as connectivity_module
+import pretty_lattice.structures.polyhedra as polyhedra_module
 from pretty_lattice.structures.readers import (
     StructureReadError,
     read_structure,
     read_structure_bytes,
 )
 from pretty_lattice.structures.scene import (
-    UnsupportedBondAlgorithmError,
     build_scene_response,
 )
+from pretty_lattice.structures.schema import UnsupportedBondAlgorithmError
 from pretty_lattice.structures.symmetry import (
     POINT_GROUP_SCHOENFLIES,
     point_group_schoenflies_symbol,
@@ -22,11 +23,9 @@ from pretty_lattice.structures.symmetry import (
 
 PROJECT_ROOT = Path(__file__).parents[1]
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "structures"
-BACKEND_STRUCTURE_MODULES = [
-    PROJECT_ROOT / "src" / "pretty_lattice" / "structures" / "readers.py",
-    PROJECT_ROOT / "src" / "pretty_lattice" / "structures" / "scene.py",
-    PROJECT_ROOT / "src" / "pretty_lattice" / "structures" / "symmetry.py",
-]
+BACKEND_STRUCTURE_MODULES = sorted(
+    (PROJECT_ROOT / "src" / "pretty_lattice" / "structures").glob("*.py")
+)
 
 CIF_FIXTURES = [
     ("Al2O3.cif", 30, {"Al", "O"}, "Al2O3", 167, "trigonal", "D3d"),
@@ -319,11 +318,11 @@ def test_scene_response_defaults_to_vesta_bonding(
 ) -> None:
     captured_algorithms: list[str] = []
 
-    def capture_connectivity(**kwargs: object) -> scene_module._ConnectivityResult:
+    def capture_connectivity(**kwargs: object) -> connectivity_module.ConnectivityResult:
         captured_algorithms.append(str(kwargs["bond_algorithm"]))
-        return scene_module._ConnectivityResult(bonds=[], connections_by_source={})
+        return connectivity_module.ConnectivityResult(bonds=[], connections_by_source={})
 
-    monkeypatch.setattr(scene_module, "_build_connectivity", capture_connectivity)
+    monkeypatch.setattr(connectivity_module, "build_connectivity", capture_connectivity)
     structure = _structure_from_fractional_positions(
         ["C"] * atom_count,
         [[index / atom_count, 0.25, 0.25] for index in range(atom_count)],
@@ -337,10 +336,10 @@ def test_scene_response_defaults_to_vesta_bonding(
 def test_vesta_bonding_uses_batched_neighbor_table(monkeypatch: pytest.MonkeyPatch) -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
     captured_atom_counts: list[int] = []
-    original_get_all_nn_info = scene_module._VestaCutOffDictNN.get_all_nn_info
+    original_get_all_nn_info = connectivity_module._VestaCutOffDictNN.get_all_nn_info
 
     def capture_get_all_nn_info(
-        self: scene_module._VestaCutOffDictNN,
+        self: connectivity_module._VestaCutOffDictNN,
         structure_arg: Structure,
     ) -> list[list[dict[str, object]]]:
         captured_atom_counts.append(len(structure_arg))
@@ -349,8 +348,12 @@ def test_vesta_bonding_uses_batched_neighbor_table(monkeypatch: pytest.MonkeyPat
     def fail_get_nn_info(*_args: object, **_kwargs: object) -> None:
         pytest.fail("VESTA connectivity should use the batched neighbor table.")
 
-    monkeypatch.setattr(scene_module._VestaCutOffDictNN, "get_all_nn_info", capture_get_all_nn_info)
-    monkeypatch.setattr(scene_module._VestaCutOffDictNN, "get_nn_info", fail_get_nn_info)
+    monkeypatch.setattr(
+        connectivity_module._VestaCutOffDictNN,
+        "get_all_nn_info",
+        capture_get_all_nn_info,
+    )
+    monkeypatch.setattr(connectivity_module._VestaCutOffDictNN, "get_nn_info", fail_get_nn_info)
 
     scene = build_scene_response(structure, bond_algorithm="vesta")
 
@@ -471,7 +474,7 @@ def test_scene_response_returns_warning_when_bond_analysis_fails(monkeypatch) ->
     def fail_bonds(**_kwargs: object) -> list[dict[str, object]]:
         raise RuntimeError("neighbor graph unavailable")
 
-    monkeypatch.setattr(scene_module, "_build_bonds", fail_bonds)
+    monkeypatch.setattr(connectivity_module, "build_bonds", fail_bonds)
 
     scene = build_scene_response(structure)
 
@@ -490,7 +493,7 @@ def test_scene_response_returns_warning_when_polyhedra_analysis_fails(monkeypatc
     def fail_polyhedra(**_kwargs: object) -> list[dict[str, object]]:
         raise RuntimeError("polyhedra hull unavailable")
 
-    monkeypatch.setattr(scene_module, "_build_polyhedra", fail_polyhedra)
+    monkeypatch.setattr(polyhedra_module, "build_polyhedra", fail_polyhedra)
 
     scene = build_scene_response(structure)
 
@@ -507,7 +510,7 @@ def test_scene_response_returns_warning_when_polyhedra_analysis_fails(monkeypatc
 def test_empty_bond_result_is_not_a_warning(monkeypatch) -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
 
-    monkeypatch.setattr(scene_module, "_build_bonds", lambda **_kwargs: [])
+    monkeypatch.setattr(connectivity_module, "build_bonds", lambda **_kwargs: [])
 
     scene = build_scene_response(structure)
 
@@ -528,7 +531,7 @@ def test_empty_polyhedra_result_is_not_a_warning() -> None:
 def test_degenerate_polyhedron_centers_are_skipped_without_warning(monkeypatch) -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
 
-    monkeypatch.setattr(scene_module, "_polyhedron_faces_from_positions", lambda _positions: [])
+    monkeypatch.setattr(polyhedra_module, "_polyhedron_faces_from_positions", lambda _positions: [])
 
     scene = build_scene_response(structure)
 

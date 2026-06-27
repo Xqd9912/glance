@@ -14,5 +14,6 @@ Focused research notes and implementation references live here. Keep the root do
 
 ## Design References
 
+- [Backend Architecture Scan](backend_architecture_scan_2026-06-27.md): pre-refactor scan of backend module boundaries, coupling risks, and a conservative one-shot refactor plan.
 - [Frontend Architecture Scan](frontend_architecture_scan_2026-06-27.md): pre-refactor scan of frontend module boundaries, highest-risk files, and a recommended first refactor slice.
 - [Vercel Design Notes](vercel_design.md): Geist design reference for the light UI theme.
