@@ -34,12 +34,14 @@ import {
 import { createCameraPoseSnapshot } from "../scene/cameraPose";
 import {
   applyCrystalCameraRoll,
+  secondaryDirectionForPrimaryChange,
   stateFromViewVectors,
   stateWithDirectAxis,
   stateWithPrimaryDirection,
   vectorsFromCameraQuaternion,
   type CrystalAxisLabel,
   type CrystalCameraPrimaryDirection,
+  type CrystalCameraScreenDirection,
   type CrystalCameraState,
 } from "../scene/crystalCamera";
 import { computeStructureExportProjectedSize } from "../scene/exportFrame";
@@ -183,6 +185,7 @@ export function App() {
         stateFromViewVectors(
           visibleScene.cell.vectors,
           currentViewState.camera.primary,
+          currentViewState.camera.secondary,
           poseVectors.up,
           poseVectors.outward,
         ),
@@ -295,16 +298,49 @@ export function App() {
       }
 
       clearCameraDerivedUiFreezeState();
-      setViewState((currentViewState) =>
-        setPreviewCameraState(
+      setViewState((currentViewState) => {
+        const secondary = secondaryDirectionForPrimaryChange(
+          currentViewState.camera.primary,
+          currentViewState.camera.secondary,
+          primary,
+        );
+
+        return setPreviewCameraState(
           currentViewState,
           stateWithPrimaryDirection(
             visibleScene.cell.vectors,
             cameraOrientationRef.current,
             primary,
+            secondary,
           ),
-        ),
-      );
+        );
+      });
+    },
+    [clearCameraDerivedUiFreezeState, visibleScene],
+  );
+
+  const handleCameraSecondaryChange = useCallback(
+    (secondary: CrystalCameraScreenDirection) => {
+      if (!visibleScene) {
+        return;
+      }
+
+      clearCameraDerivedUiFreezeState();
+      setViewState((currentViewState) => {
+        if (secondary === currentViewState.camera.primary) {
+          return currentViewState;
+        }
+
+        return setPreviewCameraState(
+          currentViewState,
+          stateWithPrimaryDirection(
+            visibleScene.cell.vectors,
+            cameraOrientationRef.current,
+            currentViewState.camera.primary,
+            secondary,
+          ),
+        );
+      });
     },
     [clearCameraDerivedUiFreezeState, visibleScene],
   );
@@ -942,6 +978,7 @@ export function App() {
               onCameraRollPreviewChange={handleCameraRollPreviewChange}
               onCameraRollPreviewStart={handleCameraRollPreviewStart}
               onCameraRollChange={handleCameraRollChange}
+              onCameraSecondaryChange={handleCameraSecondaryChange}
               onCameraStateChange={handleCameraStateChange}
               onComponentOpacityChange={setComponentOpacity}
               onExport={handleExportFigure}

@@ -947,6 +947,19 @@ describe("App", () => {
     expect(
       cameraTab.querySelector("[data-slot='common-controls-tab-label']")?.className,
     ).toContain("max-w-0");
+    expect(commonControls.querySelector("[data-camera-tab-keepalive]")).toBeTruthy();
+    expect(
+      commonControls
+        .querySelector("[data-camera-tab-keepalive]")
+        ?.closest("[data-slot='tabs-content']")
+        ?.getAttribute("data-state"),
+    ).toBe("inactive");
+    expect(
+      commonControls
+        .querySelector("[data-camera-tab-keepalive]")
+        ?.closest("[data-slot='tabs-content']")
+        ?.className,
+    ).toContain("common-controls-keepalive-tab");
 
     await user.click(cameraTab);
 
@@ -974,6 +987,19 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("tab", { name: "Display" }));
 
     expect(content?.className).not.toContain("h-[");
+    expect(commonControls.querySelector("[data-camera-tab-keepalive]")).toBeTruthy();
+    expect(
+      commonControls
+        .querySelector("[data-camera-tab-keepalive]")
+        ?.closest("[data-slot='tabs-content']")
+        ?.getAttribute("data-state"),
+    ).toBe("inactive");
+    expect(
+      commonControls
+        .querySelector("[data-camera-tab-keepalive]")
+        ?.closest("[data-slot='tabs-content']")
+        ?.className,
+    ).toContain("common-controls-keepalive-tab");
   });
 
   test("shows crystal camera controls with fixed manual vector editing", async () => {
@@ -985,16 +1011,14 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("tab", { name: "Camera" }));
 
     expect(within(commonControls).queryByText("No controls")).toBeNull();
-    expect(within(commonControls).getByText("Fixed-axis rotation").isConnected).toBe(true);
-    expect(within(commonControls).getByText("Primary direction").isConnected).toBe(true);
+    expect(within(commonControls).getByText("Primary Axis").isConnected).toBe(true);
+    expect(within(commonControls).queryByText("Primary direction")).toBeNull();
     expect(
-      within(commonControls)
-        .getByRole("tablist", { name: "Primary direction" })
-        .getAttribute("aria-orientation"),
-    ).toBe("vertical");
-    expect(
-      within(commonControls).getByRole("tab", { name: "Outward" }).getAttribute("aria-selected"),
+      within(commonControls).getByRole("button", { name: "Z Out" }).getAttribute("aria-pressed"),
     ).toBe("true");
+    expect(
+      within(commonControls).getByRole("button", { name: "X Right" }).getAttribute("aria-pressed"),
+    ).toBe("false");
     expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuenow"))
       .toBe("0");
     expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuemin"))
@@ -1023,32 +1047,35 @@ describe("App", () => {
         .map((textbox) => textbox.getAttribute("aria-label")),
     ).toEqual([
       "Roll value",
-      "Outward a",
-      "Outward b",
-      "Outward c",
-      "Upward a*",
-      "Upward b*",
-      "Upward c*",
+      "z a",
+      "z b",
+      "z c",
+      "y a*",
+      "y b*",
+      "y c*",
     ]);
     expect(
-      within(commonControls).getByRole("textbox", { name: "Outward a" }),
+      within(commonControls).getByRole("textbox", { name: "z a" }),
     ).toHaveProperty("value", "0.00");
     expect(
-      within(commonControls).getByRole("textbox", { name: "Outward c" }),
+      within(commonControls).getByRole("textbox", { name: "z c" }),
     ).toHaveProperty("value", "1.00");
     expect(
-      within(commonControls).getByRole("textbox", { name: "Upward b*" }),
+      within(commonControls).getByRole("textbox", { name: "y b*" }),
     ).toHaveProperty("value", "1.00");
+    expect(
+      within(commonControls).getByRole("button", { name: "y secondary axis" }).textContent,
+    ).toBe("y");
     expect(
       within(commonControls)
-        .getByRole("textbox", { name: "Outward a" })
-        .closest('[data-camera-vector-row="outward"]')
+        .getByRole("textbox", { name: "z a" })
+        .closest('[data-camera-vector-row="z"]')
         ?.getAttribute("data-primary-axis"),
     ).toBe("true");
     expect(
       within(commonControls)
-        .getByRole("textbox", { name: "Upward a*" })
-        .closest('[data-camera-vector-row="upward"]')
+        .getByRole("textbox", { name: "y a*" })
+        .closest('[data-camera-vector-row="y"]')
         ?.hasAttribute("data-primary-axis"),
     ).toBe(false);
   });
@@ -1111,10 +1138,10 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("tab", { name: "Camera" }));
 
     const outwardA = within(commonControls).getByRole("textbox", {
-      name: "Outward a",
+      name: "z a",
     }) as HTMLInputElement;
     const outwardC = within(commonControls).getByRole("textbox", {
-      name: "Outward c",
+      name: "z c",
     }) as HTMLInputElement;
 
     await user.click(outwardA);
@@ -1163,10 +1190,10 @@ describe("App", () => {
 
     const commonControls = screen.getByRole("complementary", { name: "Common controls" });
     await user.click(within(commonControls).getByRole("tab", { name: "Camera" }));
-    await user.click(within(commonControls).getByRole("tab", { name: "Upward" }));
+    await user.click(within(commonControls).getByRole("button", { name: "Y Up" }));
 
     expect(
-      within(commonControls).getByRole("tab", { name: "Upward" }).getAttribute("aria-selected"),
+      within(commonControls).getByRole("button", { name: "Y Up" }).getAttribute("aria-pressed"),
     ).toBe("true");
     expect(
       within(commonControls)
@@ -1174,30 +1201,46 @@ describe("App", () => {
         .map((textbox) => textbox.getAttribute("aria-label")),
     ).toEqual([
       "Roll value",
-      "Outward a*",
-      "Outward b*",
-      "Outward c*",
-      "Upward a",
-      "Upward b",
-      "Upward c",
+      "y a",
+      "y b",
+      "y c",
+      "z a*",
+      "z b*",
+      "z c*",
     ]);
-    expect(within(commonControls).getByRole("textbox", { name: "Upward c" }).isConnected)
+    expect(within(commonControls).getByRole("textbox", { name: "y b" }).isConnected)
       .toBe(true);
-    expect(within(commonControls).getByRole("textbox", { name: "Outward b*" }).isConnected)
+    expect(within(commonControls).getByRole("textbox", { name: "z c*" }).isConnected)
       .toBe(true);
     expect(
       within(commonControls)
-        .getByRole("textbox", { name: "Upward c" })
-        .closest('[data-camera-vector-row="upward"]')
+        .getByRole("textbox", { name: "y b" })
+        .closest('[data-camera-vector-row="y"]')
         ?.getAttribute("data-primary-axis"),
     ).toBe("true");
     expect(
       within(commonControls)
-        .getByRole("textbox", { name: "Outward b*" })
-        .closest('[data-camera-vector-row="outward"]')
+        .getByRole("textbox", { name: "z c*" })
+        .closest('[data-camera-vector-row="z"]')
         ?.hasAttribute("data-primary-axis"),
     ).toBe(false);
-    expect(within(commonControls).queryByRole("textbox", { name: "Outward c" })).toBeNull();
+    expect(within(commonControls).queryByRole("textbox", { name: "z c" })).toBeNull();
+
+    await user.click(within(commonControls).getByRole("button", { name: "z secondary axis" }));
+
+    expect(
+      within(commonControls)
+        .getAllByRole("textbox")
+        .map((textbox) => textbox.getAttribute("aria-label")),
+    ).toEqual([
+      "Roll value",
+      "y a",
+      "y b",
+      "y c",
+      "x a*",
+      "x b*",
+      "x c*",
+    ]);
   });
 
   test("routes gizmo clicks through the selected camera primary direction", async () => {
@@ -1210,17 +1253,17 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("tab", { name: "Camera" }));
 
     expect(
-      within(commonControls).getByRole("textbox", { name: "Outward a" }),
+      within(commonControls).getByRole("textbox", { name: "z a" }),
     ).toHaveProperty("value", "1.00");
     expect(
-      within(commonControls).getByRole("textbox", { name: "Outward c" }),
+      within(commonControls).getByRole("textbox", { name: "z c" }),
     ).toHaveProperty("value", "0.00");
 
-    await user.click(within(commonControls).getByRole("tab", { name: "Upward" }));
+    await user.click(within(commonControls).getByRole("button", { name: "Y Up" }));
     await user.click(screen.getByRole("button", { name: "gizmo c" }));
 
     expect(
-      within(commonControls).getByRole("textbox", { name: "Upward c" }),
+      within(commonControls).getByRole("textbox", { name: "y c" }),
     ).toHaveProperty("value", "1.00");
   });
 

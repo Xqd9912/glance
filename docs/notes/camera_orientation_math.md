@@ -23,13 +23,22 @@ $$
 \mathbf a_i\cdot \mathbf a^j=\delta_i^{\,j}.
 $$
 
-The selected primary direction is represented by direct-lattice coefficients:
+The camera uses a right-handed screen coordinate frame:
+
+$$
+X=\text{right},\qquad Y=\text{up},\qquad Z=\text{out},
+\qquad X\times Y=Z.
+$$
+
+The selected primary screen direction is represented by direct-lattice
+coefficients:
 
 $$
 \mathbf p_0=u\mathbf a+v\mathbf b+w\mathbf c.
 $$
 
-The other view direction is represented by reciprocal-lattice coefficients:
+The selected secondary screen direction is represented by reciprocal-lattice
+coefficients:
 
 $$
 \mathbf s_0=h\mathbf a^*+k\mathbf b^*+l\mathbf c^*.
@@ -50,7 +59,8 @@ $$
 
 independent of the cell angles.
 
-For manual input, the primary direction is kept fixed. We first normalize it,
+For manual input, the primary screen direction is kept fixed. We first normalize
+it,
 
 $$
 \mathbf p=\frac{\mathbf p_0}{\lVert\mathbf p_0\rVert},
@@ -69,8 +79,8 @@ $$
 \mathbf s=\frac{\tilde{\mathbf s}}{\lVert\tilde{\mathbf s}\rVert}.
 $$
 
-Thus a non-orthogonal manual pair is interpreted as: keep the primary
-direction, and orthogonalize the other direction against it.
+Thus a non-orthogonal manual pair is interpreted as: keep the primary direction,
+and orthogonalize the secondary direction against it.
 
 If $\lVert\tilde{\mathbf s}\rVert$ is too small, the submitted secondary
 direction does not determine a roll angle around $\mathbf p$. In that case the
@@ -99,19 +109,21 @@ Only if all reciprocal candidates are degenerate does the camera fall back to a
 fixed Cartesian axis, projected by the same formula. This final step is a
 last-resort convention, not a replacement for the crystal-coordinate rule.
 
-For the two primary-direction modes, the resulting camera directions are assigned as
+The two vectors then determine the whole screen frame. The missing axis is
+filled by the right-hand rule. For example, if
 
 $$
-\text{Outward primary:}\qquad
-\mathbf{out}=\mathbf p,\qquad \mathbf{up}=\mathbf s,
+\text{primary}=Z,\qquad \text{secondary}=Y,
 $$
 
-and
+then
 
 $$
-\text{Upward primary:}\qquad
-\mathbf{up}=\mathbf p,\qquad \mathbf{out}=\mathbf s.
+\mathbf{out}=\mathbf p,\qquad \mathbf{up}=\mathbf s,\qquad
+\mathbf{right}=\mathbf{up}\times\mathbf{out}.
 $$
 
-The same anchor also defines zero roll: changing the roll rotates
-$\mathbf s$ about the fixed axis $\mathbf p$.
+If instead the primary direction is $X$, the same rule applies with $X$ fixed
+and one of $Y$ or $Z$ chosen as the secondary direction. The same fallback anchor
+also defines zero angle: changing the angle rotates $\mathbf s$ about the fixed
+axis $\mathbf p$.

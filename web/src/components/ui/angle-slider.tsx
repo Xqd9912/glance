@@ -183,8 +183,9 @@ function AngleSlider({
     >
       <div
         aria-hidden="true"
-        className="absolute inset-[8px] rounded-full border-[8px] border-muted-foreground/16 bg-transparent shadow-[inset_0_1px_1px_rgb(255_255_255/0.78),inset_0_-1px_3px_rgb(0_0_0/0.13),0_1px_3px_rgb(0_0_0/0.06)]"
+        className="absolute inset-[8px] rounded-full border-[8px] border-transparent bg-transparent shadow-[inset_0_1px_1px_rgb(255_255_255/0.78),inset_0_-1px_3px_rgb(0_0_0/0.13),0_1px_3px_rgb(0_0_0/0.06)]"
         data-slot="angle-slider-track"
+        style={{ borderColor: "color-mix(in srgb, var(--foreground) 16%, transparent)" }}
       />
       <div
         aria-hidden="true"

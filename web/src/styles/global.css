@@ -1,8 +1,10 @@
 @import "@fontsource/geist/latin-400.css";
 @import "@fontsource/geist/latin-500.css";
 @import "@fontsource/geist/latin-600.css";
+@import "@fontsource/geist/latin-600-italic.css";
 @import "@fontsource/geist/latin-500-italic.css";
 @import "@fontsource/geist/latin-700.css";
+@import "@fontsource/geist/latin-700-italic.css";
 @import "@fontsource/geist-mono/latin-400.css";
 @import "@fontsource/geist-mono/latin-500.css";
 @import "@fontsource/geist-mono/latin-600.css";
@@ -108,6 +110,15 @@
     display: block;
     width: 100% !important;
     height: 100% !important;
+  }
+
+  .common-controls-keepalive-tab[data-state="inactive"] {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    display: block !important;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   .tool-icon-button:hover,

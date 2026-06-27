@@ -70,15 +70,31 @@ describe("crystal camera math", () => {
     expect(rolledState.rollDegrees).toBe(90);
   });
 
+  test("derives the missing screen axis from a right-handed frame", () => {
+    const vectors = computeCrystalCameraVectors(CUBIC_CELL, {
+      ...createDefaultCrystalCameraState(),
+      direct: [1, 0, 0],
+      primary: "right",
+      reciprocal: [0, 1, 0],
+      secondary: "upward",
+    });
+
+    expectVectorClose(vectors.right, [1, 0, 0]);
+    expectVectorClose(vectors.up, [0, 1, 0]);
+    expectVectorClose(vectors.outward, [0, 0, 1]);
+  });
+
   test("manual secondary vectors recompute the nearest roll angle", () => {
     const state = stateFromViewVectors(
       CUBIC_CELL,
       "upward",
+      "outward",
       new Vector3(0, 0, 1),
       new Vector3(-1, 0, 0),
     );
 
     expect(state.primary).toBe("upward");
+    expect(state.secondary).toBe("outward");
     expect(state.rollDegrees).toBeCloseTo(90);
     expect(state.direct).toEqual([0, 0, 1]);
     expect(state.reciprocal).toEqual([-1, 0, 0]);

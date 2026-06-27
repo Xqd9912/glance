@@ -1,6 +1,7 @@
 import {
   applyCrystalCameraRoll,
   createDefaultCrystalCameraState,
+  secondaryDirectionForPrimaryChange,
   type CrystalCameraPrimaryDirection,
   type CrystalCameraState,
 } from "../scene/crystalCamera";
@@ -65,6 +66,11 @@ export function setPreviewCameraPrimaryDirection(
     camera: {
       ...state.camera,
       primary,
+      secondary: secondaryDirectionForPrimaryChange(
+        state.camera.primary,
+        state.camera.secondary,
+        primary,
+      ),
     },
   };
 }

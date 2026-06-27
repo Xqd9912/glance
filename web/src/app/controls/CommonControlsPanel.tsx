@@ -1,3 +1,4 @@
+import { Canvas, useThree } from "@react-three/fiber";
 import {
   AlertTriangleIcon,
   Check,
@@ -11,6 +12,10 @@ import {
   View as DisplayIcon,
   type LucideIcon,
 } from "lucide-react";
+import {
+  Quaternion,
+  Vector3,
+} from "three";
 import {
   type CSSProperties,
   type ChangeEvent,
@@ -52,6 +57,7 @@ import {
   parseVectorCoefficients,
   stateFromViewVectors,
   type CrystalCameraPrimaryDirection,
+  type CrystalCameraScreenDirection,
   type CrystalCameraState,
 } from "../../scene/crystalCamera";
 import type { VectorTuple } from "../../scene/viewMath";
@@ -197,6 +203,7 @@ export function CommonControlsPanel({
   onCameraRollPreviewChange,
   onCameraRollPreviewStart,
   onCameraRollChange,
+  onCameraSecondaryChange,
   onCameraStateChange,
   onExport,
   onExportSettingsChange,
@@ -217,6 +224,7 @@ export function CommonControlsPanel({
   onCameraRollPreviewChange: (rollDegrees: number) => void;
   onCameraRollPreviewStart: () => void;
   onCameraRollChange: (rollDegrees: number) => void;
+  onCameraSecondaryChange: (secondary: CrystalCameraScreenDirection) => void;
   onCameraStateChange: (cameraState: CrystalCameraState) => void;
   onComponentOpacityChange: Dispatch<SetStateAction<ComponentOpacityState>>;
   onComponentVisibilityChange: Dispatch<SetStateAction<ComponentVisibilityState>>;
@@ -233,6 +241,7 @@ export function CommonControlsPanel({
   });
   const contentRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<CommonPanelTab>("display");
+  const [hasMountedCameraTab, setHasMountedCameraTab] = useState(() => cellVectors.length > 0);
   const [tabIndicatorRect, setTabIndicatorRect] = useState<TabIndicatorRect | null>(null);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
   const contentStyle = contentHeight === null
@@ -243,6 +252,12 @@ export function CommonControlsPanel({
       value === activeTab ? "1.65fr" : "0.9fr",
     ).join(" "),
   } as const;
+
+  useEffect(() => {
+    if (cellVectors.length > 0) {
+      setHasMountedCameraTab(true);
+    }
+  }, [cellVectors.length]);
 
   useEffect(() => {
     const updateIndicatorRect = () => {
@@ -334,6 +349,10 @@ export function CommonControlsPanel({
       setContentHeight(currentHeight);
     }
 
+    if (value === "camera") {
+      setHasMountedCameraTab(true);
+    }
+
     setActiveTab(value as CommonPanelTab);
   }
 
@@ -410,10 +429,14 @@ export function CommonControlsPanel({
           <div
             ref={contentRef}
             data-slot="common-controls-content"
-            className="overflow-hidden transition-[height] duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
+            className="relative overflow-hidden transition-[height] duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
             style={contentStyle}
           >
-            <TabsContent value="camera">
+            <TabsContent
+              value="camera"
+              className="common-controls-keepalive-tab"
+              {...(hasMountedCameraTab ? { forceMount: true } : {})}
+            >
               <CameraTabContent
                 cameraState={cameraState}
                 cellVectors={cellVectors}
@@ -421,6 +444,7 @@ export function CommonControlsPanel({
                 onCameraRollPreviewChange={onCameraRollPreviewChange}
                 onCameraRollPreviewStart={onCameraRollPreviewStart}
                 onCameraRollChange={onCameraRollChange}
+                onCameraSecondaryChange={onCameraSecondaryChange}
                 onCameraStateChange={onCameraStateChange}
               />
             </TabsContent>
@@ -1390,6 +1414,7 @@ function CameraTabContent({
   onCameraRollPreviewChange,
   onCameraRollPreviewStart,
   onCameraRollChange,
+  onCameraSecondaryChange,
   onCameraStateChange,
 }: {
   cameraState: CrystalCameraState;
@@ -1398,6 +1423,7 @@ function CameraTabContent({
   onCameraRollPreviewChange: (rollDegrees: number) => void;
   onCameraRollPreviewStart: () => void;
   onCameraRollChange: (rollDegrees: number) => void;
+  onCameraSecondaryChange: (secondary: CrystalCameraScreenDirection) => void;
   onCameraStateChange: (cameraState: CrystalCameraState) => void;
 }) {
   const [rollResetFeedbackPhase, setRollResetFeedbackPhase] =
@@ -1428,14 +1454,14 @@ function CameraTabContent({
   }
 
   return (
-    <div className="flex flex-col">
-      <section aria-labelledby="camera-axis-roll-label" className="mb-0.5 grid gap-2 px-1.5">
+    <div className="flex flex-col" data-camera-tab-keepalive="">
+      <section aria-labelledby="camera-axis-roll-label" className="mb-0.5 grid gap-1.5 px-1.5 pb-1">
         <div className="flex h-7 items-center justify-between gap-2">
           <h2
             id="camera-axis-roll-label"
             className="text-xs font-bold leading-tight text-muted-foreground"
           >
-            Fixed-axis rotation
+            Primary Axis
           </h2>
           <Button
             variant="ghost"
@@ -1451,46 +1477,17 @@ function CameraTabContent({
             <RotateCcw aria-hidden="true" />
           </Button>
         </div>
-        <div className="grid grid-cols-[max-content_minmax(0,1fr)] items-start gap-3">
-          <div className="-mt-2 flex min-h-[96px] min-w-[8.5rem] flex-col items-start justify-center gap-2">
-            <h3
-              id="camera-primary-label"
-              className="whitespace-nowrap px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground"
-            >
-              Primary direction
-            </h3>
-            <Tabs
+        <div className="-mt-2 grid min-h-[124px] grid-cols-2 items-center gap-3">
+          <div className="flex min-w-0 translate-x-2 items-center justify-center">
+            <ScreenAxisChooser
+              ariaLabelledBy="camera-axis-roll-label"
               value={cameraState.primary}
-              orientation="vertical"
-              className="gap-0"
-              onValueChange={(value) =>
-                onCameraPrimaryChange(value as CrystalCameraPrimaryDirection)
-              }
-            >
-              <TabsList
-                aria-labelledby="camera-primary-label"
-                className="h-auto w-24 flex-col items-stretch rounded-md p-0.5"
-              >
-                <TabsTrigger
-                  value="outward"
-                  className="grid !h-[26px] !min-h-[26px] grid-cols-[1.25rem_minmax(0,1fr)] items-center justify-items-center gap-x-1 rounded-[4px] px-1 py-0 text-center text-xs font-medium leading-none"
-                >
-                  <PrimaryDirectionToken direction="outward" />
-                  <span className="justify-self-start">Outward</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="upward"
-                  className="grid !h-[26px] !min-h-[26px] grid-cols-[1.25rem_minmax(0,1fr)] items-center justify-items-center gap-x-1 rounded-[4px] px-1 py-0 text-center text-xs font-medium leading-none"
-                >
-                  <PrimaryDirectionToken direction="upward" />
-                  <span className="justify-self-start">Upward</span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+              onValueChange={onCameraPrimaryChange}
+            />
           </div>
 
           <RollControl
-            className="-translate-x-6"
+            className="translate-x-1"
             value={cameraState.rollDegrees}
             onPreviewValueChange={onCameraRollPreviewChange}
             onPreviewStart={onCameraRollPreviewStart}
@@ -1504,41 +1501,288 @@ function CameraTabContent({
       <VectorEditor
         cameraState={cameraState}
         cellVectors={cellVectors}
+        onCameraSecondaryChange={onCameraSecondaryChange}
         onCameraStateChange={onCameraStateChange}
       />
     </div>
   );
 }
 
-function PrimaryDirectionToken({
-  direction,
+const SCREEN_AXIS_OPTIONS: readonly {
+  direction: CrystalCameraScreenDirection;
+  letter: "X" | "Y" | "Z";
+  label: "Right" | "Up" | "Out";
+}[] = [
+  { direction: "right", letter: "X", label: "Right" },
+  { direction: "upward", letter: "Y", label: "Up" },
+  { direction: "outward", letter: "Z", label: "Out" },
+];
+
+function screenAxisOption(direction: CrystalCameraScreenDirection) {
+  return SCREEN_AXIS_OPTIONS.find((option) => option.direction === direction)!;
+}
+
+function screenAxisLabel(direction: CrystalCameraScreenDirection): string {
+  const option = screenAxisOption(direction);
+  return option.letter.toLowerCase();
+}
+
+const SCREEN_AXIS_CAMERA_FOV = 42.5;
+const SCREEN_AXIS_CAMERA_POSITION: VectorTuple = [0.558, 0.471, 6.139];
+const SCREEN_AXIS_CAMERA_ROLL = 0.0149;
+const SCREEN_AXIS_GIZMO_POSITION: VectorTuple = [-0.911, -0.691, 0.061];
+const SCREEN_AXIS_ARROW_CONE_LENGTH = 0.31;
+const SCREEN_AXIS_ARROW_CONE_RADIUS = 0.152;
+const SCREEN_AXIS_ARROW_LENGTH = 2.27;
+const SCREEN_AXIS_ARROW_RADIUS = 0.083;
+const SCREEN_AXIS_ARROW_SELECTED_RADIUS = 0.101;
+const SCREEN_AXIS_ORIGIN_RADIUS = 0.1;
+const SCREEN_AXIS_SELECTED_COLOR = "#3f3f3f";
+const SCREEN_AXIS_HOVER_COLOR = "#858585";
+const SCREEN_AXIS_MUTED_COLOR = "#cccccc";
+const SCREEN_AXIS_OUTWARD_ARROW_LENGTH = 2.56;
+const SCREEN_AXIS_OUTWARD_CONE_RADIUS = 0.1;
+const SCREEN_AXIS_OUTWARD_SHAFT_TIP_RADIUS_SCALE = 0.6;
+const SCREEN_AXIS_Y = new Vector3(0, 1, 0);
+const SCREEN_AXIS_GIZMO_AXES: readonly {
+  direction: CrystalCameraScreenDirection;
+  label: "x" | "y" | "z";
+  vector: VectorTuple;
+}[] = [
+  { direction: "right", label: "x", vector: [1, 0, 0] },
+  { direction: "upward", label: "y", vector: [0, 1, 0] },
+  { direction: "outward", label: "z", vector: [0, 0, 1] },
+];
+
+function ScreenAxisChooser({
+  ariaLabelledBy,
+  onValueChange,
+  value,
 }: {
-  direction: CrystalCameraPrimaryDirection;
+  ariaLabelledBy: string;
+  onValueChange: (value: CrystalCameraPrimaryDirection) => void;
+  value: CrystalCameraPrimaryDirection;
+}) {
+  const [hoveredAxis, setHoveredAxis] = useState<CrystalCameraScreenDirection | null>(null);
+
+  return (
+    <div
+      role="group"
+      aria-labelledby={ariaLabelledBy}
+      className="relative h-[120px] w-[10.75rem] select-none"
+      onMouseLeave={() => setHoveredAxis(null)}
+    >
+      <Canvas
+        aria-hidden="true"
+        camera={{
+          fov: SCREEN_AXIS_CAMERA_FOV,
+          position: SCREEN_AXIS_CAMERA_POSITION,
+          near: 0.1,
+          far: 30,
+        }}
+        dpr={[1, 2]}
+        frameloop="demand"
+        gl={{ antialias: true, alpha: true }}
+        className="pointer-events-none absolute inset-0 h-full w-full"
+        style={{ pointerEvents: "none" }}
+      >
+        <ScreenAxisCameraSetup />
+        <ScreenAxisGizmoScene
+          hoveredAxis={hoveredAxis}
+          selectedAxis={value}
+        />
+      </Canvas>
+      <ScreenAxisOverlayLabel
+        direction="upward"
+        hoveredAxis={hoveredAxis}
+        selectedAxis={value}
+        className="left-[4.325rem] top-[0.4rem]"
+      >
+        y
+      </ScreenAxisOverlayLabel>
+      <ScreenAxisOverlayLabel
+        direction="right"
+        hoveredAxis={hoveredAxis}
+        selectedAxis={value}
+        className="left-[8.05rem] top-[5.15rem]"
+      >
+        x
+      </ScreenAxisOverlayLabel>
+      <ScreenAxisOverlayLabel
+        direction="outward"
+        hoveredAxis={hoveredAxis}
+        selectedAxis={value}
+        className="left-[1.6rem] top-[6.5rem]"
+      >
+        z
+      </ScreenAxisOverlayLabel>
+      <button
+        type="button"
+        aria-label="X Right"
+        aria-pressed={value === "right"}
+        className="absolute left-[2.85rem] top-[3.55rem] z-10 h-[3.15rem] w-[7.35rem] cursor-pointer rounded-md outline-none focus-visible:ring-[2px] focus-visible:ring-ring/25"
+        onClick={() => onValueChange("right")}
+        onMouseEnter={() => setHoveredAxis("right")}
+      />
+      <button
+        type="button"
+        aria-label="Y Up"
+        aria-pressed={value === "upward"}
+        className="absolute left-[2rem] top-0 z-10 h-[6.25rem] w-[4.1rem] cursor-pointer rounded-md outline-none focus-visible:ring-[2px] focus-visible:ring-ring/25"
+        onClick={() => onValueChange("upward")}
+        onMouseEnter={() => setHoveredAxis("upward")}
+      />
+      <button
+        type="button"
+        aria-label="Z Out"
+        aria-pressed={value === "outward"}
+        className="absolute left-0 top-[4.6rem] z-10 h-[3rem] w-[5.1rem] cursor-pointer rounded-md outline-none focus-visible:ring-[2px] focus-visible:ring-ring/25"
+        onClick={() => onValueChange("outward")}
+        onMouseEnter={() => setHoveredAxis("outward")}
+      />
+    </div>
+  );
+}
+
+function ScreenAxisOverlayLabel({
+  children,
+  className,
+  direction,
+  hoveredAxis,
+  selectedAxis,
+}: {
+  children: ReactNode;
+  className: string;
+  direction: CrystalCameraScreenDirection;
+  hoveredAxis: CrystalCameraScreenDirection | null;
+  selectedAxis: CrystalCameraPrimaryDirection;
+}) {
+  const isEmphasized = direction === selectedAxis || direction === hoveredAxis;
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "pointer-events-none absolute z-[5] select-none text-[0.8rem] font-semibold italic leading-none transition-colors",
+        isEmphasized ? "text-foreground" : "text-muted-foreground/55",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ScreenAxisCameraSetup() {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    const cameraPosition = new Vector3(...SCREEN_AXIS_CAMERA_POSITION);
+    const viewDirection = cameraPosition.multiplyScalar(-1).normalize();
+    const cameraUp = new Vector3(0, 1, 0);
+
+    cameraUp
+      .sub(viewDirection.clone().multiplyScalar(cameraUp.dot(viewDirection)))
+      .normalize()
+      .applyAxisAngle(viewDirection, SCREEN_AXIS_CAMERA_ROLL);
+    camera.up.copy(cameraUp);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  return null;
+}
+
+function ScreenAxisGizmoScene({
+  hoveredAxis,
+  selectedAxis,
+}: {
+  hoveredAxis: CrystalCameraScreenDirection | null;
+  selectedAxis: CrystalCameraPrimaryDirection;
 }) {
   return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      className="size-5 shrink-0 justify-self-center"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.55"
-    >
-      <rect x="5" y="5.5" width="14" height="13" rx="2.4" />
-      {direction === "upward" ? (
-        <>
-          <path d="M12 15.5v-7" />
-          <path d="m9.4 11.1 2.6-2.6 2.6 2.6" />
-        </>
-      ) : (
-        <>
-          <circle cx="12" cy="12" r="3.35" />
-          <path d="M12 12h.01" strokeWidth="2.8" />
-        </>
-      )}
-    </svg>
+    <group position={SCREEN_AXIS_GIZMO_POSITION}>
+      {SCREEN_AXIS_GIZMO_AXES.map((axis) => {
+        const hovered = axis.direction === hoveredAxis;
+        const selected = axis.direction === selectedAxis;
+
+        return (
+          <ScreenAxisArrow
+            axis={axis}
+            hovered={hovered}
+            key={axis.direction}
+            selected={selected}
+          />
+        );
+      })}
+      <mesh renderOrder={20}>
+        <sphereGeometry args={[SCREEN_AXIS_ORIGIN_RADIUS * 1.35, 32, 16]} />
+        <meshBasicMaterial color="#171717" depthTest={false} />
+      </mesh>
+      <mesh renderOrder={21}>
+        <sphereGeometry args={[SCREEN_AXIS_ORIGIN_RADIUS, 32, 16]} />
+        <meshBasicMaterial color="#f7f7f5" depthTest={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function ScreenAxisArrow({
+  axis,
+  hovered,
+  selected,
+}: {
+  axis: (typeof SCREEN_AXIS_GIZMO_AXES)[number];
+  hovered: boolean;
+  selected: boolean;
+}) {
+  const axisDirection = useMemo(() => new Vector3(...axis.vector).normalize(), [axis.vector]);
+  const axisRotation = useMemo(
+    () => new Quaternion().setFromUnitVectors(SCREEN_AXIS_Y, axisDirection),
+    [axisDirection],
+  );
+  const isHighlighted = selected || hovered;
+  const axisColor = selected
+    ? SCREEN_AXIS_SELECTED_COLOR
+    : hovered
+      ? SCREEN_AXIS_HOVER_COLOR
+      : SCREEN_AXIS_MUTED_COLOR;
+  const shaftRadius = isHighlighted ? SCREEN_AXIS_ARROW_SELECTED_RADIUS : SCREEN_AXIS_ARROW_RADIUS;
+  const shaftLength = axis.direction === "outward"
+    ? SCREEN_AXIS_OUTWARD_ARROW_LENGTH
+    : SCREEN_AXIS_ARROW_LENGTH;
+  const shaftTopRadius = axis.direction === "outward"
+    ? shaftRadius * SCREEN_AXIS_OUTWARD_SHAFT_TIP_RADIUS_SCALE
+    : shaftRadius;
+  const shaftBottomRadius = shaftRadius;
+  const coneLength = SCREEN_AXIS_ARROW_CONE_LENGTH;
+  const coneRadius = axis.direction === "outward"
+    ? SCREEN_AXIS_OUTWARD_CONE_RADIUS
+    : SCREEN_AXIS_ARROW_CONE_RADIUS;
+
+  return (
+    <group quaternion={axisRotation}>
+      <mesh position={[0, shaftLength / 2, 0]} renderOrder={isHighlighted ? 8 : 2}>
+        <cylinderGeometry
+          args={[shaftTopRadius, shaftBottomRadius, shaftLength, 24]}
+        />
+        <meshBasicMaterial color={axisColor} />
+      </mesh>
+      <mesh
+        position={[0, shaftLength + coneLength / 2, 0]}
+        renderOrder={isHighlighted ? 9 : 3}
+      >
+        <coneGeometry
+          args={[
+            isHighlighted ? coneRadius * 1.04 : coneRadius,
+            coneLength,
+            32,
+          ]}
+        />
+        <meshBasicMaterial color={axisColor} />
+      </mesh>
+    </group>
   );
 }
 
@@ -1678,7 +1922,7 @@ function RollControl({
     <section
       aria-labelledby="camera-roll-label"
       className={cn(
-        "relative -mt-[28px] flex min-h-[116px] min-w-0 justify-center",
+        "relative flex min-h-[116px] min-w-0 items-center justify-center",
         className,
       )}
     >
@@ -1693,14 +1937,14 @@ function RollControl({
         onValueChange={handleSliderPreviewChange}
         onValueCommit={handleSliderCommit}
       />
-      <label className="absolute left-1/2 top-1/2 z-10 inline-flex h-6 min-w-[1.65rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[4px] border border-transparent bg-transparent px-1.5 transition-[background-color,border-color,box-shadow] duration-150 hover:border-foreground/8 hover:bg-background/55 focus-within:border-ring/15 focus-within:bg-background/70 focus-within:shadow-[0_0_0_0.5px_color-mix(in_srgb,var(--ring)_14%,transparent)]">
+      <label className="absolute left-1/2 top-1/2 z-10 inline-flex h-5 min-w-[1.45rem] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[4px] border border-transparent bg-transparent px-1 transition-[background-color,border-color,box-shadow] duration-150 hover:border-foreground/8 hover:bg-background/55 focus-within:border-ring/15 focus-within:bg-background/70 focus-within:shadow-[0_0_0_0.5px_color-mix(in_srgb,var(--ring)_14%,transparent)]">
         <span className="sr-only">Roll value</span>
         <input
           type="text"
           inputMode="decimal"
           value={displayedValueText}
           aria-label="Roll value"
-          className="h-full min-w-[1ch] border-0 bg-transparent px-0 text-right font-mono text-sm font-normal leading-none tabular-nums outline-none focus-visible:ring-0"
+          className="h-full min-w-[1ch] border-0 bg-transparent px-0 text-right font-mono text-xs font-normal leading-none tabular-nums outline-none focus-visible:ring-0"
           style={{ width: rollValueInputWidth(displayedValueText) }}
           onBlur={handleValueBlur}
           onChange={handleValueChange}
@@ -1710,7 +1954,7 @@ function RollControl({
         <span
           aria-hidden="true"
           data-slot="roll-degree-symbol"
-          className="pointer-events-none -ml-px select-none font-mono text-sm font-normal leading-none text-foreground"
+          className="pointer-events-none -ml-px select-none font-mono text-xs font-normal leading-none text-foreground"
         >
           °
         </span>
@@ -1722,10 +1966,12 @@ function RollControl({
 function VectorEditor({
   cameraState,
   cellVectors,
+  onCameraSecondaryChange,
   onCameraStateChange,
 }: {
   cameraState: CrystalCameraState;
   cellVectors: VectorTuple[];
+  onCameraSecondaryChange: (secondary: CrystalCameraScreenDirection) => void;
   onCameraStateChange: (cameraState: CrystalCameraState) => void;
 }) {
   const currentDraft = useMemo(() => draftFromCameraState(cameraState), [cameraState]);
@@ -1821,6 +2067,7 @@ function VectorEditor({
     const nextState = stateFromViewVectors(
       cellVectors,
       cameraState.primary,
+      cameraState.secondary,
       cameraVectors.up,
       cameraVectors.outward,
     );
@@ -1847,25 +2094,26 @@ function VectorEditor({
     }
   }
 
-  const upwardRow = {
-    basisLabels: cameraState.primary === "upward"
-      ? ["a", "b", "c"]
-      : ["a*", "b*", "c*"],
-    draft: cameraState.primary === "upward" ? draft.direct : draft.reciprocal,
-    isPrimaryAxis: cameraState.primary === "upward",
-    label: "Upward",
-    row: cameraState.primary === "upward" ? "direct" : "reciprocal",
-  } as const;
-  const outwardRow = {
-    basisLabels: cameraState.primary === "outward"
-      ? ["a", "b", "c"]
-      : ["a*", "b*", "c*"],
-    draft: cameraState.primary === "outward" ? draft.direct : draft.reciprocal,
-    isPrimaryAxis: cameraState.primary === "outward",
-    label: "Outward",
-    row: cameraState.primary === "outward" ? "direct" : "reciprocal",
-  } as const;
-  const vectorRows = [outwardRow, upwardRow];
+  const secondaryOptions = SCREEN_AXIS_OPTIONS.filter(
+    (option) => option.direction !== cameraState.primary,
+  );
+  const vectorRows = [
+    {
+      basisLabels: ["a", "b", "c"],
+      draft: draft.direct,
+      isPrimaryAxis: true,
+      label: screenAxisLabel(cameraState.primary),
+      row: "direct",
+    },
+    {
+      basisLabels: ["a*", "b*", "c*"],
+      draft: draft.reciprocal,
+      isPrimaryAxis: false,
+      label: screenAxisLabel(cameraState.secondary),
+      row: "reciprocal",
+      secondaryOptions,
+    },
+  ] as const;
 
   return (
     <section aria-labelledby="camera-manual-label" className="mt-1 grid gap-1.5 px-1.5 pb-1">
@@ -1890,9 +2138,9 @@ function VectorEditor({
             <TooltipContent side="top" className="max-w-56">
               <div className="grid gap-1">
                 <span>
-                  Constraint: <strong>out</strong> · <strong>up</strong> = 0
+                  Constraint: <strong>primary</strong> · <strong>secondary</strong> = 0
                 </span>
-                <span>If not, primary direction is kept and the other is orthogonalized.</span>
+                <span>If not, primary is kept and secondary is orthogonalized.</span>
               </div>
             </TooltipContent>
           </Tooltip>
@@ -1926,14 +2174,17 @@ function VectorEditor({
           </Button>
         </div>
       </div>
-      <div className="grid gap-2">
+      <div className="grid gap-1">
         {vectorRows.map((row) => (
           <VectorEditorRow
             basisLabels={row.basisLabels}
             isPrimaryAxis={row.isPrimaryAxis}
-            key={row.label}
+            key={row.row}
             label={row.label}
+            secondaryOptions={"secondaryOptions" in row ? row.secondaryOptions : undefined}
+            secondaryValue={"secondaryOptions" in row ? cameraState.secondary : undefined}
             values={row.draft}
+            onSecondaryChange={onCameraSecondaryChange}
             onValueChange={(index, value) => updateDraft(row.row, index, value)}
             onKeyDown={handleFieldKeyDown}
           />
@@ -1943,40 +2194,73 @@ function VectorEditor({
   );
 }
 
+const VECTOR_AXIS_TOKEN_CLASS =
+  "inline-flex h-6 w-7 items-center justify-center rounded-md px-0 text-[0.68rem] font-bold italic leading-none shadow-sm";
+
 function VectorEditorRow({
   basisLabels,
   isPrimaryAxis,
   label,
   onKeyDown,
+  onSecondaryChange,
+  secondaryOptions,
+  secondaryValue,
   onValueChange,
   values,
 }: {
-  basisLabels: string[];
+  basisLabels: readonly string[];
   isPrimaryAxis: boolean;
   label: string;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
+  onSecondaryChange: (secondary: CrystalCameraScreenDirection) => void;
+  secondaryOptions?: readonly {
+    direction: CrystalCameraScreenDirection;
+    letter: "X" | "Y" | "Z";
+    label: "Right" | "Up" | "Out";
+  }[];
+  secondaryValue?: CrystalCameraScreenDirection;
   onValueChange: (index: number, value: string) => void;
   values: readonly string[];
 }) {
+  const secondaryToggleOption = secondaryOptions?.find(
+    (option) => option.direction === secondaryValue,
+  );
+  const nextSecondaryDirection = secondaryOptions?.find(
+    (option) => option.direction !== secondaryValue,
+  )?.direction;
+  const labelContent = isPrimaryAxis || !secondaryToggleOption || !nextSecondaryDirection ? (
+    <span
+      className={cn(
+        VECTOR_AXIS_TOKEN_CLASS,
+        isPrimaryAxis
+          ? "text-white"
+          : "bg-muted text-muted-foreground",
+      )}
+      style={isPrimaryAxis ? { backgroundColor: SCREEN_AXIS_SELECTED_COLOR } : undefined}
+    >
+      {label}
+    </span>
+  ) : (
+    <button
+      type="button"
+      aria-label={`${secondaryToggleOption.letter.toLowerCase()} secondary axis`}
+      className={cn(
+        VECTOR_AXIS_TOKEN_CLASS,
+        "bg-muted text-muted-foreground transition-[background-color,color,box-shadow] hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-[2px] focus-visible:ring-ring/25",
+      )}
+      onClick={() => onSecondaryChange(nextSecondaryDirection)}
+    >
+      {secondaryToggleOption.letter.toLowerCase()}
+    </button>
+  );
+
   return (
     <div
-      className={cn(
-        "relative -mx-1 grid grid-cols-[3.75rem_minmax(0,1fr)] items-center gap-1 rounded-md px-1 py-1 transition-colors",
-        isPrimaryAxis
-          ? "bg-foreground/[0.035] before:absolute before:bottom-1 before:left-0 before:top-1 before:w-0.5 before:rounded-full before:bg-foreground/70"
-          : null,
-      )}
-      data-camera-vector-row={label.toLowerCase()}
+      className="relative -mx-1 grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-1 rounded-md px-1 py-1"
+      data-camera-vector-row={label.toLowerCase().replace(/\s+/g, "-")}
       data-primary-axis={isPrimaryAxis ? "true" : undefined}
     >
-      <span
-        className={cn(
-          "px-0.5 text-[0.68rem] font-semibold leading-none transition-colors",
-          isPrimaryAxis ? "text-foreground" : "text-muted-foreground",
-        )}
-      >
-        {label}
-      </span>
+      {labelContent}
       <div className="grid min-w-0 grid-cols-[2.75rem_0.8rem_0.45rem_2.75rem_0.8rem_0.45rem_2.75rem_0.8rem] items-center gap-x-0.5">
         {basisLabels.map((basisLabel, index) => (
           <Fragment key={basisLabel}>
