@@ -28,6 +28,7 @@ import {
   INTERACTION_MODE_OPTIONS,
   type InteractionMode,
 } from "../viewState";
+import type { AtomRenderingMode } from "../../model";
 
 const INSPECTOR_BODY_TEXT_CLASS = "text-sm";
 const INSPECTOR_SELECT_TRIGGER_CLASS =
@@ -72,20 +73,24 @@ export function InspectorToggle({
 }
 
 export function InspectorSidebar({
+  atomRenderingMode,
   bondAlgorithm,
   interactionMode,
   isOpen,
   isSceneLoading,
   showFpsOverlay,
+  onAtomRenderingModeChange,
   onBondAlgorithmChange,
   onInteractionModeChange,
   onShowFpsOverlayChange,
 }: {
+  atomRenderingMode: AtomRenderingMode;
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isOpen: boolean;
   isSceneLoading: boolean;
   showFpsOverlay: boolean;
+  onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
@@ -126,10 +131,12 @@ export function InspectorSidebar({
         >
           <TabsContent value="settings" className="m-0">
             <SettingsPanel
+              atomRenderingMode={atomRenderingMode}
               bondAlgorithm={bondAlgorithm}
               interactionMode={interactionMode}
               isSceneLoading={isSceneLoading}
               showFpsOverlay={showFpsOverlay}
+              onAtomRenderingModeChange={onAtomRenderingModeChange}
               onBondAlgorithmChange={onBondAlgorithmChange}
               onInteractionModeChange={onInteractionModeChange}
               onShowFpsOverlayChange={onShowFpsOverlayChange}
@@ -142,18 +149,22 @@ export function InspectorSidebar({
 }
 
 function SettingsPanel({
+  atomRenderingMode,
   bondAlgorithm,
   interactionMode,
   isSceneLoading,
   showFpsOverlay,
+  onAtomRenderingModeChange,
   onBondAlgorithmChange,
   onInteractionModeChange,
   onShowFpsOverlayChange,
 }: {
+  atomRenderingMode: AtomRenderingMode;
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isSceneLoading: boolean;
   showFpsOverlay: boolean;
+  onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
@@ -165,6 +176,31 @@ function SettingsPanel({
         label="Show FPS"
         onCheckedChange={onShowFpsOverlayChange}
       />
+
+      <InspectorSelectRow label="Atom rendering">
+        <Select
+          value={atomRenderingMode}
+          onValueChange={(value) => onAtomRenderingModeChange(value as AtomRenderingMode)}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Atom rendering mode"
+            className={INSPECTOR_SELECT_TRIGGER_CLASS}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" className="!bg-background !text-foreground">
+            <SelectGroup>
+              <SelectItem value="mesh" className={INSPECTOR_SELECT_ITEM_CLASS}>
+                Mesh
+              </SelectItem>
+              <SelectItem value="instanced" className={INSPECTOR_SELECT_ITEM_CLASS}>
+                Instanced
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </InspectorSelectRow>
 
       <InspectorSelectRow label="Mouse control">
         <Select

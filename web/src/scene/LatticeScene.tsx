@@ -5,7 +5,7 @@ import { Quaternion } from "three";
 import type { SceneSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
-import type { ComponentOpacityState, StyleState } from "../model";
+import type { AtomRenderingMode, ComponentOpacityState, StyleState } from "../model";
 import type { PreviewFpsStore } from "../model/previewFpsStore";
 import type { InteractionMode } from "../model/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
@@ -74,6 +74,7 @@ const FPS_SMOOTHING_WEIGHT = 0.18;
 
 export function LatticeScene({
   cameraOrientationRef,
+  atomRenderingMode = "mesh",
   cameraAnimatedCommandVersion = 0,
   cameraInteractionStore,
   cameraState,
@@ -103,6 +104,7 @@ export function LatticeScene({
   suspendCameraOrientationUpdates = false,
 }: {
   cameraOrientationRef?: CameraOrientationRef;
+  atomRenderingMode?: AtomRenderingMode;
   cameraAnimatedCommandVersion?: number;
   cameraInteractionStore: CameraInteractionStore;
   cameraCommandVersion: number;
@@ -194,6 +196,7 @@ export function LatticeScene({
         safeArea={safeArea}
       />
       <PreviewSceneContent
+        atomRenderingMode={atomRenderingMode}
         componentOpacity={componentOpacity}
         layout={layout}
         materialFamily={materialFamily}

@@ -84,6 +84,8 @@ import {
   createDefaultComponentVisibility,
   createDefaultExportSettings,
   createDefaultStyle,
+  defaultAtomRenderingModeForScene,
+  type AtomRenderingMode,
   type ExportProjectedSize,
   type ExportSettingsState,
   hasPolyhedra,
@@ -170,6 +172,9 @@ export function App() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportProjectedSize, setExportProjectedSize] =
     useState<ExportProjectedSize | null>(null);
+  const [atomRenderingMode, setAtomRenderingMode] = useState<AtomRenderingMode>(
+    () => defaultAtomRenderingModeForScene(null),
+  );
   const [cameraCommandVersion, setCameraCommandVersion] = useState(0);
   const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
   const [cameraOrientationVersion, setCameraOrientationVersion] = useState(0);
@@ -261,6 +266,7 @@ export function App() {
       setComponentVisibility(createDefaultComponentVisibility(nextScene));
       setComponentOpacity(createDefaultComponentOpacity());
       setStyle(createDefaultStyle());
+      setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
       setExportSettings(createDefaultExportSettings());
       setActiveCommonPanelTab("display");
       setLockedInteractionFeedbackCount(0);
@@ -346,6 +352,11 @@ export function App() {
       previewFpsStore.setFpsSnapshot(0);
     }
   }, [previewFpsStore]);
+
+  const handleAtomRenderingModeChange = useCallback((nextMode: AtomRenderingMode) => {
+    setPulseAtom(null);
+    setAtomRenderingMode(nextMode);
+  }, []);
 
   const handleAtomPulse = useCallback((atomId: string) => {
     if (atomId === inspectedAtomIdRef.current) {
@@ -604,6 +615,7 @@ export function App() {
       const nextScene = await uploadStructurePreview(file);
       setScene(nextScene);
       setComponentVisibility(createDefaultComponentVisibility(nextScene));
+      setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
       setPreviewStatus("ready");
     } catch (error) {
       setScene(null);
@@ -780,6 +792,7 @@ export function App() {
         cameraOrientationRef,
         componentOpacity,
         componentVisibility,
+        atomRenderingMode,
         fileName: selectedFileName,
         scene,
         settings: settingsForExport,
@@ -798,6 +811,7 @@ export function App() {
   }, [
     componentOpacity,
     componentVisibility,
+    atomRenderingMode,
     isExporting,
     prepareExportSettings,
     scene,
@@ -974,6 +988,7 @@ export function App() {
                 cameraAnimatedCommandVersion={cameraAnimatedCommandVersion}
                 cameraCommandVersion={cameraCommandVersion}
                 cameraState={viewState.camera}
+                atomRenderingMode={atomRenderingMode}
                 cameraOrientationRef={cameraOrientationRef}
                 onCameraOrientationFrame={requestOrientationGizmoFrame}
                 onCameraOrientationChange={handleCameraOrientationChange}
@@ -1170,11 +1185,13 @@ export function App() {
           />
 
           <InspectorSidebar
+            atomRenderingMode={atomRenderingMode}
             bondAlgorithm={bondAlgorithm}
             interactionMode={viewState.interactionMode}
             isOpen={isInspectorOpen}
             isSceneLoading={previewStatus === "loading"}
             showFpsOverlay={viewState.showFpsOverlay}
+            onAtomRenderingModeChange={handleAtomRenderingModeChange}
             onBondAlgorithmChange={(nextBondAlgorithm) => {
               void handleBondAlgorithmChange(nextBondAlgorithm);
             }}

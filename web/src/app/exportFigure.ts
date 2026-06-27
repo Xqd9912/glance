@@ -5,6 +5,7 @@ import type { RasterExportImage, RasterExportTextItem } from "../scene/exportRen
 import type {
   ComponentOpacityState,
   ComponentVisibilityState,
+  AtomRenderingMode,
   ExportFormat,
   ExportSettingsState,
   ExportSupersampling,
@@ -20,6 +21,7 @@ import type { CameraOrientationRef } from "../scene/LatticeScene";
 
 export interface CreateFigureExportOptions {
   cameraOrientationRef: CameraOrientationRef;
+  atomRenderingMode: AtomRenderingMode;
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
   fileName: string | null;
@@ -50,6 +52,7 @@ const LATTICE_VECTOR_EXPORT_SIZE_RATIO = 0.5;
 
 export async function createFigureExportFiles({
   cameraOrientationRef,
+  atomRenderingMode,
   componentOpacity,
   componentVisibility,
   fileName,
@@ -69,6 +72,7 @@ export async function createFigureExportFiles({
     files.push(
       await createStructureExportFile({
         cameraOrientationRef,
+        atomRenderingMode,
         componentOpacity,
         componentVisibility,
         fileName,
@@ -110,6 +114,7 @@ export async function createFigureExportFiles({
 
 export async function createFigureExportFile({
   cameraOrientationRef,
+  atomRenderingMode,
   componentOpacity,
   componentVisibility,
   fileName,
@@ -119,6 +124,7 @@ export async function createFigureExportFile({
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   return createStructureExportFile({
     cameraOrientationRef,
+    atomRenderingMode,
     componentOpacity,
     componentVisibility,
     fileName,
@@ -130,6 +136,7 @@ export async function createFigureExportFile({
 
 async function createStructureExportFile({
   cameraOrientationRef,
+  atomRenderingMode,
   componentOpacity,
   componentVisibility,
   fileName,
@@ -149,6 +156,7 @@ async function createStructureExportFile({
 
   const cameraPose = createCameraPoseSnapshot(cameraOrientationRef.current);
   const rasterImage = await renderExportRaster({
+    atomRenderingMode,
     cameraPose,
     componentOpacity,
     componentVisibility,
@@ -705,6 +713,7 @@ const CRC32_TABLE = new Uint32Array(
 );
 
 async function renderExportRaster({
+  atomRenderingMode,
   cameraPose,
   componentOpacity,
   componentVisibility,
@@ -712,6 +721,7 @@ async function renderExportRaster({
   style,
   visibleScene,
 }: {
+  atomRenderingMode: AtomRenderingMode;
   cameraPose: CameraPoseSnapshot;
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
@@ -722,6 +732,7 @@ async function renderExportRaster({
   const { renderStructureRasterPng } = await import("../scene/exportRenderer");
 
   return renderStructureRasterPng({
+    atomRenderingMode,
     cameraPose,
     componentOpacity,
     height: settings.height,

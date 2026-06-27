@@ -5,6 +5,7 @@ import { Quaternion, Vector3 } from "three";
 import type { SceneSpec } from "../api/scene";
 import type {
   ComponentOpacityState,
+  AtomRenderingMode,
   ExportMeshQuality,
   ExportSupersampling,
   StyleState,
@@ -48,6 +49,7 @@ export interface RasterExportTextItem {
 }
 
 export interface RenderStructureRasterOptions {
+  atomRenderingMode: AtomRenderingMode;
   cameraPose: CameraPoseSnapshot;
   componentOpacity: ComponentOpacityState;
   height: number;
@@ -70,6 +72,7 @@ export interface RenderLatticeVectorsRasterOptions {
 }
 
 export async function renderStructureRasterPng({
+  atomRenderingMode,
   cameraPose,
   componentOpacity,
   height,
@@ -152,6 +155,7 @@ export async function renderStructureRasterPng({
           />
         ))}
         <ExportSceneContent
+          atomRenderingMode={atomRenderingMode}
           cameraPose={cameraPose}
           componentOpacity={componentOpacity}
           exportFramePlan={exportFramePlan}

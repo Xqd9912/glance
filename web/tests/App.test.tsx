@@ -283,6 +283,48 @@ describe("App", () => {
     ).toEqual(["Atoms", "Bonds", "Unit cell", "Polyhedra"]);
   });
 
+  test("keeps atom rendering mode in the advanced sidebar", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    expect(
+      within(commonControls).queryByRole("combobox", {
+        name: "Atom rendering mode",
+      }),
+    ).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Sidebar" }));
+    const sidebar = screen.getByRole("complementary", { name: "Sidebar" });
+    const atomRenderingSelect = within(sidebar).getByRole("combobox", {
+      name: "Atom rendering mode",
+    });
+
+    expect(atomRenderingSelect.textContent).toContain("Mesh");
+
+    await user.click(atomRenderingSelect);
+    await user.click(await screen.findByRole("option", { name: "Instanced" }));
+
+    expect(
+      within(sidebar).getByRole("combobox", { name: "Atom rendering mode" }).textContent,
+    ).toContain("Instanced");
+  });
+
+  test("defaults atom rendering to instanced for structures with at least 1000 atoms", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user, sceneWithPeriodicImages({ atomCount: 1000 }));
+
+    await user.click(screen.getByRole("button", { name: "Sidebar" }));
+    const sidebar = screen.getByRole("complementary", { name: "Sidebar" });
+    expect(
+      within(sidebar).getByRole("combobox", {
+        name: "Atom rendering mode",
+      }).textContent,
+    ).toContain("Instanced");
+  });
+
   test("shows VESTA as the automatic default for uploaded structures", async () => {
     const user = userEvent.setup();
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages({ atomCount: 5 })));
@@ -472,6 +514,12 @@ describe("App", () => {
     expect(inspector.querySelector("[data-slot='separator']")).toBeNull();
     expect(within(inspector).queryByText("Renderer")).toBeNull();
     expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
+    expect(
+      within(inspector).getByRole("combobox", { name: "Atom rendering mode" }).textContent,
+    ).toContain("Mesh");
+    expect(within(inspector).getByText("Atom rendering").parentElement?.className).toContain(
+      "text-sm",
+    );
     expect(within(inspector).getByText("Mouse control").parentElement?.className).toContain(
       "text-sm",
     );

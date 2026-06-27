@@ -22,6 +22,7 @@ import type {
 } from "../api/scene";
 import { atomColorForScheme } from "../model/colorSchemes";
 import type {
+  AtomRenderingMode,
   BondColorMode,
   ComponentOpacityState,
   ExportMeshQuality,
@@ -38,6 +39,21 @@ import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
 import type { SceneLayout } from "./sceneLayout";
 import type { VectorTuple } from "./viewMath";
 import { StructureMaterial, type StructureMeshMaterial } from "./StructureMaterial";
+import { InstancedAtoms } from "./InstancedAtoms";
+import {
+  ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE,
+  ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY,
+  ATOM_HIGHLIGHT_HALO_SELECTED_SCALE,
+  ATOM_HIGHLIGHT_PULSE_COLOR_MIX,
+  ATOM_HIGHLIGHT_PULSE_EMISSIVE_INTENSITY,
+  ATOM_HIGHLIGHT_PULSE_MS,
+  ATOM_HIGHLIGHT_SELECT_MS,
+  ATOM_HIGHLIGHT_SELECTED_COLOR_MIX,
+  ATOM_HIGHLIGHT_SELECTED_EMISSIVE_INTENSITY,
+  applyAtomHighlight,
+  atomPulseFade,
+  easeOutCubic,
+} from "./atomHighlight";
 import { polyhedronGeometryFromAtoms, twoToneBondCylinderGeometry } from "./structureGeometry";
 
 export interface SceneMeshDetail {
@@ -58,17 +74,6 @@ const FOG_START_OFFSET_EARLY = -0.7;
 const FOG_START_OFFSET_LATE = 0.35;
 const FOG_FALLOFF_SPAN_STRONG = 0.35;
 const FOG_FALLOFF_SPAN_SOFT = 1.15;
-const ATOM_HIGHLIGHT_TARGET_COLOR = new Color("#ffffff");
-const ATOM_HIGHLIGHT_PULSE_MS = 240;
-const ATOM_HIGHLIGHT_SELECT_MS = 150;
-const ATOM_HIGHLIGHT_EMISSIVE_COLOR_MIX = 0.5;
-const ATOM_HIGHLIGHT_SELECTED_COLOR_MIX = 0.26;
-const ATOM_HIGHLIGHT_PULSE_COLOR_MIX = 0.34;
-const ATOM_HIGHLIGHT_SELECTED_EMISSIVE_INTENSITY = 0.32;
-const ATOM_HIGHLIGHT_PULSE_EMISSIVE_INTENSITY = 0.42;
-const ATOM_HIGHLIGHT_HALO_SELECTED_SCALE = 1.12;
-const ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE = 1.03;
-const ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY = 0.28;
 
 export const PREVIEW_SCENE_MESH_DETAIL: SceneMeshDetail = {
   bondRadialSegments: 16,
@@ -96,6 +101,7 @@ export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMe
 };
 
 export function PreviewSceneContent({
+  atomRenderingMode,
   componentOpacity,
   layout,
   materialFamily,
@@ -113,6 +119,7 @@ export function PreviewSceneContent({
   style,
   unitCellLineWidthScale = 1,
 }: {
+  atomRenderingMode: AtomRenderingMode;
   componentOpacity: ComponentOpacityState;
   layout: SceneLayout;
   materialFamily: ResolvedStructureMaterialFamily;
@@ -136,6 +143,7 @@ export function PreviewSceneContent({
     <>
       <SceneFog layout={layout} style={style} />
       <MemoizedStructureSceneObjects
+        atomRenderingMode={atomRenderingMode}
         atomById={atomById}
         componentOpacity={componentOpacity}
         groupPosition={layout.groupPosition}
@@ -239,6 +247,7 @@ function lerp(start: number, end: number, amount: number): number {
 
 export function StructureSceneObjects({
   atomById,
+  atomRenderingMode = "mesh",
   componentOpacity,
   groupPosition,
   interactionLocked = false,
@@ -257,6 +266,7 @@ export function StructureSceneObjects({
   unitCellLineWidthScale = 1,
 }: {
   atomById: Map<string, AtomSpec>;
+  atomRenderingMode?: AtomRenderingMode;
   componentOpacity: ComponentOpacityState;
   groupPosition: VectorTuple;
   interactionLocked?: boolean;
@@ -315,26 +325,43 @@ export function StructureSceneObjects({
             opacity={componentOpacity.bonds / 100}
           />
         ))}
-        {showAtoms
-          ? scene.atoms.map((atom) => (
-              <MemoizedAtom
-                key={atom.id}
-                atom={atom}
-                colorScheme={style.colorScheme}
-                inspected={inspectedAtomId === atom.id}
-                interactionLocked={interactionLocked}
-                materialFamily={materialFamily}
-                meshDetail={meshDetail}
-                onInspect={onAtomInspect}
-                onPulse={onAtomPulse}
-                onLockedInteractionAttempt={onLockedInteractionAttempt}
-                pulseToken={pulseAtomId === atom.id ? pulseToken : 0}
-                radiusModel={style.atomRadiusModel}
-                radiusScale={style.atomRadius / 100}
-                opacity={componentOpacity.atoms / 100}
-              />
-            ))
-          : null}
+        {showAtoms && atomRenderingMode === "instanced" ? (
+          <InstancedAtoms
+            atoms={scene.atoms}
+            colorScheme={style.colorScheme}
+            inspectedAtomId={inspectedAtomId}
+            interactionLocked={interactionLocked}
+            materialFamily={materialFamily}
+            meshDetail={meshDetail}
+            onInspect={onAtomInspect}
+            onPulse={onAtomPulse}
+            onLockedInteractionAttempt={onLockedInteractionAttempt}
+            pulseAtomId={pulseAtomId}
+            pulseToken={pulseToken}
+            radiusModel={style.atomRadiusModel}
+            radiusScale={style.atomRadius / 100}
+            opacity={componentOpacity.atoms / 100}
+          />
+        ) : showAtoms ? (
+          scene.atoms.map((atom) => (
+            <MemoizedAtom
+              key={atom.id}
+              atom={atom}
+              colorScheme={style.colorScheme}
+              inspected={inspectedAtomId === atom.id}
+              interactionLocked={interactionLocked}
+              materialFamily={materialFamily}
+              meshDetail={meshDetail}
+              onInspect={onAtomInspect}
+              onPulse={onAtomPulse}
+              onLockedInteractionAttempt={onLockedInteractionAttempt}
+              pulseToken={pulseAtomId === atom.id ? pulseToken : 0}
+              radiusModel={style.atomRadiusModel}
+              radiusScale={style.atomRadius / 100}
+              opacity={componentOpacity.atoms / 100}
+            />
+          ))
+        ) : null}
       </group>
     </group>
   );
@@ -348,25 +375,6 @@ interface AtomSelectionHighlightTransition {
   startHaloOpacity: number;
   startHaloScale: number;
   startTimeMs: number;
-}
-
-function applyAtomHighlight(
-  material: StructureMeshMaterial,
-  baseColor: Color,
-  colorMix: number,
-  emissiveIntensity: number,
-) {
-  material.color.copy(baseColor).lerp(ATOM_HIGHLIGHT_TARGET_COLOR, colorMix);
-  if ("emissive" in material) {
-    material.emissive
-      .copy(baseColor)
-      .lerp(ATOM_HIGHLIGHT_TARGET_COLOR, ATOM_HIGHLIGHT_EMISSIVE_COLOR_MIX);
-    material.emissiveIntensity = emissiveIntensity;
-  }
-}
-
-function easeOutCubic(progress: number): number {
-  return 1 - (1 - progress) ** 3;
 }
 
 function Atom({
@@ -679,9 +687,7 @@ function AtomHighlightAnimator({
       1,
       (performance.now() - pulseStartTime) / ATOM_HIGHLIGHT_PULSE_MS,
     );
-    const fadeIn = Math.min(1, progress / 0.28);
-    const fadeOut = progress < 0.28 ? 1 : 1 - (progress - 0.28) / 0.72;
-    const fade = fadeIn * Math.max(0, fadeOut) ** 0.72;
+    const fade = atomPulseFade(progress);
     const colorMix = ATOM_HIGHLIGHT_PULSE_COLOR_MIX * fade;
     const emissiveIntensity = ATOM_HIGHLIGHT_PULSE_EMISSIVE_INTENSITY * fade;
     currentColorMixRef.current = colorMix;

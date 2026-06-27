@@ -8,6 +8,7 @@ import {
   STYLE_FOG_STRENGTH_MIN,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
+  defaultAtomRenderingModeForScene,
   createDefaultExportSettings,
   createDefaultStyle,
   createDefaultComponentVisibility,
@@ -32,6 +33,12 @@ import {
 } from "../src/app/settings";
 
 describe("settings", () => {
+  test("defaults atom rendering to instanced for structures with at least 1000 atoms", () => {
+    expect(defaultAtomRenderingModeForScene(null)).toBe("mesh");
+    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(999))).toBe("mesh");
+    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(1000))).toBe("instanced");
+  });
+
   test("defaults style controls to global 100 percent and by-atom bonds", () => {
     expect(createDefaultStyle()).toEqual({
       atomRadius: 100,
@@ -455,6 +462,17 @@ function sceneWithPeriodicImages(): SceneSpec {
         spaceGroup: null,
         spaceGroupNumber: null,
       },
+    },
+  };
+}
+
+function sceneWithAtomCount(atomCount: number): SceneSpec {
+  const scene = sceneWithPeriodicImages();
+  return {
+    ...scene,
+    summary: {
+      ...scene.summary,
+      atomCount,
     },
   };
 }
