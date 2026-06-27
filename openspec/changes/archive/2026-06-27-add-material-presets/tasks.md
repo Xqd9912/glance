@@ -12,12 +12,14 @@
 - [x] 2.4 Keep the unit-cell frame on its existing line rendering path outside material preset resolution.
 - [x] 2.5 Use the same selected material preset in preview and raster export rendering.
 - [x] 2.6 Support preset-defined camera-relative light arrays for preview and raster export.
+- [x] 2.7 Keep `flat-2d` on the base material path without preset-specific outline geometry.
 
 ## 3. Controls
 
 - [x] 3.1 Add a compact material preset control to the `Style` tab with the four bundled options.
 - [x] 3.2 Ensure selecting a material preset updates shading without re-uploading the structure file or mutating component opacity values.
 - [x] 3.3 Keep existing style controls for color scheme, atom radius, bond thickness, and bond color mode independent from material preset selection.
+- [x] 3.4 Remove the legacy bond-only `Uniform (2D)` option from bond style controls and state.
 
 ## 4. Verification
 
@@ -27,3 +29,5 @@
 - [x] 4.4 Run targeted Bun tests and TypeScript checks for the changed frontend code.
 - [x] 4.5 Validate the OpenSpec change before implementation is considered complete.
 - [x] 4.6 Verify preset camera-light validation and scene material resolution after glossy lighting tuning.
+- [x] 4.7 Verify bond style cleanup, scene material resolution, TypeScript checks, and OpenSpec validation.
+- [x] 4.8 Verify outline removal from preset data, scene rendering, and tests.

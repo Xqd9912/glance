@@ -15,7 +15,6 @@ import {
 } from "../src/scene/materialPresetResolver";
 import {
   BOND_COLOR,
-  BOND_2D_RADIAL_SEGMENTS,
   BOND_RADIUS,
   BOND_TUBE_RADIAL_SEGMENTS,
   CELL_FRAME_LINE_WIDTH_PIXELS,
@@ -228,7 +227,6 @@ describe("computeSceneLayout", () => {
 
   test("uses fixed first-version bond styling", () => {
     expect(BOND_COLOR).toBe("#c7cbd1");
-    expect(BOND_2D_RADIAL_SEGMENTS).toBe(12);
     expect(BOND_RADIUS).toBe(0.14);
     expect(BOND_TUBE_RADIAL_SEGMENTS).toBe(24);
   });
@@ -247,13 +245,13 @@ describe("computeSceneLayout", () => {
     expect(atomFamily.material).toEqual({
       flatShading: false,
       kind: "standard",
-      metalness: 0,
-      roughness: 0.32,
+      metalness: 0.08,
+      roughness: 0.38,
     });
-    expect(atomFamily.lighting.cameraLights).toHaveLength(2);
-    expect(atomFamily.lighting.cameraLights[1]).toEqual({
-      intensity: 0.85,
-      offset: [-0.08, 0.38, 0.12],
+    expect(atomFamily.lighting.cameraLights).toHaveLength(1);
+    expect(atomFamily.lighting.cameraLights[0]).toEqual({
+      intensity: 2.05,
+      offset: [0.32, 0.22, 0],
     });
     expect(bondFamily).toEqual(atomFamily);
     expect(polyhedronFamily).toEqual(atomFamily);
@@ -265,20 +263,17 @@ describe("computeSceneLayout", () => {
 
   test("keeps preview mesh detail fixed while export presets scale together", () => {
     expect(PREVIEW_SCENE_MESH_DETAIL).toEqual({
-      bond2dRadialSegments: 10,
       bondRadialSegments: 16,
       sphereHeightSegments: 24,
       sphereWidthSegments: 32,
     });
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.low).toEqual({
-      bond2dRadialSegments: 8,
       bondRadialSegments: 12,
       sphereHeightSegments: 16,
       sphereWidthSegments: 24,
     });
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.medium).toBe(PREVIEW_SCENE_MESH_DETAIL);
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.high).toEqual({
-      bond2dRadialSegments: 12,
       bondRadialSegments: 24,
       sphereHeightSegments: 32,
       sphereWidthSegments: 48,

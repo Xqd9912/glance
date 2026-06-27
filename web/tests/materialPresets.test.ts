@@ -25,16 +25,13 @@ describe("material presets", () => {
     ]);
     expect(materialPresetById("glossy").material).toMatchObject({
       kind: "standard",
-      roughness: 0.32,
+      metalness: 0.08,
+      roughness: 0.38,
     });
     expect(materialPresetById("glossy").lighting.cameraLights).toEqual([
       {
         intensity: 2.05,
         offset: [0.32, 0.22, 0],
-      },
-      {
-        intensity: 0.85,
-        offset: [-0.08, 0.38, 0.12],
       },
     ]);
   });
@@ -113,6 +110,7 @@ describe("material presets", () => {
       "material presets.presets[0].lighting.cameraLights[0].offset[1] must be between -2 and 2.",
     );
   });
+
 });
 
 function catalogWithPreset(presetPatch: Record<string, unknown>) {

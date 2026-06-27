@@ -27,7 +27,7 @@
       "material": {
         "kind": "standard",
         "metalness": 0,
-        "roughness": 0.54,
+        "roughness": 0.58,
         "flatShading": false
       },
       "lighting": {
@@ -46,8 +46,8 @@
       "description": "A low-roughness non-metal surface for crisp light response.",
       "material": {
         "kind": "standard",
-        "metalness": 0,
-        "roughness": 0.32,
+        "metalness": 0.08,
+        "roughness": 0.38,
         "flatShading": false
       },
       "lighting": {
@@ -56,10 +56,6 @@
           {
             "intensity": 2.05,
             "offset": [0.32, 0.22, 0]
-          },
-          {
-            "intensity": 0.85,
-            "offset": [-0.08, 0.38, 0.12]
           }
         ]
       }

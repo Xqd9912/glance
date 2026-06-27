@@ -10,6 +10,7 @@ Pretty Lattice needs a small set of named material styles so users can switch th
 - Apply the selected material preset as one unified shading family across atoms, bonds, and polyhedra.
 - Keep component opacity controls independent from material presets for this slice, so changing a preset does not change atom, bond, or polyhedron opacity values.
 - Keep the unit-cell frame outside the material preset system.
+- Remove the older bond-only `Uniform (2D)` style so bond style remains focused on color ownership.
 - Preserve independent visual controls such as color scheme, atom radius, bond thickness, bond color mode, component visibility, and export mesh quality.
 
 ## Capabilities

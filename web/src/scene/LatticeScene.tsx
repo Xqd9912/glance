@@ -134,7 +134,6 @@ const CAMERA_CONTROLS_STATE_ORBIT_TOUCH_DOLLY_ROTATE = 6;
 const VIEW_SCALE_SYNC_EPSILON = 0.0005;
 const FRUSTUM_SYNC_EPSILON = 0.000001;
 export const BOND_COLOR = "#c7cbd1";
-export const BOND_2D_RADIAL_SEGMENTS = 12;
 export const BOND_TUBE_RADIAL_SEGMENTS = 24;
 export const POLYHEDRON_SURFACE_OPACITY = 0.5;
 export const POLYHEDRON_EDGE_COLOR = "#f2f5f9";
@@ -169,14 +168,12 @@ export {
 } from "./sceneGeometry";
 
 export interface SceneMeshDetail {
-  bond2dRadialSegments: number;
   bondRadialSegments: number;
   sphereHeightSegments: number;
   sphereWidthSegments: number;
 }
 
 export const PREVIEW_SCENE_MESH_DETAIL: SceneMeshDetail = {
-  bond2dRadialSegments: 10,
   bondRadialSegments: 16,
   sphereHeightSegments: 24,
   sphereWidthSegments: 32,
@@ -184,20 +181,17 @@ export const PREVIEW_SCENE_MESH_DETAIL: SceneMeshDetail = {
 
 export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMeshDetail> = {
   low: {
-    bond2dRadialSegments: 8,
     bondRadialSegments: 12,
     sphereHeightSegments: 16,
     sphereWidthSegments: 24,
   },
   medium: PREVIEW_SCENE_MESH_DETAIL,
   high: {
-    bond2dRadialSegments: BOND_2D_RADIAL_SEGMENTS,
     bondRadialSegments: BOND_TUBE_RADIAL_SEGMENTS,
     sphereHeightSegments: 32,
     sphereWidthSegments: 48,
   },
   xhigh: {
-    bond2dRadialSegments: 16,
     bondRadialSegments: 32,
     sphereHeightSegments: 48,
     sphereWidthSegments: 72,
@@ -1631,22 +1625,6 @@ function Bond({
 
   const isTransparent = opacity < 1;
   const radius = BOND_RADIUS * thicknessScale;
-
-  if (colorMode === "unicolor-2d") {
-    return (
-      <BondCylinder
-        color={BOND_COLOR}
-        isTransparent={isTransparent}
-        length={geometry.length}
-        materialFamily={materialFamily}
-        opacity={opacity}
-        position={geometry.center}
-        quaternion={geometry.quaternion}
-        radialSegments={meshDetail.bond2dRadialSegments}
-        radius={radius}
-      />
-    );
-  }
 
   if (colorMode === "by-atom") {
     return (

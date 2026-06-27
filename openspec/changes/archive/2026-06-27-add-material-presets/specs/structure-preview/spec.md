@@ -49,11 +49,24 @@ The selected material preset SHALL define one shading family that is applied con
 - **AND** polyhedron surfaces use that preset's shading family
 - **AND** polyhedron edge outlines remain available when polyhedra are rendered
 
+#### Scenario: Apply flat 2D without preset outlines
+
+- **WHEN** the user selects the `Flat 2D` material preset
+- **THEN** atom spheres, bond cylinders, and polyhedron surfaces use the selected unlit flat material family
+- **AND** atom and bond rendering does not add preset-specific outline geometry
+- **AND** polyhedra continue to use their existing edge overlay when polyhedra are rendered
+
 #### Scenario: Preserve independent color controls
 
 - **WHEN** the user changes the material preset
 - **THEN** the current color scheme remains unchanged
 - **AND** the current bond color mode remains unchanged
+
+#### Scenario: Retire bond-only 2D style
+
+- **WHEN** the user opens the bond style control
+- **THEN** the available choices are limited to by-atom and uniform bond color behavior
+- **AND** the control does not offer a separate bond-only 2D style
 
 ### Requirement: Material presets keep opacity and unit-cell styling independent
 

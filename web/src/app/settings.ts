@@ -61,7 +61,7 @@ export const COMPONENT_OPACITY_MAX: ComponentOpacityState = {
   polyhedra: 100,
 };
 
-export type BondColorMode = "neutral" | "unicolor-2d" | "by-atom";
+export type BondColorMode = "neutral" | "by-atom";
 export interface StyleState {
   atomRadius: number;
   atomRadiusModel: AtomRadiusModel;

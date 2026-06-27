@@ -12,9 +12,11 @@ The user also wants the preset values to be easy to tune without touching TypeSc
 - Ship an initial set of four presets: `classic-matte`, `modern-matte`, `glossy`, and `flat-2d`.
 - Keep preset values in a user-editable frontend JSON file.
 - Apply one selected shading family consistently to atoms, bonds, and polyhedra.
+- Keep `flat-2d` as an unlit flat material preset without adding separate outline geometry.
 - Keep component opacity sliders independent from preset selection in this slice.
 - Keep the unit-cell frame out of material preset styling.
 - Use the same resolved material preset for preview and export rendering.
+- Remove the old bond-only 2D color mode so bond style remains focused on color ownership.
 
 **Non-Goals:**
 
@@ -56,6 +58,10 @@ The unit-cell frame remains a line overlay controlled by component visibility an
 ### Keep advanced settings open
 
 The material preset model should be data-shaped rather than branch-shaped. Code should avoid preset-ID-specific rendering branches such as special logic only for `glossy`; instead it should resolve generic fields like material kind, roughness, camera-light intensity, and camera-light offset. This keeps room for future advanced settings and more bundled presets.
+
+### Retire the bond-only 2D style
+
+The previous `Uniform (2D)` bond style overlaps with `flat-2d` and makes "2D" mean two different things in the Style tab. Remove that option and keep bond style focused on color ownership: by-atom or uniform. The flat visual treatment now lives in material presets.
 
 ## Risks / Trade-offs
 

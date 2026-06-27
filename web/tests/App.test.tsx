@@ -645,14 +645,11 @@ describe("App", () => {
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
 
     await user.click(bondStyleSelect);
+    expect(await screen.findByRole("option", { name: "By atom" })).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "Uniform (2D)" })).toBeNull();
     await user.click(await screen.findByRole("option", { name: "Uniform" }));
 
     expect(bondStyleSelect.textContent).toContain("Uniform");
-
-    await user.click(bondStyleSelect);
-    await user.click(await screen.findByRole("option", { name: "Uniform (2D)" }));
-
-    expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
     expect(fetchCalls).toHaveLength(1);
 
     await user.click(colorSchemeSelect);
@@ -721,7 +718,7 @@ describe("App", () => {
     expect(bondThicknessInput.value).toBe("100");
     expect(bondThicknessSlider.value).toBe("100");
     expect(atomRadiusModelSelect.textContent).toContain("vdW");
-    expect(bondStyleSelect.textContent).toContain("Uniform (2D)");
+    expect(bondStyleSelect.textContent).toContain("Uniform");
     expect(colorSchemeSelect.textContent).toContain("Jmol");
     expect(fogSwitch.getAttribute("aria-checked")).toBe("true");
     expect(fogStartInput.value).toBe("18");
