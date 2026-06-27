@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 
-import type { PreviewSafeArea } from "../../scene/LatticeScene";
+import type { PreviewSafeArea } from "../../model/layout";
 
 const MAX_ORIENTATION_GIZMO_SIZE_PX = 280;
 const MIN_ORIENTATION_GIZMO_SIZE_PX = 160;

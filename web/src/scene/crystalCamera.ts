@@ -1,22 +1,23 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
 
+import type {
+  CrystalAxisLabel,
+  CrystalCameraPrimaryDirection,
+  CrystalCameraScreenDirection,
+  CrystalCameraState,
+} from "../model/crystalCameraState";
 import { withDefaultCellVectors, type StandardCameraPose, type VectorTuple } from "./viewMath";
 
-export type CrystalCameraScreenDirection = "right" | "upward" | "outward";
-export type CrystalCameraPrimaryDirection = CrystalCameraScreenDirection;
-export type CrystalAxisLabel = "a" | "b" | "c";
+export type {
+  CrystalAxisLabel,
+  CrystalCameraPrimaryDirection,
+  CrystalCameraScreenDirection,
+  CrystalCameraState,
+} from "../model/crystalCameraState";
 
 export interface CrystalBasisVectors {
   direct: [Vector3, Vector3, Vector3];
   reciprocal: [Vector3, Vector3, Vector3];
-}
-
-export interface CrystalCameraState {
-  direct: VectorTuple;
-  primary: CrystalCameraPrimaryDirection;
-  reciprocal: VectorTuple;
-  secondary: CrystalCameraScreenDirection;
-  rollDegrees: number;
 }
 
 export interface CrystalCameraPose {

@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import { cn } from "@/lib/utils";
 
-import type { PreviewSafeArea } from "../../scene/LatticeScene";
+import type { PreviewSafeArea } from "../../model/layout";
 import { lambertLegendSwatchBackground } from "../../scene/renderAppearance";
 import type { ElementLegendEntry } from "../elementLegend";
 import { GLASS_SURFACE_CLASS } from "../surface";

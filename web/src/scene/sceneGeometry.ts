@@ -1,6 +1,6 @@
 import { Vector3 } from "three";
 
-export { atomRadiusForModel } from "../app/elementRadii";
+export { atomRadiusForModel } from "../model/elementRadii";
 import { withDefaultCellVectors, type VectorTuple } from "./viewMath";
 
 export const BOND_RADIUS = 0.14;

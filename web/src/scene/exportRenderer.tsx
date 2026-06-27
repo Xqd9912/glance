@@ -7,14 +7,14 @@ import type {
   ExportMeshQuality,
   ExportSupersampling,
   StyleState,
-} from "../app/settings";
+} from "../model";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import {
   EXPORT_SCENE_MESH_DETAIL_PRESETS,
-  ExportSceneContent,
-  computeSceneLayout,
-} from "./LatticeScene";
+} from "./StructureSceneObjects";
+import { ExportSceneContent } from "./ExportSceneContent";
 import { CameraHeadlight } from "./CameraHeadlight";
+import { computeSceneLayout } from "./sceneLayout";
 import { computeStructureExportFramePlan } from "./exportFrame";
 import { resolveStructureMaterialFamilyForStyle } from "./materialPresetResolver";
 import { DEFAULT_RENDERER_PARAMETERS } from "./renderBackend";

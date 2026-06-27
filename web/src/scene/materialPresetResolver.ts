@@ -3,8 +3,8 @@ import {
   type MaterialPreset,
   type MaterialPresetLighting,
   type MaterialPresetMaterial,
-} from "../app/materialPresets";
-import type { StyleState } from "../app/settings";
+} from "../model/materialPresets";
+import type { StyleState } from "../model/appearance";
 
 export const STRUCTURE_MATERIAL_TARGETS = [
   "atom",

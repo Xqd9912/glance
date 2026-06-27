@@ -1,0 +1,595 @@
+import { RotateCcw } from "lucide-react";
+import {
+  type CSSProperties,
+  type Dispatch,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+import type { AtomRadiusModel } from "../../../api/scene";
+import {
+  COLOR_SCHEME_OPTIONS,
+  type ColorScheme,
+} from "../../../model/colorSchemes";
+import {
+  MATERIAL_PRESET_OPTIONS,
+  materialPresetById,
+  type MaterialPresetId,
+} from "../../../model/materialPresets";
+import {
+  STYLE_FOG_START_MAX,
+  STYLE_FOG_START_MIN,
+  STYLE_FOG_STRENGTH_MAX,
+  STYLE_FOG_STRENGTH_MIN,
+  STYLE_SCALE_MAX,
+  STYLE_SCALE_MIN,
+  createDefaultStyle,
+  type BondColorMode,
+  type StyleState,
+} from "../../../model";
+import {
+  TOOL_ICON_BUTTON_CLASS,
+  TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS,
+  TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS,
+} from "../../surface";
+import { TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS } from "./controlFeedback";
+import { PercentSliderRow, clampPercentValue } from "./sharedControls";
+
+const BOND_COLOR_OPTIONS: { label: string; value: BondColorMode }[] = [
+  { label: "By atom", value: "by-atom" },
+  { label: "Uniform", value: "neutral" },
+];
+const ATOM_RADIUS_MODEL_OPTIONS: {
+  menuLabel: string;
+  triggerLabel: string;
+  value: AtomRadiusModel;
+}[] = [
+  { menuLabel: "Uniform", triggerLabel: "Uniform", value: "uniform" },
+  { menuLabel: "Atomic", triggerLabel: "Atomic", value: "atomic" },
+  { menuLabel: "Van der Waals", triggerLabel: "vdW", value: "vdw" },
+  { menuLabel: "Ionic", triggerLabel: "Ionic", value: "ionic" },
+];
+const UNICOLOR_TOKEN_STYLE = { background: "#aeb5c0" } as const;
+const BY_ATOM_TOKEN_STYLE = { background: "linear-gradient(90deg, #f58c9a 0 50%, #78a7ff 50% 100%)" } as const;
+const JMOL_TOKEN_STYLE = { background: "linear-gradient(90deg, #ffffff 0 25%, #909090 25% 50%, #3050f8 50% 75%, #ff0d0d 75% 100%)" } as const;
+const JMOL_SOFT_TOKEN_STYLE = { background: "linear-gradient(90deg, #dedede 0 25%, #919191 25% 50%, #4c6cca 50% 75%, #d86254 75% 100%)" } as const;
+const VESTA_TOKEN_STYLE = { background: "linear-gradient(90deg, #ffcccc 0 25%, #814929 25% 50%, #b0bae6 50% 75%, #ff0300 75% 100%)" } as const;
+const VESTA_SOFT_TOKEN_STYLE = { background: "linear-gradient(90deg, #f2c0c0 0 25%, #8d5434 25% 50%, #a9b3df 50% 75%, #d86253 75% 100%)" } as const;
+
+export function StyleTabContent({
+  onAtomRadiusModelChange,
+  onStyleChange,
+  style,
+}: {
+  onAtomRadiusModelChange: (atomRadiusModel: AtomRadiusModel) => void;
+  onStyleChange: Dispatch<SetStateAction<StyleState>>;
+  style: StyleState;
+}) {
+  function setStyleScale(key: keyof typeof STYLE_SCALE_MIN, value: number) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      [key]: clampPercentValue(value, STYLE_SCALE_MIN[key], STYLE_SCALE_MAX[key]),
+    }));
+  }
+
+  function setAtomRadiusModel(atomRadiusModel: AtomRadiusModel) {
+    onAtomRadiusModelChange(atomRadiusModel);
+  }
+
+  function setBondColorMode(bondColorMode: BondColorMode) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      bondColorMode,
+    }));
+  }
+
+  function setColorScheme(colorScheme: ColorScheme) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      colorScheme,
+    }));
+  }
+
+  function setMaterialPreset(materialPreset: MaterialPresetId) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      materialPreset,
+    }));
+  }
+
+  function setFogEnabled(fogEnabled: boolean) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogEnabled,
+    }));
+  }
+
+  function setFogStart(fogStart: number) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStart: clampPercentValue(
+        fogStart,
+        STYLE_FOG_START_MIN,
+        STYLE_FOG_START_MAX,
+      ),
+    }));
+  }
+
+  function setFogStrength(fogStrength: number) {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStrength: clampPercentValue(
+        fogStrength,
+        STYLE_FOG_STRENGTH_MIN,
+        STYLE_FOG_STRENGTH_MAX,
+      ),
+    }));
+  }
+
+  const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
+  const resetFeedbackTickRef = useRef(0);
+  const resetFeedbackTimeoutRef = useRef<number | null>(null);
+  const [fogResetFeedbackPhase, setFogResetFeedbackPhase] = useState<"a" | "b" | null>(null);
+  const fogResetFeedbackTickRef = useRef(0);
+  const fogResetFeedbackTimeoutRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(resetFeedbackTimeoutRef.current);
+      }
+      if (fogResetFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(fogResetFeedbackTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  function handleResetScaleClick() {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      atomRadius: createDefaultStyle().atomRadius,
+      bondThickness: createDefaultStyle().bondThickness,
+    }));
+
+    if (resetFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(resetFeedbackTimeoutRef.current);
+    }
+
+    resetFeedbackTickRef.current += 1;
+    setResetFeedbackPhase(resetFeedbackTickRef.current % 2 === 0 ? "b" : "a");
+    resetFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setResetFeedbackPhase(null);
+      resetFeedbackTimeoutRef.current = null;
+    }, TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS);
+  }
+
+  function handleResetFogClick() {
+    onStyleChange((currentStyle) => ({
+      ...currentStyle,
+      fogStart: createDefaultStyle().fogStart,
+      fogStrength: createDefaultStyle().fogStrength,
+    }));
+
+    if (fogResetFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(fogResetFeedbackTimeoutRef.current);
+    }
+
+    fogResetFeedbackTickRef.current += 1;
+    setFogResetFeedbackPhase(fogResetFeedbackTickRef.current % 2 === 0 ? "b" : "a");
+    fogResetFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setFogResetFeedbackPhase(null);
+      fogResetFeedbackTimeoutRef.current = null;
+    }, TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS);
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <section aria-labelledby="style-size-label">
+        <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
+          <h2
+            id="style-size-label"
+            className="text-xs font-bold leading-tight text-muted-foreground"
+          >
+            Radius
+          </h2>
+          <span aria-hidden="true" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reset scale"
+                  className={cn(
+                    TOOL_ICON_BUTTON_CLASS,
+                    resetFeedbackPhase === "a" ? TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS : null,
+                    resetFeedbackPhase === "b" ? TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS : null,
+                  )}
+                  onClick={handleResetScaleClick}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">Reset scale</TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="mt-1 flex flex-col gap-1">
+          <PercentSliderRow
+            accessibleLabel="Atom"
+            label={(
+              <AtomRadiusModelSelect
+                value={style.atomRadiusModel}
+                onValueChange={setAtomRadiusModel}
+              />
+            )}
+            max={STYLE_SCALE_MAX.atomRadius}
+            min={STYLE_SCALE_MIN.atomRadius}
+            value={style.atomRadius}
+            onValueChange={(value) => setStyleScale("atomRadius", value)}
+          />
+          <PercentSliderRow
+            accessibleLabel="Bond"
+            label="Bond"
+            max={STYLE_SCALE_MAX.bondThickness}
+            min={STYLE_SCALE_MIN.bondThickness}
+            value={style.bondThickness}
+            onValueChange={(value) => setStyleScale("bondThickness", value)}
+          />
+        </div>
+      </section>
+
+      <Separator />
+
+      <section aria-labelledby="style-fog-label">
+        <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h2
+              id="style-fog-label"
+              className="text-xs font-bold leading-tight text-muted-foreground"
+            >
+              Fog
+            </h2>
+            <Switch
+              checked={style.fogEnabled}
+              aria-label="Fog"
+              className="h-4 w-7 p-0.5"
+              thumbClassName="size-3 data-[state=checked]:translate-x-3"
+              onCheckedChange={setFogEnabled}
+            />
+          </div>
+          <span aria-hidden="true" />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reset fog"
+                  className={cn(
+                    TOOL_ICON_BUTTON_CLASS,
+                    fogResetFeedbackPhase === "a"
+                      ? TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS
+                      : null,
+                    fogResetFeedbackPhase === "b"
+                      ? TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS
+                      : null,
+                  )}
+                  onClick={handleResetFogClick}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">Reset fog</TooltipContent>
+          </Tooltip>
+        </div>
+        <div className={cn("mt-1", style.fogEnabled ? null : "opacity-55")}>
+          <PercentSliderRow
+            accessibleLabel="Fog"
+            allowZero
+            disabled={!style.fogEnabled}
+            label="Start"
+            max={STYLE_FOG_START_MAX}
+            min={STYLE_FOG_START_MIN}
+            showSnapMarker={false}
+            value={style.fogStart}
+            valueLabel="start"
+            onValueChange={setFogStart}
+          />
+          <PercentSliderRow
+            accessibleLabel="Fog"
+            allowZero
+            disabled={!style.fogEnabled}
+            label="Strength"
+            max={STYLE_FOG_STRENGTH_MAX}
+            min={STYLE_FOG_STRENGTH_MIN}
+            showSnapMarker={false}
+            value={style.fogStrength}
+            valueLabel="strength"
+            onValueChange={setFogStrength}
+          />
+        </div>
+      </section>
+
+      <Separator />
+
+      <div className="flex flex-col gap-0.5">
+        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+          <span className="min-w-0 truncate leading-tight">Material</span>
+          <Select
+            value={style.materialPreset}
+            onValueChange={(value) => setMaterialPreset(value)}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Material"
+              className="!h-6 w-full !px-2 !py-0"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {MATERIAL_PRESET_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    textValue={option.label}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    <MaterialPresetOptionLabel
+                      label={option.label}
+                      value={option.value}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+          <span className="min-w-0 truncate leading-tight">Bond style</span>
+          <Select
+            value={style.bondColorMode}
+            onValueChange={(value) => setBondColorMode(value as BondColorMode)}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Bond style"
+              className="!h-6 w-full !px-2 !py-0"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {BOND_COLOR_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    textValue={option.label}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    <BondStyleOptionLabel
+                      label={option.label}
+                      value={option.value}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+          <span className="min-w-0 truncate leading-tight">Color scheme</span>
+          <Select
+            value={style.colorScheme}
+            onValueChange={(value) => setColorScheme(value as ColorScheme)}
+          >
+            <SelectTrigger
+              size="sm"
+              aria-label="Color scheme"
+              className="!h-6 w-full !px-2 !py-0"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              position="popper"
+              className="!bg-background !text-foreground"
+            >
+              <SelectGroup>
+                {COLOR_SCHEME_OPTIONS.map((option) => (
+                  <SelectItem
+                    key={option.value}
+                    value={option.value}
+                    textValue={option.label}
+                    className="min-h-6 py-0.5 text-sm"
+                  >
+                    <ColorSchemeOptionLabel
+                      label={option.label}
+                      value={option.value}
+                    />
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AtomRadiusModelSelect({
+  onValueChange,
+  value,
+}: {
+  onValueChange: (value: AtomRadiusModel) => void;
+  value: AtomRadiusModel;
+}) {
+  const selectedOption = ATOM_RADIUS_MODEL_OPTIONS.find((option) => option.value === value);
+
+  return (
+    <Select
+      value={value}
+      onValueChange={(nextValue) => onValueChange(nextValue as AtomRadiusModel)}
+    >
+      <SelectTrigger
+        size="sm"
+        aria-label="Atom radius model"
+        className="-ml-1.5 !h-6 w-20 gap-0.5 !py-0 !pr-0.5 !pl-1.5 [&_svg]:size-3.5"
+      >
+        <span data-slot="select-value" className="min-w-0 truncate">
+          {selectedOption?.triggerLabel}
+        </span>
+      </SelectTrigger>
+      <SelectContent
+        position="popper"
+        className="!bg-background !text-foreground"
+      >
+        <SelectGroup>
+          <SelectLabel className="py-1 text-xs font-medium">Atom radius model</SelectLabel>
+          {ATOM_RADIUS_MODEL_OPTIONS.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={option.value}
+              textValue={option.menuLabel}
+              className="min-h-6 py-0.5 text-sm"
+            >
+              {option.menuLabel}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      </SelectContent>
+    </Select>
+  );
+}
+
+function MaterialPresetOptionLabel({
+  label,
+  value,
+}: {
+  label: string;
+  value: MaterialPresetId;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="h-3 w-6 shrink-0 rounded-full border border-border"
+        style={materialPresetTokenStyle(value)}
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+}
+
+function materialPresetTokenStyle(value: MaterialPresetId): CSSProperties {
+  const preset = materialPresetById(value);
+  if (preset.material.kind === "basic") {
+    return {
+      background: "linear-gradient(180deg, #d8dde5 0%, #929aa8 100%)",
+    };
+  }
+
+  if (preset.material.kind === "lambert") {
+    return {
+      background:
+        "linear-gradient(145deg, rgba(255, 255, 255, 0.56) 0 20%, rgba(255, 255, 255, 0) 42%), linear-gradient(180deg, #d7dce4 0%, #aab2be 100%)",
+    };
+  }
+
+  const highlightAlpha = Math.round((1 - preset.material.roughness) * 80) / 100;
+  return {
+    background:
+      `linear-gradient(145deg, rgba(255, 255, 255, ${highlightAlpha}) 0 16%, rgba(255, 255, 255, 0.18) 17% 30%, rgba(255, 255, 255, 0) 44%), ` +
+      "linear-gradient(180deg, #dde4ed 0%, #a0aebc 52%, #7f8996 100%)",
+  };
+}
+
+function BondStyleOptionLabel({
+  label,
+  value,
+}: {
+  label: string;
+  value: BondColorMode;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="h-3 w-6 shrink-0 rounded-full border border-border"
+        style={bondStyleTokenStyle(value)}
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+}
+
+function bondStyleTokenStyle(value: BondColorMode): CSSProperties | undefined {
+  if (value === "neutral") {
+    return UNICOLOR_TOKEN_STYLE;
+  }
+  if (value === "by-atom") {
+    return BY_ATOM_TOKEN_STYLE;
+  }
+  return undefined;
+}
+
+function ColorSchemeOptionLabel({
+  label,
+  value,
+}: {
+  label: string;
+  value: ColorScheme;
+}) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-2">
+      <span
+        aria-hidden="true"
+        className="h-3 w-6 shrink-0 rounded-full border border-border"
+        style={colorSchemeTokenStyle(value)}
+      />
+      <span className="min-w-0 truncate">{label}</span>
+    </span>
+  );
+}
+
+function colorSchemeTokenStyle(value: ColorScheme): CSSProperties {
+  if (value === "jmol") {
+    return JMOL_TOKEN_STYLE;
+  }
+  if (value === "jmol-soft") {
+    return JMOL_SOFT_TOKEN_STYLE;
+  }
+  if (value === "vesta-soft") {
+    return VESTA_SOFT_TOKEN_STYLE;
+  }
+  return VESTA_TOKEN_STYLE;
+}

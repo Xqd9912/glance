@@ -1,7 +1,8 @@
 import { OrthographicCamera, Quaternion, Vector3 } from "three";
 
 import type { SceneSpec } from "../api/scene";
-import type { ComponentOpacityState, StyleState } from "../app/settings";
+import type { StyleState } from "../model/appearance";
+import type { ComponentOpacityState } from "../model/displayState";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import {
   BOND_RADIUS,

@@ -1,8 +1,9 @@
 import { OrthographicCamera, Vector3 } from "three";
 
-import type { PreviewSafeArea } from "./LatticeScene";
+import type { PreviewSafeArea } from "../model/layout";
+import type { VectorTuple } from "../model/vector";
 
-export type VectorTuple = [number, number, number];
+export type { VectorTuple } from "../model/vector";
 
 export interface StandardCameraPose {
   cameraPosition: VectorTuple;

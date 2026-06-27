@@ -1,6 +1,6 @@
 import type { GLProps } from "@react-three/fiber";
 
-import type { RenderBackend } from "../app/settings";
+import type { RenderBackend } from "../model/renderBackend";
 
 export const DEFAULT_RENDERER_PARAMETERS = {
   alpha: true,

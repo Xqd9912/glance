@@ -1,0 +1,366 @@
+import { RotateCcw } from "lucide-react";
+import {
+  type CSSProperties,
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+
+import {
+  COMPONENT_OPACITY_MAX,
+  createDefaultComponentOpacity,
+  type ComponentOpacityState,
+  type ComponentVisibilityState,
+} from "../../../model";
+import {
+  TOOL_ICON_BUTTON_CLASS,
+  TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS,
+  TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS,
+} from "../../surface";
+import { TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS } from "./controlFeedback";
+import {
+  clampOpacityValue,
+  formatOpacityValue,
+  parseOpacityInput,
+  snapSliderOpacityValue,
+  useAutoBlurSlider,
+} from "./sharedControls";
+
+export function DisplayTabContent({
+  hasPolyhedra,
+  onOpacityChange,
+  onVisibilityChange,
+  opacity,
+  visibility,
+}: {
+  hasPolyhedra: boolean;
+  onOpacityChange: Dispatch<SetStateAction<ComponentOpacityState>>;
+  onVisibilityChange: Dispatch<SetStateAction<ComponentVisibilityState>>;
+  opacity: ComponentOpacityState;
+  visibility: ComponentVisibilityState;
+}) {
+  function setVisibility(key: keyof ComponentVisibilityState, value: boolean) {
+    onVisibilityChange((currentVisibility) => ({
+      ...currentVisibility,
+      [key]: value,
+    }));
+  }
+
+  function setOpacity(key: keyof ComponentOpacityState, value: number) {
+    onOpacityChange((currentOpacity) => ({
+      ...currentOpacity,
+      [key]: clampOpacityValue(value, COMPONENT_OPACITY_MAX[key]),
+    }));
+  }
+
+  const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
+  const resetFeedbackTickRef = useRef(0);
+  const resetFeedbackTimeoutRef = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (resetFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(resetFeedbackTimeoutRef.current);
+      }
+    },
+    [],
+  );
+
+  function handleResetOpacityClick() {
+    onOpacityChange(createDefaultComponentOpacity());
+
+    if (resetFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(resetFeedbackTimeoutRef.current);
+    }
+
+    resetFeedbackTickRef.current += 1;
+    setResetFeedbackPhase(resetFeedbackTickRef.current % 2 === 0 ? "b" : "a");
+    resetFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setResetFeedbackPhase(null);
+      resetFeedbackTimeoutRef.current = null;
+    }, TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS);
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <section aria-labelledby="display-components-label">
+        <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
+          <h2
+            id="display-components-label"
+            className="text-xs font-bold leading-tight text-muted-foreground"
+          >
+            Components
+          </h2>
+          <span className="text-right text-xs font-bold leading-tight text-muted-foreground">
+            Opacity
+          </span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Reset opacity"
+                  className={cn(
+                    TOOL_ICON_BUTTON_CLASS,
+                    resetFeedbackPhase === "a" ? TOOL_ICON_BUTTON_RESET_FEEDBACK_A_CLASS : null,
+                    resetFeedbackPhase === "b" ? TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS : null,
+                  )}
+                  onClick={handleResetOpacityClick}
+                >
+                  <RotateCcw aria-hidden="true" />
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">Reset opacity</TooltipContent>
+          </Tooltip>
+        </div>
+
+        <div className="mt-1 flex flex-col gap-1">
+          <ComponentOpacityRow
+            checked={visibility.atoms}
+            label="Atoms"
+            max={COMPONENT_OPACITY_MAX.atoms}
+            value={opacity.atoms}
+            onCheckedChange={(checked) => setVisibility("atoms", checked)}
+            onOpacityChange={(value) => setOpacity("atoms", value)}
+          />
+          <ComponentOpacityRow
+            checked={visibility.bonds}
+            label="Bonds"
+            max={COMPONENT_OPACITY_MAX.bonds}
+            value={opacity.bonds}
+            onCheckedChange={(checked) => setVisibility("bonds", checked)}
+            onOpacityChange={(value) => setOpacity("bonds", value)}
+          />
+          <ComponentOpacityRow
+            checked={visibility.unitCell}
+            label="Unit cell"
+            max={COMPONENT_OPACITY_MAX.unitCell}
+            value={opacity.unitCell}
+            onCheckedChange={(checked) => setVisibility("unitCell", checked)}
+            onOpacityChange={(value) => setOpacity("unitCell", value)}
+          />
+          <ComponentOpacityRow
+            checked={hasPolyhedra && visibility.polyhedra}
+            checkboxDisabled={!hasPolyhedra}
+            label="Polyhedra"
+            max={COMPONENT_OPACITY_MAX.polyhedra}
+            value={opacity.polyhedra}
+            onCheckedChange={(checked) => setVisibility("polyhedra", checked)}
+            onOpacityChange={(value) => setOpacity("polyhedra", value)}
+          />
+        </div>
+      </section>
+
+      <Separator className="my-1" />
+
+      <section aria-labelledby="image-components-label">
+        <h2
+          id="image-components-label"
+          className="text-xs font-bold leading-tight text-muted-foreground"
+        >
+          Periodic images
+        </h2>
+        <div className="mt-1.5 flex flex-col gap-1">
+          <ImageSwitchRow
+            checked={visibility.boundaryAtoms}
+            label="Cell-boundary atoms"
+            onCheckedChange={(checked) => setVisibility("boundaryAtoms", checked)}
+          />
+          <ImageSwitchRow
+            checked={visibility.oneHopBondedAtoms}
+            label="One-hop bonded atoms"
+            onCheckedChange={(checked) => setVisibility("oneHopBondedAtoms", checked)}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ComponentOpacityRow({
+  checked,
+  checkboxDisabled = false,
+  label,
+  max,
+  onCheckedChange,
+  onOpacityChange,
+  value,
+}: {
+  checked: boolean;
+  checkboxDisabled?: boolean;
+  label: string;
+  max: number;
+  onCheckedChange: (checked: boolean) => void;
+  onOpacityChange: (opacity: number) => void;
+  value: number;
+}) {
+  const [opacityText, setOpacityText] = useState(formatOpacityValue(value));
+  const sliderBlur = useAutoBlurSlider();
+  const sliderPosition = max > 0 ? value / max : 0;
+  const sliderStyle = {
+    "--opacity-slider-position": `${Math.min(100, Math.max(0, sliderPosition * 100))}%`,
+  } as CSSProperties;
+  const inputDisabled = checkboxDisabled || !checked;
+
+  useEffect(() => {
+    setOpacityText(formatOpacityValue(value));
+  }, [value]);
+
+  function commitOpacityText() {
+    const nextOpacity = parseOpacityInput(opacityText);
+    if (nextOpacity === null) {
+      setOpacityText(formatOpacityValue(value));
+      return;
+    }
+
+    const clampedOpacity = clampOpacityValue(nextOpacity, max);
+    setOpacityText(formatOpacityValue(clampedOpacity));
+    onOpacityChange(clampedOpacity);
+  }
+
+  function handleOpacityKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+      commitOpacityText();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setOpacityText(formatOpacityValue(value));
+      event.currentTarget.blur();
+      return;
+    }
+
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const direction = event.key === "ArrowUp" ? 1 : -1;
+      onOpacityChange(clampOpacityValue(value + direction, max));
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        "grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 rounded-md px-1.5 text-sm transition-colors",
+        checkboxDisabled ? "text-muted-foreground/55" : "hover:bg-accent/60",
+      )}
+    >
+      <label
+        className={cn(
+          "flex min-w-0 items-center gap-2",
+          checkboxDisabled ? "cursor-not-allowed" : "cursor-pointer",
+        )}
+      >
+        <Checkbox
+          checked={checked}
+          disabled={checkboxDisabled}
+          aria-label={label}
+          className="size-3.5 rounded-[3px]"
+          iconClassName="size-3"
+          onCheckedChange={(nextChecked) => onCheckedChange(nextChecked === true)}
+        />
+        <span
+          className={cn(
+            "min-w-0 truncate leading-tight",
+            checkboxDisabled ? "text-muted-foreground/60" : null,
+          )}
+        >
+          {label}
+        </span>
+      </label>
+
+      <div
+        className="opacity-slider-shell relative mr-3 h-5"
+        data-disabled={inputDisabled ? "true" : "false"}
+        style={sliderStyle}
+      >
+        <input
+          type="range"
+          min={0}
+          max={max}
+          step={1}
+          value={value}
+          disabled={inputDisabled}
+          aria-label={`${label} opacity`}
+          aria-valuetext={`${formatOpacityValue(value)}%`}
+          className="opacity-slider absolute inset-0 z-10 h-full w-full"
+          ref={sliderBlur.ref}
+          onChange={(event) =>
+            onOpacityChange(snapSliderOpacityValue(Number(event.target.value), max))
+          }
+          onMouseDown={sliderBlur.handlePointerDown}
+          onMouseUp={sliderBlur.handlePointerEnd}
+          onPointerCancel={sliderBlur.handlePointerEnd}
+          onPointerDown={sliderBlur.handlePointerDown}
+          onPointerUp={sliderBlur.handlePointerEnd}
+        />
+        <span aria-hidden="true" className="opacity-slider-track pointer-events-none" />
+        <span aria-hidden="true" className="opacity-slider-fill pointer-events-none" />
+        <span aria-hidden="true" className="opacity-slider-thumb pointer-events-none" />
+      </div>
+
+      <label
+        className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150"
+        data-disabled={inputDisabled ? "true" : "false"}
+      >
+        <span className="sr-only">{label} opacity value</span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={opacityText}
+          disabled={inputDisabled}
+          aria-label={`${label} opacity value`}
+          className="opacity-value-input h-full w-[1.35rem] border-0 bg-transparent px-0 text-center font-mono text-[0.68rem] leading-none tabular-nums outline-none"
+          onBlur={commitOpacityText}
+          onChange={(event) => setOpacityText(event.target.value)}
+          onKeyDown={handleOpacityKeyDown}
+        />
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none font-mono text-[0.68rem] font-normal leading-none text-muted-foreground",
+            inputDisabled ? "text-muted-foreground/60" : null,
+          )}
+        >
+          %
+        </span>
+      </label>
+    </div>
+  );
+}
+
+function ImageSwitchRow({
+  checked,
+  label,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex h-6 items-center justify-between gap-1.5 rounded-md px-1.5 text-sm transition-colors hover:bg-accent/60">
+      <span className="min-w-0 truncate leading-tight">{label}</span>
+      <Switch
+        checked={checked}
+        aria-label={label}
+        className="h-4 w-7 p-0.5"
+        thumbClassName="size-3 data-[state=checked]:translate-x-3"
+        onCheckedChange={onCheckedChange}
+      />
+    </label>
+  );
+}
