@@ -1,5 +1,13 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   CanvasTexture,
   Color,
@@ -46,13 +54,17 @@ export function OrientationGizmo({
   cameraOrientationRef,
   cellVectors,
   className,
+  frameRequestRef,
   onAxisClick,
+  orientationVersion = 0,
   style,
 }: {
   cameraOrientationRef: CameraOrientationRef;
   cellVectors: VectorTuple[];
   className?: string;
+  frameRequestRef?: MutableRefObject<(() => void) | null>;
   onAxisClick?: (axis: OrientationGizmoAxisLabel) => void;
+  orientationVersion?: number;
   style?: CSSProperties;
 }) {
   const visualCanvasRef = useRef<HTMLDivElement | null>(null);
@@ -197,11 +209,16 @@ export function OrientationGizmo({
             far: 20,
           }}
           dpr={[1, 2]}
+          frameloop="demand"
           gl={{ antialias: true, alpha: true }}
           style={{ pointerEvents: "none" }}
         >
           <ambientLight intensity={PREVIEW_AMBIENT_LIGHT_INTENSITY} />
           <CameraHeadlight />
+          <OrientationGizmoFrameRequester
+            frameRequestRef={frameRequestRef}
+            orientationVersion={orientationVersion}
+          />
           <ResponsiveGizmoCamera />
           <OrientationGizmoScene
             axes={axes}
@@ -214,8 +231,40 @@ export function OrientationGizmo({
   );
 }
 
+function OrientationGizmoFrameRequester({
+  frameRequestRef,
+  orientationVersion,
+}: {
+  frameRequestRef?: MutableRefObject<(() => void) | null>;
+  orientationVersion: number;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+  const requestFrame = useCallback(() => {
+    invalidate();
+  }, [invalidate]);
+
+  useEffect(() => {
+    if (!frameRequestRef) {
+      return;
+    }
+
+    frameRequestRef.current = requestFrame;
+    return () => {
+      if (frameRequestRef.current === requestFrame) {
+        frameRequestRef.current = null;
+      }
+    };
+  }, [frameRequestRef, requestFrame]);
+
+  useEffect(() => {
+    requestFrame();
+  }, [orientationVersion, requestFrame]);
+
+  return null;
+}
+
 function ResponsiveGizmoCamera() {
-  const { camera, size } = useThree();
+  const { camera, invalidate, size } = useThree();
 
   useEffect(() => {
     if (!(camera instanceof OrthographicCamera)) {
@@ -224,7 +273,8 @@ function ResponsiveGizmoCamera() {
 
     camera.zoom = Math.min(size.width, size.height) * ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL;
     camera.updateProjectionMatrix();
-  }, [camera, size.height, size.width]);
+    invalidate();
+  }, [camera, invalidate, size.height, size.width]);
 
   return null;
 }

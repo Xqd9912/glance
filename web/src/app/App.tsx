@@ -188,6 +188,7 @@ export function App() {
   const viewportSize = useViewportSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraOrientationRef = useRef(new Quaternion());
+  const orientationGizmoFrameRequestRef = useRef<(() => void) | null>(null);
   const cameraControlFreezeCandidateRef = useRef<CrystalCameraState | null>(null);
   const cameraControlFreezeRequestRef = useRef(0);
   const cameraRollInteractionBaseStateRef = useRef<CrystalCameraState | null>(null);
@@ -325,6 +326,10 @@ export function App() {
 
     syncCameraOrientationToViewState();
   }, [syncCameraOrientationToViewState]);
+
+  const requestOrientationGizmoFrame = useCallback(() => {
+    orientationGizmoFrameRequestRef.current?.();
+  }, []);
 
   const handleCameraStateChange = useCallback((cameraState: CrystalCameraState) => {
     startAnimatedCameraCommand(cameraState);
@@ -958,6 +963,7 @@ export function App() {
                 cameraCommandVersion={cameraCommandVersion}
                 cameraState={viewState.camera}
                 cameraOrientationRef={cameraOrientationRef}
+                onCameraOrientationFrame={requestOrientationGizmoFrame}
                 onCameraOrientationChange={handleCameraOrientationChange}
                 onCameraCommandAnimationActiveChange={handleCameraCommandAnimationActiveChange}
                 onCameraControlsInteractionActiveChange={
@@ -1043,7 +1049,9 @@ export function App() {
           cameraOrientationRef={cameraOrientationRef}
           cellVectors={visibleScene.cell.vectors}
           className="absolute"
+          frameRequestRef={orientationGizmoFrameRequestRef}
           onAxisClick={handleGizmoAxisClick}
+          orientationVersion={cameraOrientationVersion}
           style={orientationGizmoContainerStyle(effectivePreviewSafeArea, orientationGizmoSize)}
         />
       ) : null}

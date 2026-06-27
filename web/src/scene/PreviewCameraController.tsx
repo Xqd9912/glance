@@ -86,7 +86,7 @@ export function PreviewCameraController({
   resetCounter: number;
   safeArea: PreviewSafeArea;
 }) {
-  const { camera, gl, size } = useThree();
+  const { camera, gl, invalidate, size } = useThree();
   const controlsRef = useRef<CameraControls | null>(null);
   const cameraAnimationRef = useRef<CameraPoseAnimation | null>(null);
   const cameraControlsInteractionRef = useRef<CameraControlsInteractionState>({
@@ -105,6 +105,7 @@ export function PreviewCameraController({
   const hasAppliedInitialPoseRef = useRef(false);
   const lastCameraAnimatedCommandVersionRef = useRef(cameraAnimatedCommandVersion);
   const lastCameraCommandVersionRef = useRef(cameraCommandVersion);
+  const lastFrameCameraQuaternionRef = useRef(new Quaternion());
   const lastLayoutSpanRef = useRef(layout.span);
   const lastResetCounterRef = useRef(resetCounter);
   const syncedViewScaleRef = useRef(cameraInteractionStore.getViewScaleSnapshot());
@@ -120,6 +121,10 @@ export function PreviewCameraController({
   onCameraCommandAnimationActiveChangeRef.current = onCameraCommandAnimationActiveChange;
   onCameraControlsInteractionActiveChangeRef.current =
     onCameraControlsInteractionActiveChange;
+
+  const requestFrame = useCallback(() => {
+    invalidate();
+  }, [invalidate]);
 
   const setCameraAnimationActive = useCallback(
     (isActive: boolean, forceNotify = false) => {
@@ -158,12 +163,14 @@ export function PreviewCameraController({
     interaction.waitingForIdle = false;
 
     if (interaction.active) {
+      requestFrame();
       return;
     }
 
     interaction.active = true;
     onCameraControlsInteractionActiveChangeRef.current?.(true);
-  }, [camera, getCameraZoomSnapshot]);
+    requestFrame();
+  }, [camera, getCameraZoomSnapshot, requestFrame]);
 
   const finishCameraControlsInteraction = useCallback(() => {
     const interaction = cameraControlsInteractionRef.current;
@@ -192,7 +199,8 @@ export function PreviewCameraController({
     interaction.lastQuaternion.copy(camera.quaternion);
     interaction.lastZoom = getCameraZoomSnapshot();
     interaction.waitingForIdle = true;
-  }, [camera, getCameraZoomSnapshot]);
+    requestFrame();
+  }, [camera, getCameraZoomSnapshot, requestFrame]);
 
   const settleCameraControlsInteraction = useCallback(() => {
     const interaction = cameraControlsInteractionRef.current;
@@ -243,6 +251,7 @@ export function PreviewCameraController({
     if (shouldAnimate) {
       cameraAnimationRef.current = createCameraPoseAnimation(camera, cameraPoseRef.current, layout.span);
       setCameraAnimationActive(true);
+      requestFrame();
       return;
     }
 
@@ -251,11 +260,13 @@ export function PreviewCameraController({
     applyStandardCameraPose(camera, cameraPoseRef.current, layout.span);
     controlsRef.current?.target.copy(CAMERA_TARGET);
     controlsRef.current?.update();
+    requestFrame();
   }, [
     camera,
     cameraAnimatedCommandVersion,
     cameraCommandVersion,
     layout.span,
+    requestFrame,
     resetCounter,
     setCameraAnimationActive,
   ]);
@@ -275,11 +286,13 @@ export function PreviewCameraController({
       fitZoom * nextViewScale,
       effectiveSafeArea,
     );
+    requestFrame();
   }, [
     camera,
     cameraInteractionStore,
     effectiveSafeArea,
     fitZoom,
+    requestFrame,
     size.height,
     size.width,
   ]);
@@ -301,12 +314,14 @@ export function PreviewCameraController({
         fitZoom * nextViewScale,
         effectiveSafeArea,
       );
+      requestFrame();
     });
   }, [
     camera,
     cameraInteractionStore,
     effectiveSafeArea,
     fitZoom,
+    requestFrame,
     size.height,
     size.width,
   ]);
@@ -327,12 +342,14 @@ export function PreviewCameraController({
       );
       controlsRef.current?.target.copy(CAMERA_TARGET);
       controlsRef.current?.update();
+      requestFrame();
     });
   }, [
     camera,
     cameraInteractionStore,
     cellVectors,
     layout.span,
+    requestFrame,
     setCameraAnimationActive,
   ]);
 
@@ -347,9 +364,32 @@ export function PreviewCameraController({
       }
       cameraAnimationRef.current = null;
       setCameraAnimationActive(false);
+      requestFrame();
     }
     function handleControlsEnd() {
       requestCameraControlsInteractionFinish();
+      requestFrame();
+    }
+    const activePointerIds = new Set<number>();
+    function handlePointerDown(event: PointerEvent) {
+      activePointerIds.add(event.pointerId);
+      requestFrame();
+    }
+    function handlePointerMove() {
+      if (activePointerIds.size > 0) {
+        requestFrame();
+      }
+    }
+    function handlePointerEnd(event: PointerEvent) {
+      activePointerIds.delete(event.pointerId);
+      requestFrame();
+    }
+    function handleLostPointerCapture() {
+      activePointerIds.clear();
+      requestFrame();
+    }
+    function handleWheel() {
+      requestFrame();
     }
 
     configureCameraControls(controls, interactionMode, interactionLocked, fitZoom);
@@ -357,12 +397,25 @@ export function PreviewCameraController({
     resizeCameraControls(controls);
     controls.addEventListener("start", handleControlsStart);
     controls.addEventListener("end", handleControlsEnd);
+    gl.domElement.addEventListener("lostpointercapture", handleLostPointerCapture);
+    gl.domElement.addEventListener("pointercancel", handlePointerEnd);
+    gl.domElement.addEventListener("pointerdown", handlePointerDown);
+    gl.domElement.addEventListener("pointermove", handlePointerMove);
+    gl.domElement.addEventListener("pointerup", handlePointerEnd);
+    gl.domElement.addEventListener("wheel", handleWheel);
     controls.update();
+    requestFrame();
     controlsRef.current = controls;
 
     return () => {
       controls.removeEventListener("start", handleControlsStart);
       controls.removeEventListener("end", handleControlsEnd);
+      gl.domElement.removeEventListener("lostpointercapture", handleLostPointerCapture);
+      gl.domElement.removeEventListener("pointercancel", handlePointerEnd);
+      gl.domElement.removeEventListener("pointerdown", handlePointerDown);
+      gl.domElement.removeEventListener("pointermove", handlePointerMove);
+      gl.domElement.removeEventListener("pointerup", handlePointerEnd);
+      gl.domElement.removeEventListener("wheel", handleWheel);
       finishCameraControlsInteraction();
       controls.dispose();
       if (controlsRef.current === controls) {
@@ -374,6 +427,7 @@ export function PreviewCameraController({
     finishCameraControlsInteraction,
     gl.domElement,
     interactionMode,
+    requestFrame,
     requestCameraControlsInteractionFinish,
     resetCounter,
     setCameraAnimationActive,
@@ -393,11 +447,13 @@ export function PreviewCameraController({
     configureCameraControls(controls, interactionMode, interactionLocked, fitZoom);
     controls.target.copy(CAMERA_TARGET);
     controls.update();
-  }, [fitZoom, interactionLocked, interactionMode, resetCounter]);
+    requestFrame();
+  }, [fitZoom, interactionLocked, interactionMode, requestFrame, resetCounter]);
 
   useEffect(() => {
     resizeCameraControls(controlsRef.current);
-  }, [size.height, size.width]);
+    requestFrame();
+  }, [requestFrame, size.height, size.width]);
 
   useEffect(() => {
     const controls = controlsRef.current;
@@ -416,6 +472,7 @@ export function PreviewCameraController({
       );
 
       publishCameraViewScaleSnapshot(nextViewScale);
+      requestFrame();
     }
 
     controls.addEventListener("change", handleControlsChange);
@@ -426,12 +483,17 @@ export function PreviewCameraController({
     fitZoom,
     interactionMode,
     publishCameraViewScaleSnapshot,
+    requestFrame,
     resetCounter,
     size.height,
     size.width,
   ]);
 
   useFrame(() => {
+    const previousFrameQuaternion = lastFrameCameraQuaternionRef.current.copy(
+      camera.quaternion,
+    );
+    const previousFrameZoom = getCameraZoomSnapshot();
     const animation = cameraAnimationRef.current;
     if (animation) {
       const isComplete = applyCameraPoseAnimationFrame(camera, animation, performance.now());
@@ -457,6 +519,15 @@ export function PreviewCameraController({
     }
 
     settleCameraControlsInteraction();
+
+    const cameraMoved =
+      previousFrameQuaternion.angleTo(camera.quaternion) >
+        CAMERA_CONTROLS_IDLE_EPSILON_RADIANS ||
+      Math.abs(getCameraZoomSnapshot() - previousFrameZoom) >
+        CAMERA_CONTROLS_IDLE_ZOOM_EPSILON;
+    if (cameraMoved || cameraAnimationRef.current) {
+      requestFrame();
+    }
   });
 
   return null;

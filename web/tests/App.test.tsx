@@ -83,6 +83,7 @@ mock.module("@react-three/fiber", () => {
       gl: {
         domElement: document.createElement("canvas"),
       },
+      invalidate: () => {},
       size: {
         height: 768,
         width: 1024,

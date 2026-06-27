@@ -584,6 +584,12 @@ function AtomHighlightAnimator({
   pulseStartTimeRef: { current: number | null };
   selectionTransitionRef: { current: AtomSelectionHighlightTransition | null };
 }) {
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    invalidate();
+  }, [invalidate]);
+
   useFrame(() => {
     const atomMaterial = atomMaterialRef.current;
     if (!atomMaterial) {
@@ -648,6 +654,8 @@ function AtomHighlightAnimator({
       if (progress >= 1) {
         selectionTransitionRef.current = null;
         onComplete();
+      } else {
+        invalidate();
       }
       return;
     }
@@ -690,6 +698,8 @@ function AtomHighlightAnimator({
       pulseStartTimeRef.current = null;
       applyAtomHighlight(atomMaterial, baseColor, 0, 0);
       onComplete();
+    } else {
+      invalidate();
     }
   });
 

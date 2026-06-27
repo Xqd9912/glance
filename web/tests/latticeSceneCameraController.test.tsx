@@ -58,13 +58,19 @@ class MockOrbitControls extends MockControls {}
 class MockTrackballControls extends MockControls {}
 
 let mockCamera = new OrthographicCamera();
+let mockDomElement = document.createElement("canvas");
+let invalidateCalls = 0;
 let latestFrameCallback: (() => void) | null = null;
+let latestCanvasFrameloop: unknown = null;
 let latestControls: MockControls | null = null;
 let latticeSceneRenderCount = 0;
 
 function resetMockCamera() {
   mockCamera = new OrthographicCamera();
+  mockDomElement = document.createElement("canvas");
+  invalidateCalls = 0;
   latestFrameCallback = null;
+  latestCanvasFrameloop = null;
   latestControls = null;
   latticeSceneRenderCount = 0;
 }
@@ -72,17 +78,24 @@ function resetMockCamera() {
 mock.module("@react-three/fiber", () => ({
   Canvas: ({
     children,
+    frameloop,
   }: {
     children: ReactNode;
+    frameloop?: unknown;
   }) => (
-    <div data-testid="lattice-canvas">
-      {Children.toArray(children).filter(
-        (child) =>
-          isValidElement(child) &&
-          typeof child.type === "function" &&
-          child.type.name === "PreviewCameraController",
-      )}
-    </div>
+    (() => {
+      latestCanvasFrameloop = frameloop;
+      return (
+        <div data-testid="lattice-canvas">
+          {Children.toArray(children).filter(
+            (child) =>
+              isValidElement(child) &&
+              typeof child.type === "function" &&
+              child.type.name === "PreviewCameraController",
+          )}
+        </div>
+      );
+    })()
   ),
   useFrame: (callback: () => void) => {
     latestFrameCallback = callback;
@@ -90,7 +103,10 @@ mock.module("@react-three/fiber", () => ({
   useThree: () => ({
     camera: mockCamera,
     gl: {
-      domElement: document.createElement("canvas"),
+      domElement: mockDomElement,
+    },
+    invalidate: () => {
+      invalidateCalls += 1;
     },
     size: {
       height: 800,
@@ -126,6 +142,72 @@ afterEach(() => {
 });
 
 describe("LatticeScene camera commands", () => {
+  test("runs the main preview canvas on demand", () => {
+    const scene = orthogonalScene();
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={createDefaultCrystalCameraState()}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    expect(latestCanvasFrameloop).toBe("demand");
+  });
+
+  test("does not request another demand frame when the camera is static", () => {
+    const scene = orthogonalScene();
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={createDefaultCrystalCameraState()}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    invalidateCalls = 0;
+    act(() => latestFrameCallback?.());
+
+    expect(invalidateCalls).toBe(0);
+  });
+
+  test("requests a demand frame when controls report a change", () => {
+    const scene = orthogonalScene();
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={createDefaultCrystalCameraState()}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    invalidateCalls = 0;
+    act(() => latestControls?.dispatchTestEvent("change"));
+
+    expect(invalidateCalls).toBeGreaterThan(0);
+  });
+
   test("applies each command pose in the same render instead of lagging one command behind", () => {
     const scene = orthogonalScene();
     const defaultCamera = createDefaultCrystalCameraState();

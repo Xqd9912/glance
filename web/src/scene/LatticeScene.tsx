@@ -80,6 +80,7 @@ export function LatticeScene({
   layoutScene,
   onCameraCommandAnimationActiveChange,
   onCameraControlsInteractionActiveChange,
+  onCameraOrientationFrame,
   onCameraOrientationChange,
   onAtomInspect,
   onAtomPulse,
@@ -109,6 +110,7 @@ export function LatticeScene({
     isActive: boolean,
     quaternionSnapshot?: Quaternion,
   ) => void;
+  onCameraOrientationFrame?: () => void;
   onCameraOrientationChange?: () => void;
   onAtomInspect?: (atomId: string | null) => void;
   onAtomPulse?: (atomId: string) => void;
@@ -163,6 +165,7 @@ export function LatticeScene({
     <Canvas
       orthographic
       camera={cameraProps}
+      frameloop="demand"
       gl={DEFAULT_RENDERER_PARAMETERS}
       data-testid="lattice-canvas"
     >
@@ -201,6 +204,7 @@ export function LatticeScene({
       />
       <CameraOrientationTracker
         cameraOrientationRef={cameraOrientationRef}
+        onCameraOrientationFrame={onCameraOrientationFrame}
         onCameraOrientationChange={onCameraOrientationChange}
         suspendUpdates={suspendCameraOrientationUpdates}
       />
@@ -228,10 +232,12 @@ function MaterialPresetCameraLights({
 
 function CameraOrientationTracker({
   cameraOrientationRef,
+  onCameraOrientationFrame,
   onCameraOrientationChange,
   suspendUpdates,
 }: {
   cameraOrientationRef?: CameraOrientationRef;
+  onCameraOrientationFrame?: () => void;
   onCameraOrientationChange?: () => void;
   suspendUpdates: boolean;
 }) {
@@ -250,6 +256,8 @@ function CameraOrientationTracker({
 
   useFrame(() => {
     cameraOrientationRef?.current.copy(camera.quaternion);
+    onCameraOrientationFrame?.();
+
     if (!onCameraOrientationChange || suspendUpdates) {
       return;
     }
