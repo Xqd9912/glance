@@ -61,6 +61,7 @@ import {
 } from "./controls/CommonControlsPanel";
 import { ViewControlRail } from "./controls/ViewControlRail";
 import { createCameraInteractionStore } from "./cameraInteractionStore";
+import { createPreviewFpsStore } from "../model/previewFpsStore";
 import { deriveElementLegendEntries } from "./elementLegend";
 import {
   downloadFigureExportFiles,
@@ -98,6 +99,7 @@ import {
   setPreviewCameraState,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
+  setPreviewShowFpsOverlay,
   type InteractionMode,
 } from "./viewState";
 
@@ -183,6 +185,7 @@ export function App() {
     useState<CommonPanelTab>("display");
   const [viewState, setViewState] = useState(createPreviewViewState);
   const [cameraInteractionStore] = useState(createCameraInteractionStore);
+  const [previewFpsStore] = useState(createPreviewFpsStore);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
   const viewportSize = useViewportSize();
@@ -334,6 +337,15 @@ export function App() {
   const handleCameraStateChange = useCallback((cameraState: CrystalCameraState) => {
     startAnimatedCameraCommand(cameraState);
   }, [startAnimatedCameraCommand]);
+
+  const handleShowFpsOverlayChange = useCallback((nextShowFpsOverlay: boolean) => {
+    setViewState((currentViewState) =>
+      setPreviewShowFpsOverlay(currentViewState, nextShowFpsOverlay),
+    );
+    if (!nextShowFpsOverlay) {
+      previewFpsStore.setFpsSnapshot(0);
+    }
+  }, [previewFpsStore]);
 
   const handleAtomPulse = useCallback((atomId: string) => {
     if (atomId === inspectedAtomIdRef.current) {
@@ -988,8 +1000,10 @@ export function App() {
                 pulseAtomId={pulseAtom?.atomId ?? null}
                 pulseToken={pulseAtom?.token ?? 0}
                 componentOpacity={componentOpacity}
+                previewFpsStore={previewFpsStore}
                 style={style}
                 showAtoms={componentVisibility.atoms}
+                showFpsOverlay={viewState.showFpsOverlay}
                 showUnitCell={componentVisibility.unitCell}
               />
             ) : (
@@ -1146,6 +1160,8 @@ export function App() {
             onInteractionLockedChange={handleInteractionLockedChange}
             onResetView={handleResetView}
             cameraInteractionStore={cameraInteractionStore}
+            previewFpsStore={previewFpsStore}
+            showFps={viewState.showFpsOverlay}
           />
 
           <InspectorToggle
@@ -1158,10 +1174,12 @@ export function App() {
             interactionMode={viewState.interactionMode}
             isOpen={isInspectorOpen}
             isSceneLoading={previewStatus === "loading"}
+            showFpsOverlay={viewState.showFpsOverlay}
             onBondAlgorithmChange={(nextBondAlgorithm) => {
               void handleBondAlgorithmChange(nextBondAlgorithm);
             }}
             onInteractionModeChange={handleInteractionModeChange}
+            onShowFpsOverlayChange={handleShowFpsOverlayChange}
           />
         </>
       ) : null}

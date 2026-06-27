@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -75,15 +76,19 @@ export function InspectorSidebar({
   interactionMode,
   isOpen,
   isSceneLoading,
+  showFpsOverlay,
   onBondAlgorithmChange,
   onInteractionModeChange,
+  onShowFpsOverlayChange,
 }: {
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isOpen: boolean;
   isSceneLoading: boolean;
+  showFpsOverlay: boolean;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
+  onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
 }) {
   return (
     <aside
@@ -124,8 +129,10 @@ export function InspectorSidebar({
               bondAlgorithm={bondAlgorithm}
               interactionMode={interactionMode}
               isSceneLoading={isSceneLoading}
+              showFpsOverlay={showFpsOverlay}
               onBondAlgorithmChange={onBondAlgorithmChange}
               onInteractionModeChange={onInteractionModeChange}
+              onShowFpsOverlayChange={onShowFpsOverlayChange}
             />
           </TabsContent>
         </div>
@@ -138,17 +145,27 @@ function SettingsPanel({
   bondAlgorithm,
   interactionMode,
   isSceneLoading,
+  showFpsOverlay,
   onBondAlgorithmChange,
   onInteractionModeChange,
+  onShowFpsOverlayChange,
 }: {
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isSceneLoading: boolean;
+  showFpsOverlay: boolean;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
+  onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
+      <InspectorSwitchRow
+        checked={showFpsOverlay}
+        label="Show FPS"
+        onCheckedChange={onShowFpsOverlayChange}
+      />
+
       <InspectorSelectRow label="Mouse control">
         <Select
           value={interactionMode}
@@ -206,6 +223,34 @@ function SettingsPanel({
         </Select>
       </InspectorSelectRow>
     </div>
+  );
+}
+
+function InspectorSwitchRow({
+  checked,
+  label,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <label
+      className={cn(
+        "flex min-h-8 items-center justify-between gap-2",
+        INSPECTOR_BODY_TEXT_CLASS,
+      )}
+    >
+      <span className="leading-tight text-foreground">{label}</span>
+      <Switch
+        checked={checked}
+        aria-label={label}
+        className="h-4 w-7 p-0.5"
+        thumbClassName="size-3 data-[state=checked]:translate-x-3"
+        onCheckedChange={onCheckedChange}
+      />
+    </label>
   );
 }
 

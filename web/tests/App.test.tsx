@@ -343,6 +343,11 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
     await user.click(screen.getByRole("combobox", { name: "Mouse control" }));
     await user.click(await screen.findByRole("option", { name: "Orbit" }));
+    const inspector = screen.getByRole("complementary", { name: "Sidebar" });
+    const showFpsSwitch = within(inspector).getByRole("switch", { name: "Show FPS" });
+    await user.click(showFpsSwitch);
+    expect(showFpsSwitch.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("fps-overlay").textContent).toBe("fps 0");
 
     await openPreviewContextMenu();
     await user.click(await screen.findByRole("menuitem", { name: "Reset All" }));
@@ -368,10 +373,17 @@ describe("App", () => {
       within(resetControls).getByRole("combobox", { name: "Color scheme" }).textContent,
     ).toContain("VESTA Soft");
 
+    expect(screen.queryByTestId("fps-overlay")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
-    expect(screen.getByRole("combobox", { name: "Mouse control" }).textContent).toContain(
-      "Trackball",
-    );
+    const resetInspector = screen.getByRole("complementary", { name: "Sidebar" });
+    expect(
+      within(resetInspector).getByRole("switch", { name: "Show FPS" }).getAttribute(
+        "aria-checked",
+      ),
+    ).toBe("false");
+    expect(
+      within(resetInspector).getByRole("combobox", { name: "Mouse control" }).textContent,
+    ).toContain("Trackball");
   });
 
   test("shows a compact spinner while a structure is loading", async () => {
@@ -466,6 +478,22 @@ describe("App", () => {
     expect(within(inspector).getByText("Bonding algorithm").parentElement?.className).toContain(
       "text-sm",
     );
+    expect(screen.queryByTestId("fps-overlay")).toBeNull();
+    const showFpsSwitch = within(inspector).getByRole("switch", { name: "Show FPS" });
+    expect(showFpsSwitch.getAttribute("aria-checked")).toBe("false");
+
+    await user.click(showFpsSwitch);
+
+    expect(showFpsSwitch.getAttribute("aria-checked")).toBe("true");
+    const fpsOverlay = screen.getByTestId("fps-overlay");
+    expect(fpsOverlay.textContent).toBe("fps 0");
+    expect(fpsOverlay.className).toContain("font-mono");
+    expect(fpsOverlay.className).toContain("font-semibold");
+    expect(fpsOverlay.className).toContain("left-[calc(100%+14px)]");
+    expect(fpsOverlay.className).toContain("top-[16px]");
+    expect(fpsOverlay.className).toContain("text-[16px]");
+    expect(fpsOverlay.className).toContain("text-foreground");
+
     expect(legend.getAttribute("style")).toContain("calc(50% + 10px)");
     expect(inspectorButton.getAttribute("aria-expanded")).toBe("true");
     expect(inspectorButton.className).toContain("tool-icon-button-active");

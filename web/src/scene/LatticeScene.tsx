@@ -6,6 +6,7 @@ import type { SceneSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
 import type { ComponentOpacityState, StyleState } from "../model";
+import type { PreviewFpsStore } from "../model/previewFpsStore";
 import type { InteractionMode } from "../model/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
 import { computeCrystalCameraPose, type CrystalCameraState } from "./crystalCamera";
@@ -67,6 +68,9 @@ const EMPTY_SAFE_AREA: PreviewSafeArea = {
   right: 0,
   top: 0,
 };
+const FPS_IDLE_TIMEOUT_MS = 550;
+const FPS_REPORT_INTERVAL_MS = 250;
+const FPS_SMOOTHING_WEIGHT = 0.18;
 
 export function LatticeScene({
   cameraOrientationRef,
@@ -91,7 +95,9 @@ export function LatticeScene({
   inspectedAtomId = null,
   pulseAtomId = null,
   pulseToken = 0,
+  previewFpsStore,
   showAtoms = true,
+  showFpsOverlay = false,
   showUnitCell = true,
   style,
   suspendCameraOrientationUpdates = false,
@@ -121,7 +127,9 @@ export function LatticeScene({
   inspectedAtomId?: string | null;
   pulseAtomId?: string | null;
   pulseToken?: number;
+  previewFpsStore?: PreviewFpsStore;
   showAtoms?: boolean;
+  showFpsOverlay?: boolean;
   showUnitCell?: boolean;
   style: StyleState;
   suspendCameraOrientationUpdates?: boolean;
@@ -208,6 +216,9 @@ export function LatticeScene({
         onCameraOrientationChange={onCameraOrientationChange}
         suspendUpdates={suspendCameraOrientationUpdates}
       />
+      {showFpsOverlay && previewFpsStore ? (
+        <PreviewFpsMeter previewFpsStore={previewFpsStore} />
+      ) : null}
     </Canvas>
   );
 }
@@ -271,6 +282,54 @@ function CameraOrientationTracker({
     lastNotifiedOrientationRef.current.copy(camera.quaternion);
     lastNotificationTimeRef.current = now;
     onCameraOrientationChange();
+  });
+
+  return null;
+}
+
+function PreviewFpsMeter({
+  previewFpsStore,
+}: {
+  previewFpsStore: PreviewFpsStore;
+}) {
+  const idleTimeoutRef = useRef<number | null>(null);
+  const lastReportTimeRef = useRef(0);
+  const smoothedFpsRef = useRef(0);
+
+  useEffect(() => {
+    previewFpsStore.setFpsSnapshot(0);
+    return () => {
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current);
+      }
+      previewFpsStore.setFpsSnapshot(0);
+    };
+  }, [previewFpsStore]);
+
+  useFrame((_, delta) => {
+    const instantFps =
+      delta > 0 && Number.isFinite(delta) ? Math.min(999, 1 / delta) : 0;
+    smoothedFpsRef.current =
+      smoothedFpsRef.current === 0
+        ? instantFps
+        : smoothedFpsRef.current * (1 - FPS_SMOOTHING_WEIGHT) +
+          instantFps * FPS_SMOOTHING_WEIGHT;
+
+    const now = performance.now();
+    if (now - lastReportTimeRef.current >= FPS_REPORT_INTERVAL_MS) {
+      lastReportTimeRef.current = now;
+      previewFpsStore.setFpsSnapshot(smoothedFpsRef.current);
+    }
+
+    if (idleTimeoutRef.current !== null) {
+      window.clearTimeout(idleTimeoutRef.current);
+    }
+    idleTimeoutRef.current = window.setTimeout(() => {
+      idleTimeoutRef.current = null;
+      lastReportTimeRef.current = 0;
+      smoothedFpsRef.current = 0;
+      previewFpsStore.setFpsSnapshot(0);
+    }, FPS_IDLE_TIMEOUT_MS);
   });
 
   return null;

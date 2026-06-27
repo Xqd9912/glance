@@ -30,6 +30,7 @@ export interface PreviewViewState {
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   resetCounter: number;
+  showFpsOverlay: boolean;
 }
 
 export function createPreviewViewState(): PreviewViewState {
@@ -38,6 +39,7 @@ export function createPreviewViewState(): PreviewViewState {
     interactionLocked: false,
     interactionMode: "trackball",
     resetCounter: 0,
+    showFpsOverlay: false,
   };
 }
 
@@ -105,5 +107,15 @@ export function setPreviewInteractionLocked(
   return {
     ...state,
     interactionLocked,
+  };
+}
+
+export function setPreviewShowFpsOverlay(
+  state: PreviewViewState,
+  showFpsOverlay: boolean,
+): PreviewViewState {
+  return {
+    ...state,
+    showFpsOverlay,
   };
 }

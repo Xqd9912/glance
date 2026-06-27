@@ -29,6 +29,7 @@ import {
   snapZoomSliderPosition,
   viewScaleToSliderPosition,
 } from "../viewState";
+import type { PreviewFpsStore } from "../../model/previewFpsStore";
 
 const LOCKED_INTERACTION_FEEDBACK_ANIMATION_MS = 420;
 const RESET_VIEW_FEEDBACK_ANIMATION_MS = 150;
@@ -43,6 +44,8 @@ export function ViewControlRail({
   lockedInteractionFeedbackCount,
   onInteractionLockedChange,
   onResetView,
+  previewFpsStore,
+  showFps = false,
 }: {
   cameraInteractionStore: CameraInteractionStore;
   className?: string;
@@ -50,11 +53,18 @@ export function ViewControlRail({
   lockedInteractionFeedbackCount: number;
   onInteractionLockedChange: (interactionLocked: boolean) => void;
   onResetView: () => void;
+  previewFpsStore: PreviewFpsStore;
+  showFps?: boolean;
 }) {
   const viewScale = useSyncExternalStore(
     cameraInteractionStore.subscribeViewScale,
     cameraInteractionStore.getViewScaleSnapshot,
     cameraInteractionStore.getViewScaleSnapshot,
+  );
+  const fps = useSyncExternalStore(
+    previewFpsStore.subscribeFps,
+    previewFpsStore.getFpsSnapshot,
+    previewFpsStore.getFpsSnapshot,
   );
   const [lockFeedbackPhase, setLockFeedbackPhase] = useState<"a" | "b" | null>(null);
   const [resetFeedbackPhase, setResetFeedbackPhase] = useState<"a" | "b" | null>(null);
@@ -200,6 +210,15 @@ export function ViewControlRail({
           className,
         )}
       >
+        {showFps ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute left-[calc(100%+14px)] top-[16px] whitespace-nowrap font-mono text-[16px] font-semibold leading-none tabular-nums text-foreground drop-shadow-[0_1px_0_rgba(255,255,255,0.9)]"
+            data-testid="fps-overlay"
+          >
+            fps {Math.max(0, Math.round(fps))}
+          </div>
+        ) : null}
         <div
           className={cn(
             "flex w-[42px] flex-col items-center gap-1.5 rounded-xl border px-1 pb-2 pt-2 shadow-xl shadow-foreground/10",

@@ -8,6 +8,7 @@ import {
   resetPreviewViewState,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
+  setPreviewShowFpsOverlay,
   sliderPositionToViewScale,
   snapZoomSliderPosition,
   viewScaleToSliderPosition,
@@ -21,12 +22,16 @@ describe("preview view state", () => {
       interactionLocked: false,
       interactionMode: "trackball",
       resetCounter: 0,
+      showFpsOverlay: false,
     });
   });
 
-  test("emits a reset signal without changing lock or mode", () => {
-    const state = setPreviewInteractionLocked(
-      setPreviewInteractionMode(createPreviewViewState(), "orbit"),
+  test("emits a reset signal without changing persistent view options", () => {
+    const state = setPreviewShowFpsOverlay(
+      setPreviewInteractionLocked(
+        setPreviewInteractionMode(createPreviewViewState(), "orbit"),
+        true,
+      ),
       true,
     );
 
@@ -35,6 +40,7 @@ describe("preview view state", () => {
       interactionLocked: true,
       interactionMode: "orbit",
       resetCounter: 1,
+      showFpsOverlay: true,
     });
   });
 
