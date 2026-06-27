@@ -2,6 +2,7 @@ import { AlertTriangleIcon, ImageDown, Link, RotateCcw, Unlink } from "lucide-re
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,16 +20,21 @@ import { cn } from "@/lib/utils";
 import {
   createDefaultExportSettings,
   EXPORT_FORMAT_OPTIONS,
+  EXPORT_LEGEND_LAYOUT_OPTIONS,
   EXPORT_MESH_QUALITY_OPTIONS,
   EXPORT_SUPERSAMPLING_OPTIONS,
   parseExportDimensionInput,
   setExportAspectRatioLocked,
+  setExportComponentSelected,
   setExportDimension,
   setExportFormat,
+  setExportLegendLayout,
   setExportMeshQuality,
   setExportSupersampling,
   validateExportSettings,
+  type ExportComponentId,
   type ExportFormat,
+  type ExportLegendLayout,
   type ExportMeshQuality,
   type ExportProjectedSize,
   type ExportSettingsState,
@@ -50,6 +56,10 @@ const EXPORT_MESH_QUALITY_LABELS: Record<ExportMeshQuality, string> = {
 const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
   pdf: "PDF",
   png: "PNG",
+};
+const EXPORT_LEGEND_LAYOUT_LABELS: Record<ExportLegendLayout, string> = {
+  horizontal: "Horizontal",
+  vertical: "Vertical",
 };
 
 export function ExportTabContent({
@@ -121,6 +131,43 @@ export function ExportTabContent({
         >
           Components
         </h2>
+        <div className="mt-2 grid gap-1 px-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-2">
+            <ExportComponentCheckbox
+              checked={settings.components.structure}
+              component="structure"
+              label="Structure"
+              onSettingsChange={(component, checked) =>
+                onSettingsChange(setExportComponentSelected(settings, component, checked))
+              }
+            />
+            <ExportComponentCheckbox
+              checked={settings.components.latticeVectors}
+              component="latticeVectors"
+              label="Lattice vectors"
+              onSettingsChange={(component, checked) =>
+                onSettingsChange(setExportComponentSelected(settings, component, checked))
+              }
+            />
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_7.9rem] items-center gap-2">
+            <ExportComponentCheckbox
+              checked={settings.components.legend}
+              component="legend"
+              label="Legend"
+              onSettingsChange={(component, checked) =>
+                onSettingsChange(setExportComponentSelected(settings, component, checked))
+              }
+            />
+            <ExportLegendLayoutControl
+              disabled={!settings.components.legend}
+              value={settings.legendLayout}
+              onCommit={(value) =>
+                onSettingsChange(setExportLegendLayout(settings, value))
+              }
+            />
+          </div>
+        </div>
       </section>
 
       <Separator className="my-0.5" />
@@ -293,6 +340,66 @@ export function ExportTabContent({
         </div>
       </div>
     </div>
+  );
+}
+
+function ExportComponentCheckbox({
+  checked,
+  component,
+  label,
+  onSettingsChange,
+}: {
+  checked: boolean;
+  component: ExportComponentId;
+  label: string;
+  onSettingsChange: (component: ExportComponentId, checked: boolean) => void;
+}) {
+  return (
+    <label className="flex h-7 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 text-sm transition-colors hover:bg-accent/60">
+      <Checkbox
+        checked={checked}
+        aria-label={`Export ${label}`}
+        className="size-3.5 rounded-[3px]"
+        iconClassName="size-3"
+        onCheckedChange={(nextChecked) => onSettingsChange(component, nextChecked === true)}
+      />
+      <span className="min-w-0 truncate leading-tight">{label}</span>
+    </label>
+  );
+}
+
+function ExportLegendLayoutControl({
+  disabled,
+  onCommit,
+  value,
+}: {
+  disabled: boolean;
+  onCommit: (value: ExportLegendLayout) => void;
+  value: ExportLegendLayout;
+}) {
+  return (
+    <Tabs
+      value={value}
+      className={cn("w-full gap-0", disabled ? "opacity-45" : null)}
+      onValueChange={(nextValue) => onCommit(nextValue as ExportLegendLayout)}
+    >
+      <TabsList
+        aria-label="Legend layout"
+        className="!h-6 w-full rounded-md p-0.5"
+      >
+        {EXPORT_LEGEND_LAYOUT_OPTIONS.map((option) => (
+          <TabsTrigger
+            key={option}
+            value={option}
+            aria-label={`${EXPORT_LEGEND_LAYOUT_LABELS[option]} legend layout`}
+            disabled={disabled}
+            className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.64rem] font-medium md:text-[0.64rem]"
+          >
+            {EXPORT_LEGEND_LAYOUT_LABELS[option]}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
   );
 }
 

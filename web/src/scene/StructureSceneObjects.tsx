@@ -1,16 +1,17 @@
 import { type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import {
-  BufferGeometry,
   Color,
   DoubleSide,
-  Float32BufferAttribute,
   Fog,
   Mesh,
   MeshBasicMaterial,
   Quaternion,
   Vector3,
 } from "three";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
+import { LineSegmentsGeometry } from "three/examples/jsm/lines/LineSegmentsGeometry.js";
 
 import type {
   AtomRadiusModel,
@@ -110,6 +111,7 @@ export function PreviewSceneContent({
   showAtoms,
   showUnitCell,
   style,
+  unitCellLineWidthScale = 1,
 }: {
   componentOpacity: ComponentOpacityState;
   layout: SceneLayout;
@@ -126,6 +128,7 @@ export function PreviewSceneContent({
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
+  unitCellLineWidthScale?: number;
 }) {
   const atomById = useMemo(() => new Map(scene.atoms.map((atom) => [atom.id, atom])), [scene]);
 
@@ -149,6 +152,7 @@ export function PreviewSceneContent({
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
+        unitCellLineWidthScale={unitCellLineWidthScale}
       />
     </>
   );
@@ -250,6 +254,7 @@ export function StructureSceneObjects({
   showAtoms,
   showUnitCell,
   style,
+  unitCellLineWidthScale = 1,
 }: {
   atomById: Map<string, AtomSpec>;
   componentOpacity: ComponentOpacityState;
@@ -267,6 +272,7 @@ export function StructureSceneObjects({
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
+  unitCellLineWidthScale?: number;
 }) {
   const handlePointerMissed = useCallback(() => {
     if (interactionLocked) {
@@ -281,6 +287,7 @@ export function StructureSceneObjects({
       <group position={groupPosition}>
         {showUnitCell ? (
           <CellFrame
+            lineWidthScale={unitCellLineWidthScale}
             opacity={componentOpacity.unitCell / 100}
             vectors={scene.cell.vectors}
           />
@@ -838,32 +845,38 @@ function Polyhedron({
   );
 }
 
-function CellFrame({ opacity, vectors }: { opacity: number; vectors: VectorTuple[] }) {
-  const geometry = useMemo(() => {
-    const nextGeometry = new BufferGeometry();
-    nextGeometry.setAttribute(
-      "position",
-      new Float32BufferAttribute(cellFrameLinePositions(vectors), 3),
-    );
-    return nextGeometry;
-  }, [vectors]);
+function CellFrame({
+  lineWidthScale,
+  opacity,
+  vectors,
+}: {
+  lineWidthScale: number;
+  opacity: number;
+  vectors: VectorTuple[];
+}) {
+  const line = useMemo(() => {
+    const geometry = new LineSegmentsGeometry();
+    geometry.setPositions(cellFrameLinePositions(vectors));
+    const lineWidth = CELL_FRAME_LINE_WIDTH_PIXELS * lineWidthScale;
+    const material = new LineMaterial({
+      alphaToCoverage: true,
+      color: CELL_FRAME_COLOR,
+      depthWrite: opacity >= 1,
+      fog: false,
+      linewidth: lineWidth,
+      opacity,
+      transparent: opacity < 1,
+      worldUnits: false,
+    });
+    return new LineSegments2(geometry, material);
+  }, [lineWidthScale, opacity, vectors]);
 
   useEffect(() => {
     return () => {
-      geometry.dispose();
+      line.geometry.dispose();
+      line.material.dispose();
     };
-  }, [geometry]);
+  }, [line]);
 
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial
-        color={CELL_FRAME_COLOR}
-        depthWrite={opacity >= 1}
-        fog={false}
-        linewidth={CELL_FRAME_LINE_WIDTH_PIXELS}
-        opacity={opacity}
-        transparent={opacity < 1}
-      />
-    </lineSegments>
-  );
+  return <primitive object={line} />;
 }

@@ -8,7 +8,6 @@ import {
   BOND_RADIUS,
   atomRadiusForModel,
   cellCorners,
-  cellFrameLinePositions,
   centeredCellGroupPosition,
 } from "./sceneGeometry";
 import type { VectorTuple } from "./viewMath";
@@ -39,12 +38,7 @@ export interface StructureExportProjectedSize {
   width: number;
 }
 
-export interface ExportFrameLine {
-  end: ExportFramePoint;
-  start: ExportFramePoint;
-}
-
-export interface ExportFramePoint {
+interface ExportFramePoint {
   x: number;
   y: number;
 }
@@ -73,7 +67,7 @@ interface BoundsAccumulator {
   toBounds: () => ProjectedBounds | null;
 }
 
-const EXPORT_FRAME_PADDING_RATIO = 1.08;
+const EXPORT_FRAME_PADDING_RATIO = 1.04;
 const FALLBACK_EXPORT_ASPECT_RATIO = 4 / 3;
 const MIN_PROJECTED_SPAN = 1e-6;
 
@@ -140,48 +134,6 @@ export function applyOrthographicExportFrame(
   camera.bottom = -framePlan.height / 2 + framePlan.centerY;
   camera.zoom = framePlan.zoom;
   camera.updateProjectionMatrix();
-}
-
-export function projectCellFrameLinesToExportFrame({
-  cameraPose,
-  framePlan,
-  groupPosition,
-  scene,
-}: {
-  cameraPose: CameraPoseSnapshot;
-  framePlan: StructureExportFramePlan;
-  groupPosition?: VectorTuple;
-  scene: SceneSpec;
-}): ExportFrameLine[] {
-  const projector = createCameraPlaneProjector(
-    cameraPose,
-    groupPosition ?? centeredCellGroupPosition(scene.cell.vectors),
-  );
-  const positions = cellFrameLinePositions(scene.cell.vectors);
-  const lines: ExportFrameLine[] = [];
-
-  for (let index = 0; index < positions.length; index += 6) {
-    const start = mapProjectedPointToFrame(
-      projector.projectPoint([
-        positions[index] ?? 0,
-        positions[index + 1] ?? 0,
-        positions[index + 2] ?? 0,
-      ]),
-      framePlan,
-    );
-    const end = mapProjectedPointToFrame(
-      projector.projectPoint([
-        positions[index + 3] ?? 0,
-        positions[index + 4] ?? 0,
-        positions[index + 5] ?? 0,
-      ]),
-      framePlan,
-    );
-
-    lines.push({ end, start });
-  }
-
-  return lines;
 }
 
 export function computeStructureProjectedBounds({
@@ -306,16 +258,6 @@ function createBoundsAccumulator(): BoundsAccumulator {
         width,
       };
     },
-  };
-}
-
-function mapProjectedPointToFrame(
-  point: ExportFramePoint,
-  framePlan: StructureExportFramePlan,
-): ExportFramePoint {
-  return {
-    x: (point.x - framePlan.centerX) * framePlan.zoom + framePlan.width / 2,
-    y: (point.y - framePlan.centerY) * framePlan.zoom + framePlan.height / 2,
   };
 }
 

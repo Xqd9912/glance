@@ -5,7 +5,7 @@ import { Quaternion } from "three";
 import type { SceneSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
-import type { ComponentOpacityState, RenderBackend, StyleState } from "../model";
+import type { ComponentOpacityState, StyleState } from "../model";
 import type { InteractionMode } from "../model/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
 import { computeCrystalCameraPose, type CrystalCameraState } from "./crystalCamera";
@@ -19,7 +19,7 @@ import {
   PreviewSceneContent,
 } from "./StructureSceneObjects";
 import { computeSceneStructureLayout, type SceneLayout } from "./sceneLayout";
-import { createPreviewRendererFactory } from "./renderBackend";
+import { DEFAULT_RENDERER_PARAMETERS } from "./rendererParameters";
 import type { VectorTuple } from "./viewMath";
 
 export type { PreviewSafeArea } from "../model/layout";
@@ -85,7 +85,6 @@ export function LatticeScene({
   onAtomPulse,
   onLockedInteractionAttempt,
   resetCounter,
-  renderBackend,
   safeArea = EMPTY_SAFE_AREA,
   scene,
   inspectedAtomId = null,
@@ -115,7 +114,6 @@ export function LatticeScene({
   onAtomPulse?: (atomId: string) => void;
   onLockedInteractionAttempt?: () => void;
   resetCounter: number;
-  renderBackend: RenderBackend;
   safeArea?: PreviewSafeArea;
   scene: SceneSpec;
   inspectedAtomId?: string | null;
@@ -156,10 +154,6 @@ export function LatticeScene({
     }),
     [layout.span, layout.standardPose.cameraPosition, layout.standardPose.distance],
   );
-  const rendererFactory = useMemo(
-    () => createPreviewRendererFactory(renderBackend),
-    [renderBackend],
-  );
   const materialFamily = useMemo(
     () => resolveStructureMaterialFamilyForStyle(style),
     [style.materialPreset],
@@ -167,10 +161,9 @@ export function LatticeScene({
 
   return (
     <Canvas
-      key={renderBackend}
       orthographic
       camera={cameraProps}
-      gl={rendererFactory}
+      gl={DEFAULT_RENDERER_PARAMETERS}
       data-testid="lattice-canvas"
     >
       <ambientLight intensity={materialFamily.lighting.ambientIntensity} />

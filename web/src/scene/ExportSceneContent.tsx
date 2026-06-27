@@ -23,6 +23,7 @@ export function ExportSceneContent({
   showAtoms,
   showUnitCell,
   style,
+  unitCellLineWidthScale = 1,
 }: {
   cameraPose: CameraPoseSnapshot;
   componentOpacity: ComponentOpacityState;
@@ -34,6 +35,7 @@ export function ExportSceneContent({
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
+  unitCellLineWidthScale?: number;
 }) {
   const { camera } = useThree();
   const atomById = useMemo(() => new Map(scene.atoms.map((atom) => [atom.id, atom])), [scene]);
@@ -61,6 +63,7 @@ export function ExportSceneContent({
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
+        unitCellLineWidthScale={unitCellLineWidthScale}
       />
     </>
   );

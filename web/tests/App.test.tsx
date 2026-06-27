@@ -9,6 +9,10 @@ import type {
   CreateFigureExportOptions,
   FigureExportFile,
 } from "../src/app/exportFigure";
+import {
+  createFigureExportZipBlob as actualCreateFigureExportZipBlob,
+  createZipBlob as actualCreateZipBlob,
+} from "../src/app/exportFigure";
 
 interface FetchCall {
   input: RequestInfo | URL;
@@ -68,7 +72,7 @@ mock.module("@react-three/fiber", () => {
       orthographic?: boolean;
     }) => (
       <div
-        data-render-backend={typeof _gl === "function" ? "webgpu" : "webgl"}
+        data-render-backend="webgl"
         {...props}
       />
     ),
@@ -108,33 +112,74 @@ mock.module("../src/scene/OrientationGizmo", () => ({
 }));
 
 let exportRequests: CreateFigureExportOptions[] = [];
-let exportDownloads: { blob: Blob; fileName: string }[] = [];
+let exportDirectDownloads: { file: FigureExportFile; sourceFileName: string | null }[] = [];
+let exportZipDownloads: { files: FigureExportFile[]; sourceFileName: string | null }[] = [];
 let exportFailure: Error | null = null;
 
-async function createFigureExportFileMock(
+async function createFigureExportFilesMock(
   options: CreateFigureExportOptions,
-): Promise<FigureExportFile> {
+): Promise<FigureExportFile[]> {
   exportRequests.push(options);
   if (exportFailure) {
     throw exportFailure;
   }
 
-  return {
-    blob: new Blob([options.settings.format], {
-      type: options.settings.format === "pdf" ? "application/pdf" : "image/png",
-    }),
-    fileName: `NaCl.${options.settings.format}`,
-    format: options.settings.format,
-  };
+  const files: FigureExportFile[] = [];
+  if (options.settings.components.structure) {
+    files.push({
+      blob: new Blob([options.settings.format], {
+        type: options.settings.format === "pdf" ? "application/pdf" : "image/png",
+      }),
+      fileName: `NaCl.${options.settings.format}`,
+      format: options.settings.format,
+    });
+  }
+  if (options.settings.components.latticeVectors) {
+    files.push({
+      blob: new Blob(["lattice vectors"], {
+        type: options.settings.format === "pdf" ? "application/pdf" : "image/png",
+      }),
+      fileName: `NaCl-latt-vec.${options.settings.format}`,
+      format: options.settings.format,
+    });
+  }
+  if (options.settings.components.legend) {
+    files.push({
+      blob: new Blob(["legend"], {
+        type: options.settings.format === "pdf" ? "application/pdf" : "image/png",
+      }),
+      fileName: `NaCl-legend.${options.settings.format}`,
+      format: options.settings.format,
+    });
+  }
+  return files;
 }
 
-function downloadBlobMock(blob: Blob, fileName: string) {
-  exportDownloads.push({ blob, fileName });
+async function downloadFigureExportZipMock(
+  files: FigureExportFile[],
+  sourceFileName: string | null,
+) {
+  exportZipDownloads.push({ files, sourceFileName });
+}
+
+async function downloadFigureExportFilesMock(
+  files: FigureExportFile[],
+  sourceFileName: string | null,
+) {
+  if (files.length === 1) {
+    exportDirectDownloads.push({ file: files[0]!, sourceFileName });
+    return;
+  }
+
+  exportZipDownloads.push({ files, sourceFileName });
 }
 
 mock.module("../src/app/exportFigure", () => ({
-  createFigureExportFile: createFigureExportFileMock,
-  downloadBlob: downloadBlobMock,
+  createFigureExportFiles: createFigureExportFilesMock,
+  createFigureExportZipBlob: actualCreateFigureExportZipBlob,
+  createZipBlob: actualCreateZipBlob,
+  downloadFigureExportFiles: downloadFigureExportFilesMock,
+  downloadFigureExportZip: downloadFigureExportZipMock,
 }));
 
 const { App } = await import("../src/app/App");
@@ -148,7 +193,8 @@ beforeEach(() => {
   });
   fetchCalls = [];
   fetchResponses = [];
-  exportDownloads = [];
+  exportDirectDownloads = [];
+  exportZipDownloads = [];
   exportFailure = null;
   exportRequests = [];
   globalThis.fetch = (async (input, init) => {
@@ -336,22 +382,17 @@ describe("App", () => {
     expect(advancedTab.className).toContain("text-[0.875rem]");
     expect(advancedTab.className).toContain("font-semibold");
     expect(inspector.querySelector("[data-slot='separator']")).toBeNull();
-    expect(within(inspector).getByText("Renderer").className).toContain("text-xs");
+    expect(within(inspector).queryByText("Renderer")).toBeNull();
+    expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
     expect(within(inspector).getByText("Interaction").className).toContain("text-xs");
     expect(within(inspector).getByText("Bonds").className).toContain("text-xs");
     expect(legend.getAttribute("style")).toContain("calc(50% + 10px)");
     expect(inspectorButton.getAttribute("aria-expanded")).toBe("true");
     expect(inspectorButton.className).toContain("tool-icon-button-active");
 
-    const rendererSelect = within(inspector).getByRole("combobox", { name: "Renderer" });
-    expect(rendererSelect.textContent).toContain("WebGL");
     expect(screen.getByTestId("lattice-canvas").getAttribute("data-render-backend")).toBe(
       "webgl",
     );
-    await user.click(rendererSelect);
-    expect((await screen.findByRole("option", { name: "WebGPU" })).getAttribute("aria-disabled"))
-      .toBe("true");
-    await user.keyboard("{Escape}");
 
     const interactionSelect = within(inspector).getByRole("combobox", { name: "Interaction" });
     expect(interactionSelect.textContent).toContain("Trackball");
@@ -370,13 +411,8 @@ describe("App", () => {
     );
   });
 
-  test("switches to WebGPU for preview without reuploading while export stays renderer-agnostic", async () => {
+  test("exports without carrying renderer state", async () => {
     const user = userEvent.setup();
-    const requestAdapter = mock(async () => ({}));
-    Object.defineProperty(navigator, "gpu", {
-      configurable: true,
-      value: { requestAdapter },
-    });
 
     await renderLoadedStructure(user);
     expect(fetchCalls).toHaveLength(1);
@@ -386,20 +422,11 @@ describe("App", () => {
 
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
     const inspector = screen.getByRole("complementary", { name: "Sidebar" });
-    await waitFor(() => expect(requestAdapter).toHaveBeenCalled());
-
-    const rendererSelect = within(inspector).getByRole("combobox", { name: "Renderer" });
-    await user.click(rendererSelect);
-    const webGpuOption = await screen.findByRole("option", { name: "WebGPU" });
-    expect(webGpuOption.getAttribute("aria-disabled")).not.toBe("true");
-    await user.click(webGpuOption);
+    expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
 
     expect(fetchCalls).toHaveLength(1);
-    expect(within(inspector).getByRole("combobox", { name: "Renderer" }).textContent).toContain(
-      "WebGPU",
-    );
     expect(screen.getByTestId("lattice-canvas").getAttribute("data-render-backend")).toBe(
-      "webgpu",
+      "webgl",
     );
 
     const commonControls = screen.getByRole("complementary", { name: "Common controls" });
@@ -407,8 +434,9 @@ describe("App", () => {
     await user.click(within(commonControls).getByRole("button", { name: "Export PNG" }));
     await waitFor(() => expect(exportRequests).toHaveLength(1));
 
-    expect("renderBackend" in exportRequests[0]!).toBe(false);
-    expect(exportDownloads[0]?.fileName).toBe("NaCl.png");
+    expect(exportDirectDownloads[0]?.sourceFileName).toBe("NaCl.cif");
+    expect(exportDirectDownloads[0]?.file.fileName).toBe("NaCl.png");
+    expect(exportZipDownloads).toHaveLength(0);
   });
 
   test("toggles polyhedra independently from atoms, bonds, and unit cell", async () => {
@@ -822,21 +850,55 @@ describe("App", () => {
     const exportPngButton = within(commonControls).getByRole("button", {
       name: "Export PNG",
     });
+    const structureCheckbox = within(commonControls).getByRole("checkbox", {
+      name: "Export Structure",
+    });
+    const latticeVectorsCheckbox = within(commonControls).getByRole("checkbox", {
+      name: "Export Lattice vectors",
+    });
+    const legendCheckbox = within(commonControls).getByRole("checkbox", {
+      name: "Export Legend",
+    });
+    const horizontalLegendLayout = within(commonControls).getByRole("tab", {
+      name: "Horizontal legend layout",
+    });
+    const verticalLegendLayout = within(commonControls).getByRole("tab", {
+      name: "Vertical legend layout",
+    });
 
     expect(widthInput.value).toBe("2000");
     expect(heightInput.value).toBe("2000");
+    expect(structureCheckbox.getAttribute("aria-checked")).toBe("true");
+    expect(latticeVectorsCheckbox.getAttribute("aria-checked")).toBe("false");
+    expect(legendCheckbox.getAttribute("aria-checked")).toBe("false");
+    expect(horizontalLegendLayout.getAttribute("aria-selected")).toBe("true");
+    expect(verticalLegendLayout.getAttribute("disabled")).not.toBeNull();
     expect(twoXSupersampling.getAttribute("aria-selected")).toBe("true");
     expect(highMeshQuality.getAttribute("aria-selected")).toBe("true");
     expect(formatSelect.textContent).toContain("PNG");
     expect(exportPngButton.isConnected).toBe(true);
 
+    await user.click(latticeVectorsCheckbox);
+    await user.click(legendCheckbox);
+    await user.click(verticalLegendLayout);
+
     await user.click(exportPngButton);
     await waitFor(() => expect(exportRequests).toHaveLength(1));
 
-    expect("renderBackend" in exportRequests[0]!).toBe(false);
     expect(exportRequests[0]?.settings.format).toBe("png");
+    expect(exportRequests[0]?.settings.components).toEqual({
+      legend: true,
+      latticeVectors: true,
+      structure: true,
+    });
+    expect(exportRequests[0]?.settings.legendLayout).toBe("vertical");
     expect(exportRequests[0]?.settings.supersampling).toBe(2);
-    expect(exportDownloads[0]?.fileName).toBe("NaCl.png");
+    expect(exportZipDownloads[0]?.sourceFileName).toBe("NaCl.cif");
+    expect(exportZipDownloads[0]?.files.map((file) => file.fileName)).toEqual([
+      "NaCl.png",
+      "NaCl-latt-vec.png",
+      "NaCl-legend.png",
+    ]);
 
     await user.clear(widthInput);
     await user.type(widthInput, "3000{Enter}");
@@ -887,7 +949,12 @@ describe("App", () => {
       supersampling: 2,
       width: 2000,
     });
-    expect(exportDownloads[1]?.fileName).toBe("NaCl.pdf");
+    expect(exportZipDownloads[1]?.sourceFileName).toBe("NaCl.cif");
+    expect(exportZipDownloads[1]?.files.map((file) => file.fileName)).toEqual([
+      "NaCl.pdf",
+      "NaCl-latt-vec.pdf",
+      "NaCl-legend.pdf",
+    ]);
   });
 
   test("shows recoverable export errors without losing the loaded scene", async () => {
@@ -908,7 +975,8 @@ describe("App", () => {
       ).toContain("WebGL export failed."),
     );
     expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
-    expect(exportDownloads).toHaveLength(0);
+    expect(exportDirectDownloads).toHaveLength(0);
+    expect(exportZipDownloads).toHaveLength(0);
   });
 
   test("uses a single sliding active indicator for tab animation", async () => {

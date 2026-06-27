@@ -131,7 +131,6 @@ describe("LatticeScene camera commands", () => {
       componentOpacity: createDefaultComponentOpacity(),
       interactionLocked: false,
       interactionMode: "trackball" as const,
-      renderBackend: "webgl" as const,
       resetCounter: 0,
       scene,
       style: createDefaultStyle(),
@@ -176,7 +175,6 @@ describe("LatticeScene camera commands", () => {
       componentOpacity: createDefaultComponentOpacity(),
       interactionLocked: false,
       interactionMode: "trackball" as const,
-      renderBackend: "webgl" as const,
       resetCounter: 0,
       scene,
       style: createDefaultStyle(),
@@ -230,7 +228,6 @@ describe("LatticeScene camera commands", () => {
       componentOpacity: createDefaultComponentOpacity(),
       interactionLocked: false,
       interactionMode: "trackball" as const,
-      renderBackend: "webgl" as const,
       resetCounter: 0,
       scene,
       style: createDefaultStyle(),
@@ -270,7 +267,6 @@ describe("LatticeScene camera commands", () => {
         componentOpacity={createDefaultComponentOpacity()}
         interactionLocked={false}
         interactionMode="trackball"
-        renderBackend="webgl"
         resetCounter={0}
         scene={scene}
         style={createDefaultStyle()}
@@ -306,7 +302,6 @@ describe("LatticeScene camera commands", () => {
         componentOpacity={createDefaultComponentOpacity()}
         interactionLocked={false}
         interactionMode="trackball"
-        renderBackend="webgl"
         resetCounter={0}
         scene={scene}
         style={createDefaultStyle()}
@@ -338,7 +333,6 @@ describe("LatticeScene camera commands", () => {
         componentOpacity={createDefaultComponentOpacity()}
         interactionLocked={false}
         interactionMode="trackball"
-        renderBackend="webgl"
         resetCounter={0}
         scene={scene}
         style={createDefaultStyle()}
@@ -376,7 +370,6 @@ describe("LatticeScene camera commands", () => {
             quaternionW: quaternionSnapshot?.w ?? null,
           });
         }}
-        renderBackend="webgl"
         resetCounter={0}
         scene={scene}
         style={createDefaultStyle()}
@@ -422,7 +415,6 @@ describe("LatticeScene camera commands", () => {
         onCameraControlsInteractionActiveChange={(isActive) => {
           interactionChanges.push(isActive);
         }}
-        renderBackend="webgl"
         resetCounter={0}
         scene={scene}
         style={createDefaultStyle()}

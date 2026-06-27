@@ -41,8 +41,6 @@ import {
 } from "../src/scene/crystalCamera";
 import {
   computeStructureExportAspectRatio,
-  computeStructureExportFramePlan,
-  projectCellFrameLinesToExportFrame,
 } from "../src/scene/exportFrame";
 import {
   applyOrthographicFrustum,
@@ -399,32 +397,6 @@ describe("computeSceneLayout", () => {
         style,
       }),
     ).toBeCloseTo(2 / 3);
-  });
-
-  test("projects unit-cell frame lines into the export frame for vector PDF overlay", () => {
-    const scene = sceneWithExportVisibilityAtoms();
-    const cameraPose = createCameraPoseSnapshot(new Quaternion());
-    const framePlan = computeStructureExportFramePlan({
-      cameraPose,
-      componentOpacity: createDefaultComponentOpacity(),
-      height: 100,
-      scene,
-      showAtoms: false,
-      showUnitCell: true,
-      style: createDefaultStyle(),
-      width: 100,
-    });
-    const lines = projectCellFrameLinesToExportFrame({ cameraPose, framePlan, scene });
-
-    expect(lines).toHaveLength(12);
-    for (const line of lines) {
-      for (const point of [line.start, line.end]) {
-        expect(point.x).toBeGreaterThanOrEqual(0);
-        expect(point.x).toBeLessThanOrEqual(100);
-        expect(point.y).toBeGreaterThanOrEqual(0);
-        expect(point.y).toBeLessThanOrEqual(100);
-      }
-    }
   });
 
   test("builds polyhedron geometry from returned hull atoms and faces", () => {

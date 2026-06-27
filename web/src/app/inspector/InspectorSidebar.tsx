@@ -24,10 +24,6 @@ import {
   TOOL_ICON_BUTTON_CLASS,
 } from "../surface";
 import {
-  RENDER_BACKEND_OPTIONS,
-  type RenderBackend,
-} from "../settings";
-import {
   INTERACTION_MODE_OPTIONS,
   type InteractionMode,
 } from "../viewState";
@@ -76,9 +72,6 @@ export function InspectorSidebar({
   isSceneLoading,
   onBondAlgorithmChange,
   onInteractionModeChange,
-  onRenderBackendChange,
-  renderBackend,
-  webGpuAvailable,
 }: {
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
@@ -86,9 +79,6 @@ export function InspectorSidebar({
   isSceneLoading: boolean;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
-  onRenderBackendChange: (renderBackend: RenderBackend) => void;
-  renderBackend: RenderBackend;
-  webGpuAvailable: boolean;
 }) {
   return (
     <aside
@@ -131,9 +121,6 @@ export function InspectorSidebar({
               isSceneLoading={isSceneLoading}
               onBondAlgorithmChange={onBondAlgorithmChange}
               onInteractionModeChange={onInteractionModeChange}
-              onRenderBackendChange={onRenderBackendChange}
-              renderBackend={renderBackend}
-              webGpuAvailable={webGpuAvailable}
             />
           </TabsContent>
         </div>
@@ -148,49 +135,15 @@ function SettingsPanel({
   isSceneLoading,
   onBondAlgorithmChange,
   onInteractionModeChange,
-  onRenderBackendChange,
-  renderBackend,
-  webGpuAvailable,
 }: {
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isSceneLoading: boolean;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
-  onRenderBackendChange: (renderBackend: RenderBackend) => void;
-  renderBackend: RenderBackend;
-  webGpuAvailable: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <InspectorSelectRow label="Renderer">
-        <Select
-          value={renderBackend}
-          onValueChange={(value) => onRenderBackendChange(value as RenderBackend)}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label="Renderer"
-            className="w-full bg-background"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent position="popper" className="!bg-background !text-foreground">
-            <SelectGroup>
-              {RENDER_BACKEND_OPTIONS.map((option) => (
-                <SelectItem
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.value === "webgpu" && !webGpuAvailable}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </InspectorSelectRow>
-
       <InspectorSelectRow label="Interaction">
         <Select
           value={interactionMode}

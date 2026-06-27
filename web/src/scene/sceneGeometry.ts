@@ -4,12 +4,7 @@ export { atomRadiusForModel } from "../model/elementRadii";
 import { withDefaultCellVectors, type VectorTuple } from "./viewMath";
 
 export const BOND_RADIUS = 0.14;
-export const CELL_FRAME_COLOR = "#111111";
-export const CELL_FRAME_COLOR_RGB = {
-  blue: 17 / 255,
-  green: 17 / 255,
-  red: 17 / 255,
-} as const;
+export const CELL_FRAME_COLOR = "#444444";
 export const CELL_FRAME_LINE_WIDTH_PIXELS = 1;
 
 export function cellCenter(vectors: VectorTuple[]): Vector3 {

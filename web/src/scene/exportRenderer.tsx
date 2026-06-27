@@ -1,5 +1,6 @@
 import { createRoot, type RootState } from "@react-three/fiber";
 import { useLayoutEffect } from "react";
+import { Quaternion, Vector3 } from "three";
 
 import type { SceneSpec } from "../api/scene";
 import type {
@@ -17,12 +18,33 @@ import { CameraHeadlight } from "./CameraHeadlight";
 import { computeSceneLayout } from "./sceneLayout";
 import { computeStructureExportFramePlan } from "./exportFrame";
 import { resolveStructureMaterialFamilyForStyle } from "./materialPresetResolver";
-import { DEFAULT_RENDERER_PARAMETERS } from "./renderBackend";
+import { DEFAULT_RENDERER_PARAMETERS } from "./rendererParameters";
+import {
+  ORIENTATION_GIZMO_CAMERA_POSITION,
+  ORIENTATION_GIZMO_LABEL_DISTANCE,
+  ORIENTATION_GIZMO_SCALE,
+  ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL,
+  StaticOrientationGizmoScene,
+} from "./OrientationGizmo";
+import {
+  computeOrientationGizmoAxes,
+  type OrientationGizmoAxisSpec,
+} from "./orientationGizmoMath";
 
 export interface RasterExportImage {
   blob: Blob;
   height: number;
+  textItems?: RasterExportTextItem[];
   width: number;
+}
+
+export interface RasterExportTextItem {
+  fontStyle?: "italic" | "normal";
+  fontWeight?: number;
+  label: string;
+  size: number;
+  x: number;
+  y: number;
 }
 
 export interface RenderStructureRasterOptions {
@@ -36,6 +58,15 @@ export interface RenderStructureRasterOptions {
   style: StyleState;
   supersampling: ExportSupersampling;
   width: number;
+}
+
+export interface RenderLatticeVectorsRasterOptions {
+  cameraPose: CameraPoseSnapshot;
+  cellVectors: SceneSpec["cell"]["vectors"];
+  cropPaddingRatio?: number;
+  showLabels?: boolean;
+  size: number;
+  supersampling: ExportSupersampling;
 }
 
 export async function renderStructureRasterPng({
@@ -131,6 +162,7 @@ export async function renderStructureRasterPng({
           showAtoms={showAtoms}
           showUnitCell={showUnitCell}
           style={style}
+          unitCellLineWidthScale={supersampling}
         />
         <RenderReady onReady={() => resolveMounted?.()} />
       </>,
@@ -145,6 +177,112 @@ export async function renderStructureRasterPng({
       supersampling === 1 ? canvas : downsampleCanvas(canvas, width, height);
     const blob = await canvasToPngBlob(outputCanvas);
     return { blob, height, width };
+  } finally {
+    root.unmount();
+    canvas.remove();
+  }
+}
+
+export async function renderLatticeVectorsRasterPng({
+  cameraPose,
+  cellVectors,
+  cropPaddingRatio = 0.04,
+  showLabels = true,
+  size,
+  supersampling,
+}: RenderLatticeVectorsRasterOptions): Promise<RasterExportImage> {
+  const renderSize = size * supersampling;
+  const canvas = document.createElement("canvas");
+  canvas.width = renderSize;
+  canvas.height = renderSize;
+  canvas.style.cssText = [
+    "position: fixed",
+    "left: -10000px",
+    "top: -10000px",
+    `width: ${renderSize}px`,
+    `height: ${renderSize}px`,
+    "pointer-events: none",
+  ].join(";");
+  canvas.setAttribute("aria-hidden", "true");
+  document.body.appendChild(canvas);
+
+  const axes = computeOrientationGizmoAxes(cellVectors);
+  const root = createRoot(canvas);
+  let rootState: RootState | null = null;
+  let resolveMounted: (() => void) | null = null;
+  const mounted = new Promise<void>((resolve) => {
+    resolveMounted = resolve;
+  });
+
+  try {
+    await root.configure({
+      camera: {
+        far: 20,
+        near: 0.1,
+        position: ORIENTATION_GIZMO_CAMERA_POSITION,
+        zoom: renderSize * ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL,
+      },
+      dpr: 1,
+      frameloop: "never",
+      gl: {
+        ...DEFAULT_RENDERER_PARAMETERS,
+        alpha: true,
+      },
+      onCreated: (state) => {
+        rootState = state;
+      },
+      orthographic: true,
+      size: {
+        height: renderSize,
+        left: 0,
+        top: 0,
+        width: renderSize,
+      },
+    });
+
+    const store = root.render(
+      <>
+        <ambientLight intensity={0.68} />
+        <CameraHeadlight />
+        <StaticOrientationGizmoScene
+          axes={axes}
+          cameraPose={cameraPose}
+          showLabels={showLabels}
+        />
+        <RenderReady onReady={() => resolveMounted?.()} />
+      </>,
+    );
+
+    await mounted;
+    const state = rootState ?? store.getState();
+    state.advance(performance.now(), true);
+    state.advance(performance.now() + 16, true);
+
+    const projectedTextItems = latticeVectorTextItems({
+      axes,
+      cameraPose,
+      crop: {
+        sourceX: 0,
+        sourceY: 0,
+      },
+      renderSize,
+      rootState: state,
+      supersampling,
+    });
+    const output = cropTransparentCanvas(
+      canvas,
+      cropPaddingRatio,
+      showLabels ? [] : textBounds(projectedTextItems),
+    );
+    const textItems = showLabels
+      ? undefined
+      : projectedTextItems.map((item) => ({
+          ...item,
+          x: item.x - output.crop.sourceX,
+          y: item.y - output.crop.sourceY,
+        }));
+    const blob = await canvasToPngBlob(output.canvas);
+    return { blob, height: output.canvas.height, textItems, width: output.canvas.width };
   } finally {
     root.unmount();
     canvas.remove();
@@ -172,6 +310,176 @@ function downsampleCanvas(sourceCanvas: HTMLCanvasElement, width: number, height
   context.imageSmoothingQuality = "high";
   context.drawImage(sourceCanvas, 0, 0, width, height);
   return outputCanvas;
+}
+
+function cropTransparentCanvas(
+  sourceCanvas: HTMLCanvasElement,
+  paddingRatio: number,
+  extraBounds: Array<{ maxX: number; maxY: number; minX: number; minY: number }> = [],
+) {
+  const readableCanvas = document.createElement("canvas");
+  readableCanvas.width = sourceCanvas.width;
+  readableCanvas.height = sourceCanvas.height;
+  const sourceContext = readableCanvas.getContext("2d", { willReadFrequently: true });
+  if (!sourceContext) {
+    throw new Error("Could not prepare the lattice vectors crop canvas.");
+  }
+
+  sourceContext.drawImage(sourceCanvas, 0, 0);
+
+  const image = sourceContext.getImageData(0, 0, readableCanvas.width, readableCanvas.height);
+  const bounds = mergeBounds([
+    alphaBounds(image.data, readableCanvas.width, readableCanvas.height),
+    ...extraBounds,
+  ]);
+  if (!bounds) {
+    return {
+      canvas: sourceCanvas,
+      crop: {
+        sourceX: 0,
+        sourceY: 0,
+      },
+    };
+  }
+
+  const contentWidth = bounds.maxX - bounds.minX + 1;
+  const contentHeight = bounds.maxY - bounds.minY + 1;
+  const padding = Math.max(
+    1,
+    Math.round(Math.max(contentWidth, contentHeight) * paddingRatio),
+  );
+  const sourceX = Math.max(0, Math.floor(bounds.minX - padding));
+  const sourceY = Math.max(0, Math.floor(bounds.minY - padding));
+  const sourceRight = Math.min(readableCanvas.width - 1, Math.ceil(bounds.maxX + padding));
+  const sourceBottom = Math.min(readableCanvas.height - 1, Math.ceil(bounds.maxY + padding));
+  const targetWidth = sourceRight - sourceX + 1;
+  const targetHeight = sourceBottom - sourceY + 1;
+
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = targetWidth;
+  outputCanvas.height = targetHeight;
+  const outputContext = outputCanvas.getContext("2d");
+  if (!outputContext) {
+    throw new Error("Could not crop the lattice vectors export canvas.");
+  }
+
+  outputContext.drawImage(
+    readableCanvas,
+    sourceX,
+    sourceY,
+    targetWidth,
+    targetHeight,
+    0,
+    0,
+    targetWidth,
+    targetHeight,
+  );
+  return {
+    canvas: outputCanvas,
+    crop: {
+      sourceX,
+      sourceY,
+    },
+  };
+}
+
+function textBounds(textItems: RasterExportTextItem[]) {
+  return textItems.map((item) => {
+    const approximateWidth = item.label.length * item.size * 0.72;
+    const approximateHeight = item.size;
+    const minX = item.x - approximateWidth / 2;
+    const maxX = item.x + approximateWidth / 2;
+    const minY = item.y - approximateHeight / 2;
+    const maxY = item.y + approximateHeight / 2;
+    return {
+      maxX,
+      maxY,
+      minX,
+      minY,
+    };
+  });
+}
+
+function mergeBounds(
+  bounds: Array<{ maxX: number; maxY: number; minX: number; minY: number } | null>,
+) {
+  const presentBounds = bounds.filter(
+    (bound): bound is { maxX: number; maxY: number; minX: number; minY: number } =>
+      bound !== null,
+  );
+  if (presentBounds.length === 0) {
+    return null;
+  }
+
+  return presentBounds.reduce((merged, bound) => ({
+    maxX: Math.max(merged.maxX, bound.maxX),
+    maxY: Math.max(merged.maxY, bound.maxY),
+    minX: Math.min(merged.minX, bound.minX),
+    minY: Math.min(merged.minY, bound.minY),
+  }));
+}
+
+function latticeVectorTextItems({
+  axes,
+  cameraPose,
+  crop,
+  renderSize,
+  rootState,
+  supersampling,
+}: {
+  axes: OrientationGizmoAxisSpec[];
+  cameraPose: CameraPoseSnapshot;
+  crop: { sourceX: number; sourceY: number };
+  renderSize: number;
+  rootState: RootState;
+  supersampling: number;
+}): RasterExportTextItem[] {
+  const inverseRotation = new Quaternion(...cameraPose.quaternion).invert();
+
+  return axes.map((axis) => {
+    const worldPosition = new Vector3(...axis.direction)
+      .multiplyScalar(ORIENTATION_GIZMO_LABEL_DISTANCE * ORIENTATION_GIZMO_SCALE)
+      .applyQuaternion(inverseRotation);
+    const projected = worldPosition.project(rootState.camera);
+    return {
+      fontStyle: "italic",
+      fontWeight: 500,
+      label: axis.label,
+      size: 56 * supersampling,
+      x: ((projected.x + 1) / 2) * renderSize - crop.sourceX,
+      y: ((1 - projected.y) / 2) * renderSize - crop.sourceY,
+    };
+  });
+}
+
+function alphaBounds(data: Uint8ClampedArray, width: number, height: number) {
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const alpha = data[(y * width + x) * 4 + 3] ?? 0;
+      if (alpha === 0) {
+        continue;
+      }
+
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  return maxX >= minX && maxY >= minY
+    ? {
+        maxX,
+        maxY,
+        minX,
+        minY,
+      }
+    : null;
 }
 
 function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {

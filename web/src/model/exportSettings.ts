@@ -1,6 +1,14 @@
 export type ExportFormat = "png" | "pdf";
+export type ExportComponentId = "legend" | "latticeVectors" | "structure";
+export type ExportLegendLayout = "horizontal" | "vertical";
 export type ExportMeshQuality = "low" | "medium" | "high" | "xhigh";
 export type ExportSupersampling = 1 | 2 | 4;
+
+export interface ExportComponentSelection {
+  legend: boolean;
+  latticeVectors: boolean;
+  structure: boolean;
+}
 
 export interface ExportProjectedSize {
   height: number;
@@ -9,8 +17,10 @@ export interface ExportProjectedSize {
 
 export interface ExportSettingsState {
   aspectRatioLocked: boolean;
+  components: ExportComponentSelection;
   format: ExportFormat;
   height: number;
+  legendLayout: ExportLegendLayout;
   meshQuality: ExportMeshQuality;
   pixelsPerProjectedUnit: number | null;
   supersampling: ExportSupersampling;
@@ -30,6 +40,10 @@ export const EXPORT_SUPERSAMPLING_OPTIONS: readonly ExportSupersampling[] = [1, 
 const EXPORT_SUPERSAMPLING_MIN: ExportSupersampling = 1;
 const EXPORT_SUPERSAMPLING_MAX: ExportSupersampling = 4;
 export const EXPORT_FORMAT_OPTIONS: readonly ExportFormat[] = ["png", "pdf"];
+export const EXPORT_LEGEND_LAYOUT_OPTIONS: readonly ExportLegendLayout[] = [
+  "horizontal",
+  "vertical",
+];
 export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
   "low",
   "medium",
@@ -39,8 +53,14 @@ export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
 
 export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
   aspectRatioLocked: false,
+  components: {
+    legend: false,
+    latticeVectors: false,
+    structure: true,
+  },
   format: "png",
   height: 2000,
+  legendLayout: "horizontal",
   meshQuality: "high",
   pixelsPerProjectedUnit: null,
   supersampling: 2,
@@ -48,7 +68,10 @@ export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
 };
 
 export function createDefaultExportSettings(): ExportSettingsState {
-  return { ...DEFAULT_EXPORT_SETTINGS };
+  return {
+    ...DEFAULT_EXPORT_SETTINGS,
+    components: { ...DEFAULT_EXPORT_SETTINGS.components },
+  };
 }
 
 export function setExportDimension(
@@ -155,6 +178,30 @@ export function setExportFormat(
   };
 }
 
+export function setExportComponentSelected(
+  settings: ExportSettingsState,
+  component: ExportComponentId,
+  selected: boolean,
+): ExportSettingsState {
+  return {
+    ...settings,
+    components: {
+      ...settings.components,
+      [component]: selected,
+    },
+  };
+}
+
+export function setExportLegendLayout(
+  settings: ExportSettingsState,
+  legendLayout: ExportLegendLayout,
+): ExportSettingsState {
+  return {
+    ...settings,
+    legendLayout,
+  };
+}
+
 export function setExportMeshQuality(
   settings: ExportSettingsState,
   meshQuality: ExportMeshQuality,
@@ -187,6 +234,13 @@ export function parseExportDimensionInput(value: string): number | null {
 export function validateExportSettings(
   settings: ExportSettingsState,
 ): ExportSettingsValidation {
+  if (!Object.values(settings.components).some(Boolean)) {
+    return {
+      valid: false,
+      message: "Select at least one export component.",
+    };
+  }
+
   if (
     !Number.isInteger(settings.width) ||
     !Number.isInteger(settings.height) ||

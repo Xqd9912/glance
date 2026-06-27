@@ -12,6 +12,7 @@ import {
 } from "three";
 
 import type { CameraOrientationRef } from "./LatticeScene";
+import type { CameraPoseSnapshot } from "./cameraPose";
 import { CameraHeadlight } from "./CameraHeadlight";
 import {
   computeOrientationGizmoAxes,
@@ -22,15 +23,15 @@ import { pickOrientationGizmoAxis } from "./orientationGizmoHitTesting";
 import { PREVIEW_AMBIENT_LIGHT_INTENSITY } from "./renderAppearance";
 import type { VectorTuple } from "./viewMath";
 
-const CAMERA_POSITION: VectorTuple = [0, 0, 5];
+export const ORIENTATION_GIZMO_CAMERA_POSITION: VectorTuple = [0, 0, 5];
 const BASE_CAMERA_ZOOM = 53;
 const BASE_INNER_CANVAS_SIZE = 588;
 const CONE_LENGTH = 0.24;
 const CONE_RADIUS = 0.13;
-const GIZMO_SCALE = 1.36;
+export const ORIENTATION_GIZMO_SCALE = 1.36;
 const GIZMO_CANVAS_SCALE = 2.4;
 const AXIS_HIT_RADIUS_PX = 18;
-const LABEL_DISTANCE = 1.3;
+export const ORIENTATION_GIZMO_LABEL_DISTANCE = 1.3;
 const LABEL_HIT_RADIUS_PX = 24;
 const LABEL_SCALE = 0.38;
 const LABEL_FILL_COLOR = "#343434";
@@ -38,7 +39,7 @@ const LABEL_HALO_COLOR = "rgb(255 255 255)";
 const ORIGIN_SPHERE_RADIUS = 0.13;
 const SHAFT_LENGTH = 0.82;
 const SHAFT_RADIUS = 0.055;
-const ZOOM_PER_CANVAS_PIXEL = BASE_CAMERA_ZOOM / BASE_INNER_CANVAS_SIZE;
+export const ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL = BASE_CAMERA_ZOOM / BASE_INNER_CANVAS_SIZE;
 const Y_AXIS = new Vector3(0, 1, 0);
 
 export function OrientationGizmo({
@@ -75,10 +76,11 @@ export function OrientationGizmo({
           axisHitRadiusPx: AXIS_HIT_RADIUS_PX,
           axisStartDistance: ORIGIN_SPHERE_RADIUS * 1.25,
           axisTipDistance: SHAFT_LENGTH + CONE_LENGTH,
-          gizmoScale: GIZMO_SCALE,
-          labelDistance: LABEL_DISTANCE,
+          gizmoScale: ORIENTATION_GIZMO_SCALE,
+          labelDistance: ORIENTATION_GIZMO_LABEL_DISTANCE,
           labelHitRadiusPx: LABEL_HIT_RADIUS_PX,
-          pixelsPerWorldUnit: Math.min(rect.width, rect.height) * ZOOM_PER_CANVAS_PIXEL,
+          pixelsPerWorldUnit:
+            Math.min(rect.width, rect.height) * ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL,
         },
         pointer: {
           clientX: event.clientX,
@@ -189,7 +191,7 @@ export function OrientationGizmo({
         <Canvas
           orthographic
           camera={{
-            position: CAMERA_POSITION,
+            position: ORIENTATION_GIZMO_CAMERA_POSITION,
             zoom: BASE_CAMERA_ZOOM,
             near: 0.1,
             far: 20,
@@ -220,7 +222,7 @@ function ResponsiveGizmoCamera() {
       return;
     }
 
-    camera.zoom = Math.min(size.width, size.height) * ZOOM_PER_CANVAS_PIXEL;
+    camera.zoom = Math.min(size.width, size.height) * ORIENTATION_GIZMO_ZOOM_PER_CANVAS_PIXEL;
     camera.updateProjectionMatrix();
   }, [camera, size.height, size.width]);
 
@@ -249,12 +251,50 @@ function OrientationGizmoScene({
   });
 
   return (
-    <group ref={groupRef} scale={GIZMO_SCALE}>
+    <group ref={groupRef}>
+      <OrientationGizmoAxes axes={axes} hoveredAxis={hoveredAxis} />
+    </group>
+  );
+}
+
+export function StaticOrientationGizmoScene({
+  axes,
+  cameraPose,
+  showLabels = true,
+}: {
+  axes: OrientationGizmoAxisSpec[];
+  cameraPose: CameraPoseSnapshot;
+  showLabels?: boolean;
+}) {
+  const rotation = useMemo(
+    () => new Quaternion(...cameraPose.quaternion).invert(),
+    [cameraPose],
+  );
+
+  return (
+    <group quaternion={rotation}>
+      <OrientationGizmoAxes axes={axes} hoveredAxis={null} showLabels={showLabels} />
+    </group>
+  );
+}
+
+function OrientationGizmoAxes({
+  axes,
+  hoveredAxis,
+  showLabels = true,
+}: {
+  axes: OrientationGizmoAxisSpec[];
+  hoveredAxis: OrientationGizmoAxisLabel | null;
+  showLabels?: boolean;
+}) {
+  return (
+    <group scale={ORIENTATION_GIZMO_SCALE}>
       {axes.map((axis) => (
         <AxisArrow
           axis={axis}
           hovered={axis.label === hoveredAxis}
           key={axis.label}
+          showLabel={showLabels}
         />
       ))}
       <mesh renderOrder={4}>
@@ -268,9 +308,11 @@ function OrientationGizmoScene({
 function AxisArrow({
   axis,
   hovered,
+  showLabel,
 }: {
   axis: OrientationGizmoAxisSpec;
   hovered: boolean;
+  showLabel: boolean;
 }) {
   const axisRotation = useMemo(
     () => new Quaternion().setFromUnitVectors(Y_AXIS, new Vector3(...axis.direction)),
@@ -297,7 +339,13 @@ function AxisArrow({
           emissiveIntensity={hovered ? 0.35 : 0}
         />
       </mesh>
-      <AxisLabel hovered={hovered} label={axis.label} position={[0, LABEL_DISTANCE, 0]} />
+      {showLabel ? (
+        <AxisLabel
+          hovered={hovered}
+          label={axis.label}
+          position={[0, ORIENTATION_GIZMO_LABEL_DISTANCE, 0]}
+        />
+      ) : null}
     </group>
   );
 }
@@ -335,18 +383,18 @@ function createLabelTexture(label: string, hovered: boolean) {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  canvas.width = 128;
-  canvas.height = 128;
+  canvas.width = 512;
+  canvas.height = 512;
 
   if (context) {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.font = "italic 500 76px Geist, 'Helvetica Neue', Arial, sans-serif";
+    context.font = "italic 500 304px Geist, 'Helvetica Neue', Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineJoin = "round";
     context.miterLimit = 2;
     context.strokeStyle = LABEL_HALO_COLOR;
-    context.lineWidth = 10;
+    context.lineWidth = 40;
     context.strokeText(label, canvas.width / 2, canvas.height / 2 + 2);
     context.fillStyle = hovered ? "#111111" : LABEL_FILL_COLOR;
     context.fillText(label, canvas.width / 2, canvas.height / 2 + 2);

@@ -2,8 +2,6 @@ import { describe, expect, test } from "bun:test";
 
 import type { AtomSpec, SceneSpec } from "../src/api/scene";
 import {
-  DEFAULT_RENDER_BACKEND,
-  RENDER_BACKEND_OPTIONS,
   STYLE_FOG_START_MAX,
   STYLE_FOG_START_MIN,
   STYLE_FOG_STRENGTH_MAX,
@@ -17,8 +15,10 @@ import {
   INSPECTOR_PREVIEW_SAFE_AREA,
   parseExportDimensionInput,
   setExportAspectRatioLocked,
+  setExportComponentSelected,
   setExportDimension,
   setExportFormat,
+  setExportLegendLayout,
   setExportMeshQuality,
   setExportSupersampling,
   countPeriodicImageAtoms,
@@ -55,8 +55,14 @@ describe("settings", () => {
   test("defaults figure export settings to PNG with separate 2D and 3D quality controls", () => {
     expect(createDefaultExportSettings()).toEqual({
       aspectRatioLocked: false,
+      components: {
+        legend: false,
+        latticeVectors: false,
+        structure: true,
+      },
       format: "png",
       height: 2000,
+      legendLayout: "horizontal",
       meshQuality: "high",
       pixelsPerProjectedUnit: null,
       supersampling: 2,
@@ -64,18 +70,11 @@ describe("settings", () => {
     });
   });
 
-  test("defaults the render backend to WebGL with WebGPU as an option", () => {
-    expect(DEFAULT_RENDER_BACKEND).toBe("webgl");
-    expect(RENDER_BACKEND_OPTIONS).toEqual([
-      {
-        label: "WebGL",
-        value: "webgl",
-      },
-      {
-        label: "WebGPU",
-        value: "webgpu",
-      },
-    ]);
+  test("creates independent nested export component defaults", () => {
+    const firstSettings = createDefaultExportSettings();
+    firstSettings.components.legend = true;
+
+    expect(createDefaultExportSettings().components.legend).toBe(false);
   });
 
   test("edits export dimensions with locked and unlocked projected scale", () => {
@@ -171,6 +170,12 @@ describe("settings", () => {
     expect(parseExportDimensionInput("99999")).toBe(6000);
     expect(setExportSupersampling(defaultSettings, 9).supersampling).toBe(4);
     expect(setExportMeshQuality(defaultSettings, "xhigh").meshQuality).toBe("xhigh");
+    expect(setExportComponentSelected(defaultSettings, "legend", true).components).toEqual({
+      legend: true,
+      latticeVectors: false,
+      structure: true,
+    });
+    expect(setExportLegendLayout(defaultSettings, "vertical").legendLayout).toBe("vertical");
     expect(setExportFormat(defaultSettings, "pdf")).toEqual({
       ...defaultSettings,
       format: "pdf",
@@ -180,6 +185,19 @@ describe("settings", () => {
       ...defaultSettings,
       supersampling: 4,
     }).valid).toBe(true);
+    expect(
+      validateExportSettings({
+        ...defaultSettings,
+        components: {
+          legend: false,
+          latticeVectors: false,
+          structure: false,
+        },
+      }),
+    ).toEqual({
+      message: "Select at least one export component.",
+      valid: false,
+    });
     expect(
       validateExportSettings({
         ...defaultSettings,
