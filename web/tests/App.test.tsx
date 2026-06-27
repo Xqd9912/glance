@@ -352,6 +352,7 @@ describe("App", () => {
     );
 
     const resetControls = screen.getByRole("complementary", { name: "Common controls" });
+    expect(resetControls).toBe(commonControls);
     expect(
       within(resetControls).getByRole("tab", { name: "Display" }).getAttribute("aria-selected"),
     ).toBe("true");

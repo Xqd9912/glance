@@ -55,6 +55,7 @@ const COMMON_PANEL_TABS: {
 ];
 
 export function CommonControlsPanel({
+  activeTab: targetActiveTab,
   cameraState,
   cellVectors,
   componentOpacity,
@@ -79,6 +80,7 @@ export function CommonControlsPanel({
   onStyleChange,
   style,
 }: {
+  activeTab: CommonPanelTab;
   cameraState: CrystalCameraState;
   cellVectors: VectorTuple[];
   componentOpacity: ComponentOpacityState;
@@ -110,7 +112,7 @@ export function CommonControlsPanel({
     style: null,
   });
   const contentRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<CommonPanelTab>("display");
+  const [activeTab, setActiveTab] = useState<CommonPanelTab>(targetActiveTab);
   const [hasMountedCameraTab, setHasMountedCameraTab] = useState(() => cellVectors.length > 0);
   const [tabIndicatorRect, setTabIndicatorRect] = useState<TabIndicatorRect | null>(null);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
@@ -128,6 +130,23 @@ export function CommonControlsPanel({
       setHasMountedCameraTab(true);
     }
   }, [cellVectors.length]);
+
+  useEffect(() => {
+    if (targetActiveTab === activeTab) {
+      return;
+    }
+
+    const currentHeight = contentRef.current?.getBoundingClientRect().height;
+    if (currentHeight && currentHeight > 0) {
+      setContentHeight(currentHeight);
+    }
+
+    if (targetActiveTab === "camera") {
+      setHasMountedCameraTab(true);
+    }
+
+    setActiveTab(targetActiveTab);
+  }, [activeTab, targetActiveTab]);
 
   useEffect(() => {
     const updateIndicatorRect = () => {

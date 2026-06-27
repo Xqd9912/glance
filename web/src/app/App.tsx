@@ -185,7 +185,6 @@ export function App() {
   const [cameraInteractionStore] = useState(createCameraInteractionStore);
   const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
-  const [previewUiResetVersion, setPreviewUiResetVersion] = useState(0);
   const viewportSize = useViewportSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraOrientationRef = useRef(new Quaternion());
@@ -262,7 +261,6 @@ export function App() {
       setActiveCommonPanelTab("display");
       setLockedInteractionFeedbackCount(0);
       setIsStructureSummaryCollapsed(true);
-      setPreviewUiResetVersion((version) => version + 1);
 
       cameraOrientationRef.current.identity();
       clearCameraDerivedUiFreezeState();
@@ -1085,7 +1083,7 @@ export function App() {
         {scene ? (
           <div>
             <CommonControlsPanel
-              key={previewUiResetVersion}
+              activeTab={activeCommonPanelTab}
               cameraState={cameraControlsPanelState}
               cellVectors={scene.cell.vectors}
               componentOpacity={componentOpacity}
