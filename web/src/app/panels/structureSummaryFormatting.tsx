@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { COMMON_PANEL_BODY_TEXT_CLASS } from "../controls/commonPanel/styles";
 import { renderHermannMauguin } from "../symmetryNotation";
 
 export function SummaryRow({
@@ -18,7 +19,12 @@ export function SummaryRow({
   valueClassName?: string;
 }) {
   return (
-    <div className="grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-2 text-sm">
+    <div
+      className={cn(
+        "grid grid-cols-[4.25rem_minmax(0,1fr)] items-baseline gap-2",
+        COMMON_PANEL_BODY_TEXT_CLASS,
+      )}
+    >
       <span className="text-xs font-semibold text-muted-foreground">{label}</span>
       <span title={title}>
         <span

@@ -46,6 +46,11 @@ import {
   TOOL_ICON_BUTTON_RESET_FEEDBACK_B_CLASS,
 } from "../../surface";
 import { TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS } from "./controlFeedback";
+import {
+  COMMON_PANEL_BODY_TEXT_CLASS,
+  COMMON_PANEL_FIELD_LABEL_TEXT_CLASS,
+  COMMON_PANEL_SECTION_TITLE_TEXT_CLASS,
+} from "./styles";
 
 const EXPORT_MESH_QUALITY_LABELS: Record<ExportMeshQuality, string> = {
   low: "Low",
@@ -127,7 +132,7 @@ export function ExportTabContent({
       <section aria-labelledby="export-components-label">
         <h2
           id="export-components-label"
-          className="px-1.5 text-xs font-bold leading-tight text-muted-foreground"
+          className={cn("px-1.5 leading-tight text-muted-foreground", COMMON_PANEL_SECTION_TITLE_TEXT_CLASS)}
         >
           Components
         </h2>
@@ -150,7 +155,7 @@ export function ExportTabContent({
               }
             />
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_7.9rem] items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <ExportComponentCheckbox
               checked={settings.components.legend}
               component="legend"
@@ -159,13 +164,15 @@ export function ExportTabContent({
                 onSettingsChange(setExportComponentSelected(settings, component, checked))
               }
             />
-            <ExportLegendLayoutControl
-              disabled={!settings.components.legend}
-              value={settings.legendLayout}
-              onCommit={(value) =>
-                onSettingsChange(setExportLegendLayout(settings, value))
-              }
-            />
+            <div className="w-[8.4rem]">
+              <ExportLegendLayoutControl
+                disabled={!settings.components.legend}
+                value={settings.legendLayout}
+                onCommit={(value) =>
+                  onSettingsChange(setExportLegendLayout(settings, value))
+                }
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -177,7 +184,7 @@ export function ExportTabContent({
           <div className="flex min-w-0 items-center gap-1">
             <h2
               id="export-quality-label"
-              className="text-xs font-bold leading-tight text-muted-foreground"
+              className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
             >
               Quality
             </h2>
@@ -273,7 +280,7 @@ export function ExportTabContent({
 
       <div className="mb-1.5 flex min-h-8 items-end justify-between gap-2 px-1.5">
         <label className="grid min-w-0 gap-1">
-          <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+          <span className={cn("truncate px-0.5 leading-none text-muted-foreground", COMMON_PANEL_FIELD_LABEL_TEXT_CLASS)}>
             Format
           </span>
           <Select
@@ -299,7 +306,7 @@ export function ExportTabContent({
                     key={option}
                     value={option}
                     textValue={EXPORT_FORMAT_LABELS[option]}
-                    className="min-h-6 py-0.5 text-sm"
+                    className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
                   >
                     {EXPORT_FORMAT_LABELS[option]}
                   </SelectItem>
@@ -355,7 +362,12 @@ function ExportComponentCheckbox({
   onSettingsChange: (component: ExportComponentId, checked: boolean) => void;
 }) {
   return (
-    <label className="flex h-7 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 text-sm transition-colors hover:bg-accent/60">
+    <label
+      className={cn(
+        "flex h-7 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-accent/60",
+        COMMON_PANEL_BODY_TEXT_CLASS,
+      )}
+    >
       <Checkbox
         checked={checked}
         aria-label={`Export ${label}`}
@@ -393,7 +405,7 @@ function ExportLegendLayoutControl({
             value={option}
             aria-label={`${EXPORT_LEGEND_LAYOUT_LABELS[option]} legend layout`}
             disabled={disabled}
-            className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.64rem] font-medium md:text-[0.64rem]"
+            className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.68rem] font-medium md:text-[0.68rem]"
           >
             {EXPORT_LEGEND_LAYOUT_LABELS[option]}
           </TabsTrigger>
@@ -470,7 +482,7 @@ function ExportSizeInput({
 
   return (
     <label className="grid min-w-0 justify-items-start gap-1">
-      <span className="px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+      <span className={cn("px-0.5 leading-none text-muted-foreground", COMMON_PANEL_FIELD_LABEL_TEXT_CLASS)}>
         {label}
       </span>
       <Input
@@ -496,7 +508,7 @@ function ExportSupersamplingControl({
 }) {
   return (
     <label className="ml-auto grid min-w-0 justify-items-end gap-1">
-      <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+      <span className={cn("truncate px-0.5 leading-none text-muted-foreground", COMMON_PANEL_FIELD_LABEL_TEXT_CLASS)}>
         Super Sampling
       </span>
       <Tabs
@@ -533,7 +545,7 @@ function ExportMeshQualityControl({
 }) {
   return (
     <label className="mt-0.5 grid min-w-0 gap-1 px-1.5">
-      <span className="truncate px-0.5 text-[0.68rem] font-semibold leading-none text-muted-foreground">
+      <span className={cn("truncate px-0.5 leading-none text-muted-foreground", COMMON_PANEL_FIELD_LABEL_TEXT_CLASS)}>
         3D mesh
       </span>
       <Tabs

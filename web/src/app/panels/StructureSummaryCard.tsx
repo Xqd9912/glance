@@ -20,6 +20,7 @@ import {
 } from "./structureSummaryFormatting";
 import { summarizeScene, type PreviewStatus } from "../previewState";
 import { GLASS_SURFACE_CLASS, TOOL_ICON_BUTTON_CLASS } from "../surface";
+import { COMMON_PANEL_BODY_TEXT_CLASS } from "../controls/commonPanel/styles";
 
 export function StructureSummaryCard({
   isCollapsed,
@@ -210,7 +211,7 @@ export function StructureSummaryCard({
                 <div>
                   <span className="block text-xs font-bold text-muted-foreground">Symmetry</span>
                   {summary.symmetry?.available ? (
-                    <dl className="mt-1.5 flex flex-col gap-1 text-sm">
+                    <dl className={cn("mt-1.5 flex flex-col gap-1", COMMON_PANEL_BODY_TEXT_CLASS)}>
                       <SymmetryMetric
                         label="Space group"
                         value={renderSpaceGroup(
@@ -239,7 +240,7 @@ export function StructureSummaryCard({
                       />
                     </dl>
                   ) : (
-                    <p className="mt-1 text-sm text-muted-foreground">Symmetry unavailable</p>
+                    <p className={cn("mt-1 text-muted-foreground", COMMON_PANEL_BODY_TEXT_CLASS)}>Symmetry unavailable</p>
                   )}
                 </div>
 
@@ -250,7 +251,7 @@ export function StructureSummaryCard({
                       <span className="block text-xs font-bold text-muted-foreground">
                         Lattice Parameters
                       </span>
-                      <dl className="mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1 font-mono text-sm">
+                      <dl className={cn("mt-1.5 grid grid-cols-3 gap-x-3 gap-y-1 font-mono", COMMON_PANEL_BODY_TEXT_CLASS)}>
                         <CellMetric label="a" value={summary.cell.a} unit="Å" />
                         <CellMetric label="b" value={summary.cell.b} unit="Å" />
                         <CellMetric label="c" value={summary.cell.c} unit="Å" />

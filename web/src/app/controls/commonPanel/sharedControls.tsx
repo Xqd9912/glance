@@ -8,6 +8,9 @@ import {
 } from "react";
 
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
+
+import { COMMON_PANEL_BODY_TEXT_CLASS } from "./styles";
 
 const STYLE_SCALE_DEFAULT_VALUE = 100;
 const STYLE_SCALE_SLIDER_SNAP_DISTANCE = 4;
@@ -82,7 +85,12 @@ export function PercentSliderRow({
   }
 
   return (
-    <div className="grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 rounded-md px-1.5 text-sm">
+    <div
+      className={cn(
+        "grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 rounded-md px-1.5",
+        COMMON_PANEL_BODY_TEXT_CLASS,
+      )}
+    >
       <div className="min-w-0 overflow-visible leading-tight">{label}</div>
 
       <div

@@ -27,6 +27,7 @@ import {
   INTERACTION_MODE_OPTIONS,
   type InteractionMode,
 } from "../viewState";
+import { COMMON_PANEL_BODY_TEXT_CLASS } from "../controls/commonPanel/styles";
 
 export function InspectorToggle({
   isOpen,
@@ -144,22 +145,26 @@ function SettingsPanel({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <InspectorSelectRow label="Interaction">
+      <InspectorSelectRow label="Mouse control">
         <Select
           value={interactionMode}
           onValueChange={(value) => onInteractionModeChange(value as InteractionMode)}
         >
           <SelectTrigger
             size="sm"
-            aria-label="Interaction"
-            className="w-full bg-background"
+            aria-label="Mouse control"
+            className={cn("!h-6 w-full !px-2 !py-0 bg-background", COMMON_PANEL_BODY_TEXT_CLASS)}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="!bg-background !text-foreground">
             <SelectGroup>
               {INTERACTION_MODE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
+                >
                   {option.label}
                 </SelectItem>
               ))}
@@ -168,7 +173,7 @@ function SettingsPanel({
         </Select>
       </InspectorSelectRow>
 
-      <InspectorSelectRow label="Bonds">
+      <InspectorSelectRow label="Bonding algorithm">
         <Select
           value={bondAlgorithm}
           disabled={isSceneLoading}
@@ -176,15 +181,19 @@ function SettingsPanel({
         >
           <SelectTrigger
             size="sm"
-            aria-label="Bond algorithm"
-            className="w-full bg-background"
+            aria-label="Bonding algorithm"
+            className={cn("!h-6 w-full !px-2 !py-0 bg-background", COMMON_PANEL_BODY_TEXT_CLASS)}
           >
             <SelectValue />
           </SelectTrigger>
           <SelectContent position="popper" className="!bg-background !text-foreground">
             <SelectGroup>
               {BOND_ALGORITHM_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
+                <SelectItem
+                  key={option.value}
+                  value={option.value}
+                  className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
+                >
                   {option.label}
                 </SelectItem>
               ))}
@@ -204,8 +213,13 @@ function InspectorSelectRow({
   label: string;
 }) {
   return (
-    <div className="grid min-h-8 grid-cols-[5.75rem_minmax(0,1fr)] items-center gap-2 text-sm">
-      <span className="text-xs font-semibold leading-tight text-muted-foreground">{label}</span>
+    <div
+      className={cn(
+        "grid min-h-8 grid-cols-[minmax(0,1fr)_9.5rem] items-center gap-2",
+        COMMON_PANEL_BODY_TEXT_CLASS,
+      )}
+    >
+      <span className="leading-tight text-foreground">{label}</span>
       {children}
     </div>
   );

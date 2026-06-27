@@ -41,6 +41,7 @@ import {
   TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS,
   type ToolButtonFeedbackPhase,
 } from "./controlFeedback";
+import { COMMON_PANEL_SECTION_TITLE_TEXT_CLASS } from "./styles";
 
 type ManualButtonFeedbackTarget = "apply" | "reset";
 
@@ -96,7 +97,7 @@ export function OrientationTabContent({
         <div className="flex h-7 items-center justify-between gap-2">
           <h2
             id="camera-axis-roll-label"
-            className="text-xs font-bold leading-tight text-muted-foreground"
+            className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
           >
             Primary Axis
           </h2>
@@ -300,7 +301,7 @@ function ScreenAxisOverlayLabel({
     <span
       aria-hidden="true"
       className={cn(
-        "pointer-events-none absolute z-[5] select-none text-[0.8rem] font-semibold italic leading-none transition-colors",
+        "pointer-events-none absolute z-[5] select-none text-xs font-semibold italic leading-none transition-colors",
         isEmphasized ? "text-foreground" : "text-muted-foreground/55",
         className,
       )}
@@ -758,7 +759,7 @@ function VectorEditor({
         <div className="flex min-w-0 items-center gap-1">
           <h2
             id="camera-manual-label"
-            className="text-xs font-bold leading-tight text-muted-foreground"
+            className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
           >
             Manual input
           </h2>
@@ -773,12 +774,8 @@ function VectorEditor({
               </button>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-56">
-              <div className="grid gap-1">
-                <span>
-                  Constraint: <strong>primary</strong> · <strong>secondary</strong> = 0
-                </span>
-                <span>If not, primary is kept and secondary is orthogonalized.</span>
-              </div>
+              The two vectors should be orthogonal. If not, primary is kept and secondary is
+              orthogonalized.
             </TooltipContent>
           </Tooltip>
         </div>
@@ -832,7 +829,7 @@ function VectorEditor({
 }
 
 const VECTOR_AXIS_TOKEN_CLASS =
-  "inline-flex h-6 w-7 items-center justify-center rounded-md px-0 text-[0.68rem] font-bold italic leading-none shadow-sm";
+  "inline-flex h-6 w-7 items-center justify-center rounded-md px-0 text-xs font-bold italic leading-none shadow-sm";
 
 function VectorEditorRow({
   basisLabels,

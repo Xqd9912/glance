@@ -36,6 +36,11 @@ import {
   snapSliderOpacityValue,
   useAutoBlurSlider,
 } from "./sharedControls";
+import {
+  COMMON_PANEL_BODY_TEXT_CLASS,
+  COMMON_PANEL_ROW_STACK_CLASS,
+  COMMON_PANEL_SECTION_TITLE_TEXT_CLASS,
+} from "./styles";
 
 export function DisplayTabContent({
   hasPolyhedra,
@@ -98,11 +103,11 @@ export function DisplayTabContent({
         <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
           <h2
             id="display-components-label"
-            className="text-xs font-bold leading-tight text-muted-foreground"
+            className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
           >
             Components
           </h2>
-          <span className="text-right text-xs font-bold leading-tight text-muted-foreground">
+          <span className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "text-right leading-tight text-muted-foreground")}>
             Opacity
           </span>
           <Tooltip>
@@ -127,7 +132,7 @@ export function DisplayTabContent({
           </Tooltip>
         </div>
 
-        <div className="mt-1 flex flex-col gap-1">
+        <div className={cn("mt-1", COMMON_PANEL_ROW_STACK_CLASS)}>
           <ComponentOpacityRow
             checked={visibility.atoms}
             label="Atoms"
@@ -169,7 +174,7 @@ export function DisplayTabContent({
       <section aria-labelledby="image-components-label">
         <h2
           id="image-components-label"
-          className="text-xs font-bold leading-tight text-muted-foreground"
+          className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
         >
           Periodic images
         </h2>
@@ -254,7 +259,8 @@ function ComponentOpacityRow({
   return (
     <div
       className={cn(
-        "grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 rounded-md px-1.5 text-sm transition-colors",
+        "grid h-7 min-w-0 grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 rounded-md px-1.5 transition-colors",
+        COMMON_PANEL_BODY_TEXT_CLASS,
         checkboxDisabled ? "text-muted-foreground/55" : "hover:bg-accent/60",
       )}
     >
@@ -352,7 +358,12 @@ function ImageSwitchRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex h-6 items-center justify-between gap-1.5 rounded-md px-1.5 text-sm transition-colors hover:bg-accent/60">
+    <label
+      className={cn(
+        "flex h-6 items-center justify-between gap-1.5 rounded-md px-1.5 transition-colors hover:bg-accent/60",
+        COMMON_PANEL_BODY_TEXT_CLASS,
+      )}
+    >
       <span className="min-w-0 truncate leading-tight">{label}</span>
       <Switch
         checked={checked}

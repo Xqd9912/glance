@@ -293,7 +293,7 @@ describe("App", () => {
     expect(fetchCalls[0]?.input).toBe("/api/structure-preview");
 
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
-    expect(screen.getByRole("combobox", { name: "Bond algorithm" }).textContent).toContain(
+    expect(screen.getByRole("combobox", { name: "Bonding algorithm" }).textContent).toContain(
       "VESTA",
     );
   });
@@ -384,8 +384,12 @@ describe("App", () => {
     expect(inspector.querySelector("[data-slot='separator']")).toBeNull();
     expect(within(inspector).queryByText("Renderer")).toBeNull();
     expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
-    expect(within(inspector).getByText("Interaction").className).toContain("text-xs");
-    expect(within(inspector).getByText("Bonds").className).toContain("text-xs");
+    expect(within(inspector).getByText("Mouse control").parentElement?.className).toContain(
+      "text-[13px]",
+    );
+    expect(within(inspector).getByText("Bonding algorithm").parentElement?.className).toContain(
+      "text-[13px]",
+    );
     expect(legend.getAttribute("style")).toContain("calc(50% + 10px)");
     expect(inspectorButton.getAttribute("aria-expanded")).toBe("true");
     expect(inspectorButton.className).toContain("tool-icon-button-active");
@@ -394,13 +398,14 @@ describe("App", () => {
       "webgl",
     );
 
-    const interactionSelect = within(inspector).getByRole("combobox", { name: "Interaction" });
+    const interactionSelect = within(inspector).getByRole("combobox", { name: "Mouse control" });
+    expect(interactionSelect.className).toContain("!h-6");
     expect(interactionSelect.textContent).toContain("Trackball");
 
     await user.click(interactionSelect);
     await user.click(await screen.findByRole("option", { name: "Orbit" }));
 
-    expect(within(inspector).getByRole("combobox", { name: "Interaction" }).textContent).toContain(
+    expect(within(inspector).getByRole("combobox", { name: "Mouse control" }).textContent).toContain(
       "Orbit",
     );
 
@@ -1426,7 +1431,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
 
-    await user.click(screen.getByRole("combobox", { name: "Bond algorithm" }));
+    await user.click(screen.getByRole("combobox", { name: "Bonding algorithm" }));
     await user.click(await screen.findByRole("option", { name: "Minimum distance" }));
 
     await waitFor(() => expect(fetchCalls).toHaveLength(2));
@@ -1437,7 +1442,7 @@ describe("App", () => {
     expect(polyhedraCheckbox.getAttribute("aria-checked")).toBe("true");
 
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
-    await user.click(screen.getByRole("combobox", { name: "Bond algorithm" }));
+    await user.click(screen.getByRole("combobox", { name: "Bonding algorithm" }));
     await user.click(await screen.findByRole("option", { name: "VESTA" }));
 
     await waitFor(() => expect(fetchCalls).toHaveLength(3));
@@ -1450,7 +1455,7 @@ describe("App", () => {
 
     await renderLoadedStructure(user);
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
-    await user.click(screen.getByRole("combobox", { name: "Bond algorithm" }));
+    await user.click(screen.getByRole("combobox", { name: "Bonding algorithm" }));
     await user.click(await screen.findByRole("option", { name: "Minimum distance" }));
 
     await waitFor(() => expect(fetchCalls).toHaveLength(2));
@@ -1459,7 +1464,7 @@ describe("App", () => {
     expect(alert.className).toContain("top-4");
     expect(alert.className).toContain("left-[386px]");
     expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
-    expect(screen.getByRole("combobox", { name: "Bond algorithm" }).textContent).toContain(
+    expect(screen.getByRole("combobox", { name: "Bonding algorithm" }).textContent).toContain(
       "VESTA",
     );
   });

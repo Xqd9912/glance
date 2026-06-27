@@ -51,6 +51,11 @@ import {
 } from "../../surface";
 import { TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS } from "./controlFeedback";
 import { PercentSliderRow, clampPercentValue } from "./sharedControls";
+import {
+  COMMON_PANEL_BODY_TEXT_CLASS,
+  COMMON_PANEL_ROW_STACK_CLASS,
+  COMMON_PANEL_SECTION_TITLE_TEXT_CLASS,
+} from "./styles";
 
 const BOND_COLOR_OPTIONS: { label: string; value: BondColorMode }[] = [
   { label: "By atom", value: "by-atom" },
@@ -206,7 +211,7 @@ export function StyleTabContent({
         <div className="grid grid-cols-[minmax(5.5rem,1fr)_6.75rem_2.35rem] items-center gap-2 px-1.5">
           <h2
             id="style-size-label"
-            className="text-xs font-bold leading-tight text-muted-foreground"
+            className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
           >
             Radius
           </h2>
@@ -233,7 +238,7 @@ export function StyleTabContent({
           </Tooltip>
         </div>
 
-        <div className="mt-1 flex flex-col gap-1">
+        <div className={cn("mt-1", COMMON_PANEL_ROW_STACK_CLASS)}>
           <PercentSliderRow
             accessibleLabel="Atom"
             label={(
@@ -265,7 +270,7 @@ export function StyleTabContent({
           <div className="flex min-w-0 items-center gap-2">
             <h2
               id="style-fog-label"
-              className="text-xs font-bold leading-tight text-muted-foreground"
+              className={cn(COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, "leading-tight text-muted-foreground")}
             >
               Fog
             </h2>
@@ -303,7 +308,7 @@ export function StyleTabContent({
             <TooltipContent side="top">Reset fog</TooltipContent>
           </Tooltip>
         </div>
-        <div className={cn("mt-1", style.fogEnabled ? null : "opacity-55")}>
+        <div className={cn("mt-1", COMMON_PANEL_ROW_STACK_CLASS, style.fogEnabled ? null : "opacity-55")}>
           <PercentSliderRow
             accessibleLabel="Fog"
             allowZero
@@ -334,7 +339,12 @@ export function StyleTabContent({
       <Separator />
 
       <div className="flex flex-col gap-0.5">
-        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <div
+          className={cn(
+            "grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5",
+            COMMON_PANEL_BODY_TEXT_CLASS,
+          )}
+        >
           <span className="min-w-0 truncate leading-tight">Material</span>
           <Select
             value={style.materialPreset}
@@ -343,7 +353,7 @@ export function StyleTabContent({
             <SelectTrigger
               size="sm"
               aria-label="Material"
-              className="!h-6 w-full !px-2 !py-0"
+              className={cn("!h-6 w-full !px-2 !py-0", COMMON_PANEL_BODY_TEXT_CLASS)}
             >
               <SelectValue />
             </SelectTrigger>
@@ -357,7 +367,7 @@ export function StyleTabContent({
                     key={option.value}
                     value={option.value}
                     textValue={option.label}
-                    className="min-h-6 py-0.5 text-sm"
+                    className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
                   >
                     <MaterialPresetOptionLabel
                       label={option.label}
@@ -370,7 +380,12 @@ export function StyleTabContent({
           </Select>
         </div>
 
-        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <div
+          className={cn(
+            "grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5",
+            COMMON_PANEL_BODY_TEXT_CLASS,
+          )}
+        >
           <span className="min-w-0 truncate leading-tight">Bond style</span>
           <Select
             value={style.bondColorMode}
@@ -379,7 +394,7 @@ export function StyleTabContent({
             <SelectTrigger
               size="sm"
               aria-label="Bond style"
-              className="!h-6 w-full !px-2 !py-0"
+              className={cn("!h-6 w-full !px-2 !py-0", COMMON_PANEL_BODY_TEXT_CLASS)}
             >
               <SelectValue />
             </SelectTrigger>
@@ -393,7 +408,7 @@ export function StyleTabContent({
                     key={option.value}
                     value={option.value}
                     textValue={option.label}
-                    className="min-h-6 py-0.5 text-sm"
+                    className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
                   >
                     <BondStyleOptionLabel
                       label={option.label}
@@ -406,7 +421,12 @@ export function StyleTabContent({
           </Select>
         </div>
 
-        <div className="grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5 text-sm">
+        <div
+          className={cn(
+            "grid min-h-8 grid-cols-[minmax(5.5rem,1fr)_9.5rem] items-center gap-2 rounded-md px-1.5",
+            COMMON_PANEL_BODY_TEXT_CLASS,
+          )}
+        >
           <span className="min-w-0 truncate leading-tight">Color scheme</span>
           <Select
             value={style.colorScheme}
@@ -415,7 +435,7 @@ export function StyleTabContent({
             <SelectTrigger
               size="sm"
               aria-label="Color scheme"
-              className="!h-6 w-full !px-2 !py-0"
+              className={cn("!h-6 w-full !px-2 !py-0", COMMON_PANEL_BODY_TEXT_CLASS)}
             >
               <SelectValue />
             </SelectTrigger>
@@ -429,7 +449,7 @@ export function StyleTabContent({
                     key={option.value}
                     value={option.value}
                     textValue={option.label}
-                    className="min-h-6 py-0.5 text-sm"
+                    className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
                   >
                     <ColorSchemeOptionLabel
                       label={option.label}
@@ -463,7 +483,10 @@ function AtomRadiusModelSelect({
       <SelectTrigger
         size="sm"
         aria-label="Atom radius model"
-        className="-ml-1.5 !h-6 w-20 gap-0.5 !py-0 !pr-0.5 !pl-1.5 [&_svg]:size-3.5"
+        className={cn(
+          "-ml-1.5 !h-6 w-20 gap-0.5 !py-0 !pr-0.5 !pl-1.5 [&_svg]:size-3.5",
+          COMMON_PANEL_BODY_TEXT_CLASS,
+        )}
       >
         <span data-slot="select-value" className="min-w-0 truncate">
           {selectedOption?.triggerLabel}
@@ -480,7 +503,7 @@ function AtomRadiusModelSelect({
               key={option.value}
               value={option.value}
               textValue={option.menuLabel}
-              className="min-h-6 py-0.5 text-sm"
+              className={cn("min-h-6 py-0.5", COMMON_PANEL_BODY_TEXT_CLASS)}
             >
               {option.menuLabel}
             </SelectItem>
