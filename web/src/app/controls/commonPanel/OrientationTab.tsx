@@ -199,6 +199,7 @@ const SCREEN_AXIS_GIZMO_AXES: readonly {
   { direction: "upward", label: "y", vector: [0, 1, 0] },
   { direction: "outward", label: "z", vector: [0, 0, 1] },
 ];
+const ROLL_DISPLAY_ANIMATION_MS = 180;
 
 const SCREEN_AXIS_HITBOX_ORIGIN = [4.05, 3.8] as const;
 const SCREEN_AXIS_HITBOX_START_WIDTH_REM = 1.3;
@@ -229,6 +230,16 @@ function screenAxisColorDistanceSquared(a: Color, b: Color) {
 function screenAxisLerpScale(current: number, target: number, alpha: number) {
   const next = current + (target - current) * alpha;
   return Math.abs(next - target) < 0.001 ? target : next;
+}
+
+function shortestRollDelta(from: number, to: number): number {
+  const delta = ((toPositiveRollDegrees(to) - toPositiveRollDegrees(from) + 540) % 360) - 180;
+  return delta === -180 ? 180 : delta;
+}
+
+function rollDisplayAnimationProgress(progress: number): number {
+  const clampedProgress = Math.min(1, Math.max(0, progress));
+  return 1 - (1 - clampedProgress) ** 3;
 }
 
 function screenAxisHitboxStyle(direction: CrystalCameraScreenDirection): CSSProperties {
@@ -567,22 +578,79 @@ function RollControl({
   const committedValue = toPositiveRollDegrees(value);
   const [isDragging, setIsDragging] = useState(false);
   const [draftValue, setDraftValue] = useState(committedValue);
-  const displayedValue = isDragging ? draftValue : committedValue;
+  const [animatedValue, setAnimatedValue] = useState(committedValue);
+  const displayedValue = isDragging ? draftValue : animatedValue;
   const [valueText, setValueText] = useState(formatRollValue(committedValue));
   const [isValueFocused, setIsValueFocused] = useState(false);
   const [hasValueEdited, setHasValueEdited] = useState(false);
+  const animationFrameRef = useRef<number | null>(null);
+  const animatedValueRef = useRef(committedValue);
   const lastPreviewValueRef = useRef<number | null>(null);
   const valueTextAtFocusRef = useRef(valueText);
   const displayedValueText = isValueFocused && !hasValueEdited ? "" : valueText;
 
+  function cancelDisplayAnimation() {
+    if (animationFrameRef.current === null) {
+      return;
+    }
+
+    window.cancelAnimationFrame(animationFrameRef.current);
+    animationFrameRef.current = null;
+  }
+
+  function setDisplayedRollValue(nextValue: number) {
+    const normalizedValue = toPositiveRollDegrees(nextValue);
+    animatedValueRef.current = normalizedValue;
+    setAnimatedValue(normalizedValue);
+  }
+
   useEffect(() => {
+    return () => {
+      cancelDisplayAnimation();
+    };
+  }, []);
+
+  useEffect(() => {
+    cancelDisplayAnimation();
     if (isDragging) {
       return;
     }
 
     setDraftValue(committedValue);
-    setValueText(formatRollValue(committedValue));
+
+    const startValue = animatedValueRef.current;
+    const delta = shortestRollDelta(startValue, committedValue);
+    if (Math.abs(delta) < 0.001) {
+      setDisplayedRollValue(committedValue);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const step = (now: number) => {
+      const progress = (now - startedAt) / ROLL_DISPLAY_ANIMATION_MS;
+      const easedProgress = rollDisplayAnimationProgress(progress);
+      const nextValue = startValue + delta * easedProgress;
+
+      if (progress >= 1) {
+        setDisplayedRollValue(committedValue);
+        animationFrameRef.current = null;
+        return;
+      }
+
+      setDisplayedRollValue(nextValue);
+      animationFrameRef.current = window.requestAnimationFrame(step);
+    };
+
+    animationFrameRef.current = window.requestAnimationFrame(step);
   }, [committedValue, isDragging]);
+
+  useEffect(() => {
+    if (isDragging || (isValueFocused && hasValueEdited)) {
+      return;
+    }
+
+    setValueText(formatRollValue(displayedValue));
+  }, [displayedValue, hasValueEdited, isDragging, isValueFocused]);
 
   function commitValueText(nextText = valueText) {
     const nextValue = parseRollInput(nextText);
@@ -592,6 +660,8 @@ function RollControl({
     }
 
     const normalizedValue = toPositiveRollDegrees(nextValue);
+    cancelDisplayAnimation();
+    setDisplayedRollValue(normalizedValue);
     setDraftValue(normalizedValue);
     setValueText(formatRollValue(normalizedValue));
     onValueChange(normalizedValue);
@@ -626,6 +696,7 @@ function RollControl({
   }
 
   function handleSliderInteractionStart() {
+    cancelDisplayAnimation();
     setIsDragging(true);
     setDraftValue(committedValue);
     setValueText(formatRollValue(committedValue));
@@ -642,11 +713,14 @@ function RollControl({
     lastPreviewValueRef.current = normalizedValue;
     setDraftValue(normalizedValue);
     setValueText(formatRollValue(normalizedValue));
+    setDisplayedRollValue(normalizedValue);
     onPreviewValueChange(normalizedValue);
   }
 
   function handleSliderCommit(nextValue: number) {
     const normalizedValue = toPositiveRollDegrees(nextValue);
+    cancelDisplayAnimation();
+    setDisplayedRollValue(normalizedValue);
     setDraftValue(normalizedValue);
     setValueText(formatRollValue(normalizedValue));
     setIsDragging(false);
@@ -677,6 +751,8 @@ function RollControl({
       const normalizedValue = toPositiveRollDegrees(
         displayedValue + (event.key === "ArrowUp" ? 1 : -1),
       );
+      cancelDisplayAnimation();
+      setDisplayedRollValue(normalizedValue);
       setHasValueEdited(true);
       setValueText(formatRollValue(normalizedValue));
       onValueChange(normalizedValue);
