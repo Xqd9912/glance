@@ -447,6 +447,9 @@ describe("App", () => {
     await user.click(screen.getByRole("combobox", { name: "Mouse control" }));
     await user.click(await screen.findByRole("option", { name: "Orbit" }));
     const inspector = screen.getByRole("complementary", { name: "Sidebar" });
+    fireEvent.change(within(inspector).getByRole("slider", { name: "Drag sensitivity" }), {
+      target: { value: "1000" },
+    });
     const showFpsSwitch = within(inspector).getByRole("switch", { name: "Show FPS" });
     await user.click(showFpsSwitch);
     expect(showFpsSwitch.getAttribute("aria-checked")).toBe("true");
@@ -487,6 +490,11 @@ describe("App", () => {
     expect(
       within(resetInspector).getByRole("combobox", { name: "Mouse control" }).textContent,
     ).toContain("Trackball");
+    expect(
+      within(resetInspector).getByRole("slider", { name: "Drag sensitivity" }).getAttribute(
+        "value",
+      ),
+    ).toBe("500");
   });
 
   test("shows a compact spinner while a structure is loading", async () => {
@@ -620,6 +628,35 @@ describe("App", () => {
     const interactionSelect = within(inspector).getByRole("combobox", { name: "Mouse control" });
     expect(interactionSelect.className).toContain("!h-[26px]");
     expect(interactionSelect.textContent).toContain("Trackball");
+    const dragSensitivitySlider = within(inspector).getByRole("slider", {
+      name: "Drag sensitivity",
+    });
+    expect(dragSensitivitySlider.getAttribute("min")).toBe("0");
+    expect(dragSensitivitySlider.getAttribute("max")).toBe("1000");
+    expect(dragSensitivitySlider.getAttribute("value")).toBe("500");
+    expect(dragSensitivitySlider.getAttribute("aria-valuemin")).toBe("50");
+    expect(dragSensitivitySlider.getAttribute("aria-valuemax")).toBe("200");
+    expect(dragSensitivitySlider.getAttribute("aria-valuenow")).toBe("100");
+    expect(dragSensitivitySlider.getAttribute("aria-valuetext")).toBe("100%");
+    expect(inspector.querySelectorAll(".opacity-slider-snap-marker")).toHaveLength(1);
+    const dragSensitivityValueInput = within(inspector).getByRole("textbox", {
+      name: "Drag sensitivity value",
+    });
+    expect(dragSensitivityValueInput.getAttribute("value")).toBe("100");
+    expect(dragSensitivityValueInput.className).toContain("opacity-value-input");
+
+    fireEvent.change(dragSensitivitySlider, { target: { value: "1000" } });
+
+    expect(
+      within(inspector).getByRole("slider", { name: "Drag sensitivity" }).getAttribute(
+        "value",
+      ),
+    ).toBe("1000");
+    expect(
+      within(inspector).getByRole("textbox", { name: "Drag sensitivity value" }).getAttribute(
+        "value",
+      ),
+    ).toBe("200");
 
     await user.click(interactionSelect);
     await user.click(await screen.findByRole("option", { name: "Orbit" }));

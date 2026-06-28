@@ -6,6 +6,7 @@ import type { SceneSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
 import {
+  DEFAULT_DRAG_SENSITIVITY,
   DEFAULT_PREVIEW_MESH_QUALITY,
   type AtomRenderingMode,
   type BondRenderingMode,
@@ -88,6 +89,7 @@ export function LatticeScene({
   cameraState,
   cameraCommandVersion,
   componentOpacity,
+  dragSensitivity = DEFAULT_DRAG_SENSITIVITY,
   interactionLocked,
   interactionMode,
   layoutScene,
@@ -120,6 +122,7 @@ export function LatticeScene({
   cameraCommandVersion: number;
   cameraState: CrystalCameraState;
   componentOpacity: ComponentOpacityState;
+  dragSensitivity?: number;
   interactionLocked: boolean;
   interactionMode: InteractionMode;
   layoutScene?: SceneSpec;
@@ -198,6 +201,7 @@ export function LatticeScene({
         cameraInteractionStore={cameraInteractionStore}
         cameraPose={layout.cameraPose}
         cellVectors={layoutSourceScene.cell.vectors}
+        dragSensitivity={dragSensitivity}
         interactionLocked={interactionLocked}
         interactionMode={interactionMode}
         layout={layout}

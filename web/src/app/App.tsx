@@ -104,6 +104,7 @@ import {
   createPreviewViewState,
   resetPreviewViewState,
   setPreviewCameraState,
+  setPreviewDragSensitivity,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
   setPreviewShowFpsOverlay,
@@ -347,6 +348,12 @@ export function App() {
   const handleInteractionModeChange = useCallback((interactionMode: InteractionMode) => {
     setViewState((currentViewState) =>
       setPreviewInteractionMode(currentViewState, interactionMode),
+    );
+  }, []);
+
+  const handleDragSensitivityChange = useCallback((dragSensitivity: number) => {
+    setViewState((currentViewState) =>
+      setPreviewDragSensitivity(currentViewState, dragSensitivity),
     );
   }, []);
 
@@ -1077,6 +1084,7 @@ export function App() {
                 pulseToken={pulseAtom?.token ?? 0}
                 previewMeshQuality={previewMeshQuality}
                 componentOpacity={componentOpacity}
+                dragSensitivity={viewState.dragSensitivity}
                 previewFpsStore={previewFpsStore}
                 style={style}
                 showAtoms={componentVisibility.atoms}
@@ -1260,6 +1268,7 @@ export function App() {
             atomRenderingMode={atomRenderingMode}
             bondRenderingMode={bondRenderingMode}
             bondAlgorithm={bondAlgorithm}
+            dragSensitivity={viewState.dragSensitivity}
             interactionMode={viewState.interactionMode}
             isOpen={isInspectorOpen}
             isSceneLoading={previewStatus === "loading"}
@@ -1270,6 +1279,7 @@ export function App() {
             onBondAlgorithmChange={(nextBondAlgorithm) => {
               void handleBondAlgorithmChange(nextBondAlgorithm);
             }}
+            onDragSensitivityChange={handleDragSensitivityChange}
             onInteractionModeChange={handleInteractionModeChange}
             onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
             onShowFpsOverlayChange={handleShowFpsOverlayChange}

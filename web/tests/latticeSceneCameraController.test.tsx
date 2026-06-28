@@ -18,6 +18,7 @@ class MockControls {
   noPan = false;
   noRotate = false;
   noZoom = false;
+  rotateSpeed = 1;
   state = -1;
   target = new Vector3();
   touches: Record<string, unknown> = {};
@@ -160,6 +161,46 @@ describe("LatticeScene camera commands", () => {
     );
 
     expect(latestCanvasFrameloop).toBe("demand");
+  });
+
+  test("applies drag sensitivity to camera controls", () => {
+    const scene = orthogonalScene();
+
+    const { rerender } = render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={createDefaultCrystalCameraState()}
+        componentOpacity={createDefaultComponentOpacity()}
+        dragSensitivity={2}
+        interactionLocked={false}
+        interactionMode="trackball"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    expect(latestControls).toBeInstanceOf(MockTrackballControls);
+    expect(latestControls?.rotateSpeed).toBe(4);
+
+    rerender(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={createDefaultCrystalCameraState()}
+        componentOpacity={createDefaultComponentOpacity()}
+        dragSensitivity={0.75}
+        interactionLocked={false}
+        interactionMode="orbit"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    expect(latestControls).toBeInstanceOf(MockOrbitControls);
+    expect(latestControls?.rotateSpeed).toBe(0.375);
   });
 
   test("does not request another demand frame when the camera is static", () => {

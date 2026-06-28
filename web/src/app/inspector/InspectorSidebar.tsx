@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
 import { PanelRight } from "lucide-react";
 
@@ -25,9 +31,18 @@ import {
   TOOL_ICON_BUTTON_CLASS,
 } from "../surface";
 import {
+  clampDragSensitivity,
+  dragSensitivityToSliderPosition,
+  formatDragSensitivityPercent,
+  MAX_DRAG_SENSITIVITY,
+  MIN_DRAG_SENSITIVITY,
   INTERACTION_MODE_OPTIONS,
+  parseDragSensitivityPercentInput,
+  sliderPositionToDragSensitivity,
+  snapDragSensitivitySliderPosition,
   type InteractionMode,
 } from "../viewState";
+import { useAutoBlurSlider } from "../controls/commonPanel/sharedControls";
 import {
   MESH_QUALITY_LABELS,
   MESH_QUALITY_OPTIONS,
@@ -82,6 +97,7 @@ export function InspectorSidebar({
   atomRenderingMode,
   bondRenderingMode,
   bondAlgorithm,
+  dragSensitivity,
   interactionMode,
   isOpen,
   isSceneLoading,
@@ -90,6 +106,7 @@ export function InspectorSidebar({
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
+  onDragSensitivityChange,
   onInteractionModeChange,
   onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
@@ -97,6 +114,7 @@ export function InspectorSidebar({
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
   bondAlgorithm: BondAlgorithm;
+  dragSensitivity: number;
   interactionMode: InteractionMode;
   isOpen: boolean;
   isSceneLoading: boolean;
@@ -105,6 +123,7 @@ export function InspectorSidebar({
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
@@ -148,6 +167,7 @@ export function InspectorSidebar({
               atomRenderingMode={atomRenderingMode}
               bondRenderingMode={bondRenderingMode}
               bondAlgorithm={bondAlgorithm}
+              dragSensitivity={dragSensitivity}
               interactionMode={interactionMode}
               isSceneLoading={isSceneLoading}
               previewMeshQuality={previewMeshQuality}
@@ -155,6 +175,7 @@ export function InspectorSidebar({
               onAtomRenderingModeChange={onAtomRenderingModeChange}
               onBondRenderingModeChange={onBondRenderingModeChange}
               onBondAlgorithmChange={onBondAlgorithmChange}
+              onDragSensitivityChange={onDragSensitivityChange}
               onInteractionModeChange={onInteractionModeChange}
               onPreviewMeshQualityChange={onPreviewMeshQualityChange}
               onShowFpsOverlayChange={onShowFpsOverlayChange}
@@ -170,6 +191,7 @@ function SettingsPanel({
   atomRenderingMode,
   bondRenderingMode,
   bondAlgorithm,
+  dragSensitivity,
   interactionMode,
   isSceneLoading,
   previewMeshQuality,
@@ -177,6 +199,7 @@ function SettingsPanel({
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
+  onDragSensitivityChange,
   onInteractionModeChange,
   onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
@@ -184,6 +207,7 @@ function SettingsPanel({
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
   bondAlgorithm: BondAlgorithm;
+  dragSensitivity: number;
   interactionMode: InteractionMode;
   isSceneLoading: boolean;
   previewMeshQuality: MeshQuality;
@@ -191,6 +215,7 @@ function SettingsPanel({
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
@@ -309,6 +334,14 @@ function SettingsPanel({
         </Select>
       </InspectorSelectRow>
 
+      <InspectorRangeRow
+        label="Drag sensitivity"
+        value={dragSensitivity}
+        min={MIN_DRAG_SENSITIVITY}
+        max={MAX_DRAG_SENSITIVITY}
+        onValueChange={onDragSensitivityChange}
+      />
+
       <InspectorSelectRow label="Bonding algorithm">
         <Select
           value={bondAlgorithm}
@@ -338,6 +371,125 @@ function SettingsPanel({
         </Select>
       </InspectorSelectRow>
     </div>
+  );
+}
+
+function InspectorRangeRow({
+  label,
+  max,
+  min,
+  onValueChange,
+  value,
+}: {
+  label: string;
+  max: number;
+  min: number;
+  onValueChange: (value: number) => void;
+  value: number;
+}) {
+  const [valueText, setValueText] = useState(formatDragSensitivityPercent(value));
+  const sliderBlur = useAutoBlurSlider();
+  const sliderPosition = dragSensitivityToSliderPosition(value);
+  const sliderValue = Math.round(sliderPosition * 1000);
+  const sliderStyle = {
+    "--opacity-slider-position": `${Math.min(100, Math.max(0, sliderPosition * 100))}%`,
+  } as CSSProperties;
+
+  useEffect(() => {
+    setValueText(formatDragSensitivityPercent(value));
+  }, [value]);
+
+  function commitValueText() {
+    const nextValue = parseDragSensitivityPercentInput(valueText);
+    if (nextValue === null) {
+      setValueText(formatDragSensitivityPercent(value));
+      return;
+    }
+
+    const clampedValue = clampDragSensitivity(nextValue);
+    setValueText(formatDragSensitivityPercent(clampedValue));
+    onValueChange(clampedValue);
+  }
+
+  function handleValueKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+      commitValueText();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setValueText(formatDragSensitivityPercent(value));
+      event.currentTarget.blur();
+      return;
+    }
+
+    if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+      event.preventDefault();
+      const direction = event.key === "ArrowUp" ? 0.01 : -0.01;
+      onValueChange(clampDragSensitivity(value + direction));
+    }
+  }
+
+  return (
+    <label
+      className={cn(
+        "grid min-h-8 grid-cols-[minmax(0,1fr)_6.75rem_2.35rem] items-center gap-2",
+        INSPECTOR_BODY_TEXT_CLASS,
+      )}
+    >
+      <span className="min-w-0 truncate leading-tight text-foreground">{label}</span>
+      <span className="opacity-slider-shell relative mr-3 h-5" style={sliderStyle}>
+        <input
+          type="range"
+          aria-label={label}
+          min={0}
+          max={1000}
+          step={1}
+          value={sliderValue}
+          aria-valuemin={Math.round(min * 100)}
+          aria-valuemax={Math.round(max * 100)}
+          aria-valuenow={Math.round(value * 100)}
+          aria-valuetext={`${formatDragSensitivityPercent(value)}%`}
+          className="opacity-slider absolute inset-0 z-10 h-full w-full"
+          ref={sliderBlur.ref}
+          onChange={(event) => {
+            const nextPosition = snapDragSensitivitySliderPosition(
+              Number(event.currentTarget.value) / 1000,
+            );
+            onValueChange(sliderPositionToDragSensitivity(nextPosition));
+          }}
+          onMouseDown={sliderBlur.handlePointerDown}
+          onMouseUp={sliderBlur.handlePointerEnd}
+          onPointerCancel={sliderBlur.handlePointerEnd}
+          onPointerDown={sliderBlur.handlePointerDown}
+          onPointerUp={sliderBlur.handlePointerEnd}
+        />
+        <span aria-hidden="true" className="opacity-slider-track pointer-events-none" />
+        <span aria-hidden="true" className="opacity-slider-snap-marker pointer-events-none" />
+        <span aria-hidden="true" className="opacity-slider-fill pointer-events-none" />
+        <span aria-hidden="true" className="opacity-slider-thumb pointer-events-none" />
+      </span>
+      <span className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-0 rounded-md border px-0.5 transition-[background-color,border-color,box-shadow] duration-150">
+        <span className="sr-only">{label} value</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={valueText}
+          aria-label={`${label} value`}
+          className="opacity-value-input h-full w-[1.35rem] border-0 bg-transparent px-0 text-center font-mono text-[0.68rem] leading-none tabular-nums outline-none"
+          onBlur={commitValueText}
+          onChange={(event) => setValueText(event.target.value)}
+          onKeyDown={handleValueKeyDown}
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none font-mono text-[0.68rem] font-normal leading-none text-muted-foreground"
+        >
+          %
+        </span>
+      </span>
+    </label>
   );
 }
 

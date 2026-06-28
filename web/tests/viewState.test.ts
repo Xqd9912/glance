@@ -1,15 +1,23 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  DEFAULT_DRAG_SENSITIVITY,
+  clampDragSensitivity,
   clampViewScale,
   createPreviewViewState,
+  dragSensitivityToSliderPosition,
+  formatDragSensitivityPercent,
   formatZoomPercent,
+  parseDragSensitivityPercentInput,
   parseZoomPercentInput,
   resetPreviewViewState,
+  setPreviewDragSensitivity,
   setPreviewInteractionLocked,
   setPreviewInteractionMode,
   setPreviewShowFpsOverlay,
+  sliderPositionToDragSensitivity,
   sliderPositionToViewScale,
+  snapDragSensitivitySliderPosition,
   snapZoomSliderPosition,
   viewScaleToSliderPosition,
 } from "../src/app/viewState";
@@ -19,6 +27,7 @@ describe("preview view state", () => {
   test("defaults to Trackball at fitted zoom with unlocked interaction", () => {
     expect(createPreviewViewState()).toEqual({
       camera: createDefaultCrystalCameraState(),
+      dragSensitivity: DEFAULT_DRAG_SENSITIVITY,
       interactionLocked: false,
       interactionMode: "trackball",
       resetCounter: 0,
@@ -28,15 +37,19 @@ describe("preview view state", () => {
 
   test("emits a reset signal without changing persistent view options", () => {
     const state = setPreviewShowFpsOverlay(
-      setPreviewInteractionLocked(
-        setPreviewInteractionMode(createPreviewViewState(), "orbit"),
-        true,
+      setPreviewDragSensitivity(
+        setPreviewInteractionLocked(
+          setPreviewInteractionMode(createPreviewViewState(), "orbit"),
+          true,
+        ),
+        2,
       ),
       true,
     );
 
     expect(resetPreviewViewState(state)).toEqual({
       camera: createDefaultCrystalCameraState(),
+      dragSensitivity: 2,
       interactionLocked: true,
       interactionMode: "orbit",
       resetCounter: 1,
@@ -48,6 +61,35 @@ describe("preview view state", () => {
     expect(clampViewScale(0.1)).toBe(0.2);
     expect(clampViewScale(6)).toBe(5);
     expect(clampViewScale(Number.NaN)).toBe(1);
+  });
+
+  test("clamps drag sensitivity at the shared bounds", () => {
+    expect(clampDragSensitivity(0.1)).toBe(0.5);
+    expect(clampDragSensitivity(4)).toBe(2);
+    expect(clampDragSensitivity(Number.NaN)).toBe(DEFAULT_DRAG_SENSITIVITY);
+    expect(setPreviewDragSensitivity(createPreviewViewState(), 2).dragSensitivity).toBe(2);
+  });
+
+  test("maps the logarithmic drag sensitivity slider with 100 percent at the midpoint", () => {
+    expect(dragSensitivityToSliderPosition(0.5)).toBeCloseTo(0);
+    expect(dragSensitivityToSliderPosition(1)).toBeCloseTo(0.5);
+    expect(dragSensitivityToSliderPosition(2)).toBeCloseTo(1);
+    expect(sliderPositionToDragSensitivity(0.5)).toBeCloseTo(1);
+  });
+
+  test("snaps the drag sensitivity slider to 100 percent near the midpoint", () => {
+    expect(snapDragSensitivitySliderPosition(0.465)).toBe(0.5);
+    expect(snapDragSensitivitySliderPosition(0.535)).toBe(0.5);
+    expect(snapDragSensitivitySliderPosition(0.455)).toBe(0.455);
+  });
+
+  test("parses and formats editable drag sensitivity percentages", () => {
+    expect(formatDragSensitivityPercent(1)).toBe("100");
+    expect(parseDragSensitivityPercentInput("150")).toBe(1.5);
+    expect(parseDragSensitivityPercentInput("200%")).toBe(2);
+    expect(parseDragSensitivityPercentInput("20")).toBe(0.5);
+    expect(parseDragSensitivityPercentInput("-10")).toBeNull();
+    expect(parseDragSensitivityPercentInput("not a number")).toBeNull();
   });
 
   test("maps the logarithmic slider with 100 percent at the midpoint", () => {

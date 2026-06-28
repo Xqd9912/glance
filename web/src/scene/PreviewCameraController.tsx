@@ -9,6 +9,8 @@ import type { PreviewSafeArea } from "../model/layout";
 import {
   MAX_VIEW_SCALE,
   MIN_VIEW_SCALE,
+  BASE_ORBIT_DRAG_SENSITIVITY,
+  BASE_TRACKBALL_DRAG_SENSITIVITY,
   clampViewScale,
   type InteractionMode,
 } from "../model/viewState";
@@ -64,6 +66,7 @@ export function PreviewCameraController({
   cellVectors,
   interactionLocked,
   interactionMode,
+  dragSensitivity,
   layout,
   onCameraCommandAnimationActiveChange,
   onCameraControlsInteractionActiveChange,
@@ -77,6 +80,7 @@ export function PreviewCameraController({
   cellVectors: VectorTuple[];
   interactionLocked: boolean;
   interactionMode: InteractionMode;
+  dragSensitivity: number;
   layout: SceneLayout;
   onCameraCommandAnimationActiveChange?: (isActive: boolean) => void;
   onCameraControlsInteractionActiveChange?: (
@@ -392,7 +396,13 @@ export function PreviewCameraController({
       requestFrame();
     }
 
-    configureCameraControls(controls, interactionMode, interactionLocked, fitZoom);
+    configureCameraControls(
+      controls,
+      interactionMode,
+      interactionLocked,
+      fitZoom,
+      dragSensitivity,
+    );
     controls.target.copy(CAMERA_TARGET);
     resizeCameraControls(controls);
     controls.addEventListener("start", handleControlsStart);
@@ -426,6 +436,7 @@ export function PreviewCameraController({
     camera,
     finishCameraControlsInteraction,
     gl.domElement,
+    dragSensitivity,
     interactionMode,
     requestFrame,
     requestCameraControlsInteractionFinish,
@@ -444,11 +455,24 @@ export function PreviewCameraController({
       return;
     }
 
-    configureCameraControls(controls, interactionMode, interactionLocked, fitZoom);
+    configureCameraControls(
+      controls,
+      interactionMode,
+      interactionLocked,
+      fitZoom,
+      dragSensitivity,
+    );
     controls.target.copy(CAMERA_TARGET);
     controls.update();
     requestFrame();
-  }, [fitZoom, interactionLocked, interactionMode, requestFrame, resetCounter]);
+  }, [
+    dragSensitivity,
+    fitZoom,
+    interactionLocked,
+    interactionMode,
+    requestFrame,
+    resetCounter,
+  ]);
 
   useEffect(() => {
     resizeCameraControls(controlsRef.current);
@@ -650,12 +674,14 @@ function configureCameraControls(
   interactionMode: InteractionMode,
   interactionLocked: boolean,
   fitZoom: number,
+  dragSensitivity: number,
 ) {
   controls.enabled = !interactionLocked;
   controls.minZoom = fitZoom * MIN_VIEW_SCALE;
   controls.maxZoom = fitZoom * MAX_VIEW_SCALE;
 
   if (interactionMode === "trackball" && controls instanceof TrackballControls) {
+    controls.rotateSpeed = BASE_TRACKBALL_DRAG_SENSITIVITY * dragSensitivity;
     controls.noPan = true;
     controls.noZoom = interactionLocked;
     controls.noRotate = interactionLocked;
@@ -666,6 +692,7 @@ function configureCameraControls(
   }
 
   if (interactionMode === "orbit" && controls instanceof OrbitControls) {
+    controls.rotateSpeed = BASE_ORBIT_DRAG_SENSITIVITY * dragSensitivity;
     controls.enableDamping = false;
     controls.enablePan = false;
     controls.enableRotate = !interactionLocked;
