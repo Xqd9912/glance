@@ -410,11 +410,11 @@ describe("App", () => {
     expect(screen.getByTestId("fps-overlay").textContent).toBe("fps 0");
 
     await openPreviewContextMenu();
-    await user.click(await screen.findByRole("menuitem", { name: "Reset All" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Reset all" }));
 
     expect(fetchCalls).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Sidebar" }).getAttribute("aria-expanded")).toBe(
-      "false",
+      "true",
     );
 
     const resetControls = screen.getByRole("complementary", { name: "Common controls" });
@@ -434,7 +434,6 @@ describe("App", () => {
     ).toContain("VESTA Soft");
 
     expect(screen.queryByTestId("fps-overlay")).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Sidebar" }));
     const resetInspector = screen.getByRole("complementary", { name: "Sidebar" });
     expect(
       within(resetInspector).getByRole("switch", { name: "Show FPS" }).getAttribute(
@@ -1646,13 +1645,15 @@ describe("App", () => {
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
 
     await openPreviewContextMenu();
-    await user.click(await screen.findByRole("menuitem", { name: "Reset All" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Reset all" }));
 
     await waitFor(() => expect(fetchCalls).toHaveLength(3));
     expect(fetchCalls[2]?.input).toBe("/api/structure-preview");
     expect(fetchCalls[2]?.init?.body).toBeInstanceOf(File);
 
-    await user.click(screen.getByRole("button", { name: "Sidebar" }));
+    expect(screen.getByRole("button", { name: "Sidebar" }).getAttribute("aria-expanded")).toBe(
+      "true",
+    );
     expect(screen.getByRole("combobox", { name: "Bonding algorithm" }).textContent).toContain(
       "VESTA",
     );

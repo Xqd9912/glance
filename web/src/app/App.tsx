@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, FolderOpen, ImageDown, RotateCcw } from "lucide-react";
+import { AlertTriangleIcon, FolderOpen, ImageDown, RefreshCw, RotateCcw } from "lucide-react";
 import { Quaternion } from "three";
 import {
   type ChangeEvent,
@@ -262,12 +262,17 @@ export function App() {
   }, []);
 
   const resetLoadedPreviewState = useCallback(
-    (nextScene: SceneSpec | null) => {
+    (
+      nextScene: SceneSpec | null,
+      options: { preserveInspectorOpen?: boolean } = {},
+    ) => {
       setErrorMessage(null);
       setExportError(null);
       setInspectedAtomId(null);
       setPulseAtom(null);
-      setIsInspectorOpen(false);
+      if (!options.preserveInspectorOpen) {
+        setIsInspectorOpen(false);
+      }
       setComponentVisibility(createDefaultComponentVisibility(nextScene));
       setComponentOpacity(createDefaultComponentOpacity());
       setStyle(createDefaultStyle());
@@ -838,7 +843,7 @@ export function App() {
     if (bondAlgorithm === DEFAULT_BOND_ALGORITHM || !currentFile) {
       setBondAlgorithm(DEFAULT_BOND_ALGORITHM);
       setPreviewStatus("ready");
-      resetLoadedPreviewState(scene);
+      resetLoadedPreviewState(scene, { preserveInspectorOpen: true });
       return;
     }
 
@@ -849,7 +854,7 @@ export function App() {
       const nextScene = await uploadStructurePreview(currentFile);
       setBondAlgorithm(DEFAULT_BOND_ALGORITHM);
       setScene(nextScene);
-      resetLoadedPreviewState(nextScene);
+      resetLoadedPreviewState(nextScene, { preserveInspectorOpen: true });
       setPreviewStatus("ready");
     } catch (error) {
       setPreviewStatus(scene ? "ready" : "error");
@@ -1054,7 +1059,17 @@ export function App() {
             )}
           </section>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-40">
+        <ContextMenuContent className="w-36">
+          <ContextMenuGroup>
+            <ContextMenuItem
+              disabled={!scene || previewStatus === "loading"}
+              onSelect={handleResetView}
+            >
+              <RotateCcw aria-hidden="true" />
+              Reset view
+            </ContextMenuItem>
+          </ContextMenuGroup>
+          <ContextMenuSeparator />
           <ContextMenuGroup>
             <ContextMenuItem onSelect={() => fileInputRef.current?.click()}>
               <FolderOpen aria-hidden="true" />
@@ -1078,8 +1093,8 @@ export function App() {
                 void handleResetAllSettings();
               }}
             >
-              <RotateCcw aria-hidden="true" />
-              Reset All
+              <RefreshCw aria-hidden="true" />
+              Reset all
             </ContextMenuItem>
           </ContextMenuGroup>
         </ContextMenuContent>

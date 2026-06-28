@@ -1,4 +1,5 @@
 .DS_Store
+.codex/
 
 # Python
 __pycache__/
