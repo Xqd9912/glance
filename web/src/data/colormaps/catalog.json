@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "defaultColorSchemeId": "vesta-soft",
+  "colormaps": [
+    {
+      "id": "vesta-soft",
+      "label": "VESTA Soft",
+      "file": "vesta-soft.json",
+      "tokenElements": ["H", "C", "N", "O"]
+    },
+    {
+      "id": "vesta",
+      "label": "VESTA",
+      "file": "vesta.json",
+      "tokenElements": ["H", "C", "N", "O"]
+    },
+    {
+      "id": "jmol-soft",
+      "label": "Jmol Soft",
+      "file": "jmol-soft.json",
+      "tokenElements": ["H", "C", "N", "O"]
+    },
+    {
+      "id": "jmol",
+      "label": "Jmol",
+      "file": "jmol.json",
+      "tokenElements": ["H", "C", "N", "O"]
+    }
+  ]
+}

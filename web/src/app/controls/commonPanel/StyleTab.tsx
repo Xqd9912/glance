@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import type { AtomRadiusModel } from "../../../api/scene";
 import {
   COLOR_SCHEME_OPTIONS,
+  colorSchemeTokenStyle,
   type ColorScheme,
 } from "../../../model/colorSchemes";
 import {
@@ -73,10 +74,6 @@ const ATOM_RADIUS_MODEL_OPTIONS: {
 ];
 const UNICOLOR_TOKEN_STYLE = { background: "#aeb5c0" } as const;
 const BY_ATOM_TOKEN_STYLE = { background: "linear-gradient(90deg, #f58c9a 0 50%, #78a7ff 50% 100%)" } as const;
-const JMOL_TOKEN_STYLE = { background: "linear-gradient(90deg, #ffffff 0 25%, #909090 25% 50%, #3050f8 50% 75%, #ff0d0d 75% 100%)" } as const;
-const JMOL_SOFT_TOKEN_STYLE = { background: "linear-gradient(90deg, #dedede 0 25%, #919191 25% 50%, #4c6cca 50% 75%, #d86254 75% 100%)" } as const;
-const VESTA_TOKEN_STYLE = { background: "linear-gradient(90deg, #ffcccc 0 25%, #814929 25% 50%, #b0bae6 50% 75%, #ff0300 75% 100%)" } as const;
-const VESTA_SOFT_TOKEN_STYLE = { background: "linear-gradient(90deg, #f2c0c0 0 25%, #8d5434 25% 50%, #a9b3df 50% 75%, #d86253 75% 100%)" } as const;
 
 export function StyleTabContent({
   onAtomRadiusModelChange,
@@ -586,17 +583,4 @@ function ColorSchemeOptionLabel({
       <span className="min-w-0 truncate">{label}</span>
     </span>
   );
-}
-
-function colorSchemeTokenStyle(value: ColorScheme): CSSProperties {
-  if (value === "jmol") {
-    return JMOL_TOKEN_STYLE;
-  }
-  if (value === "jmol-soft") {
-    return JMOL_SOFT_TOKEN_STYLE;
-  }
-  if (value === "vesta-soft") {
-    return VESTA_SOFT_TOKEN_STYLE;
-  }
-  return VESTA_TOKEN_STYLE;
 }

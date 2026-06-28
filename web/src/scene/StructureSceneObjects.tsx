@@ -6,6 +6,7 @@ import {
   Color,
   CylinderGeometry,
   DoubleSide,
+  EdgesGeometry,
   Fog,
   Group,
   Matrix4,
@@ -72,6 +73,7 @@ export const BOND_COLOR = "#c7cbd1";
 export const BOND_TUBE_RADIAL_SEGMENTS = 24;
 export const POLYHEDRON_SURFACE_OPACITY = 0.5;
 export const POLYHEDRON_EDGE_COLOR = "#f2f5f9";
+export const POLYHEDRON_EDGE_LINE_WIDTH_PIXELS = 1.5;
 export const POLYHEDRON_EDGE_OPACITY = 0.8;
 const POLYHEDRON_EDGE_OPACITY_RATIO =
   POLYHEDRON_EDGE_OPACITY / POLYHEDRON_SURFACE_OPACITY;
@@ -1243,6 +1245,33 @@ function Polyhedron({
     [atomById, polyhedron],
   );
   const centerAtom = atomById.get(polyhedron.centerAtomId);
+  const color = centerAtom
+    ? atomColorForScheme(centerAtom, colorScheme)
+    : POLYHEDRON_EDGE_COLOR;
+  const edgeLine = useMemo(() => {
+    if (!geometry) {
+      return null;
+    }
+
+    const edgeGeometry = new EdgesGeometry(geometry);
+    const edgePositions = edgeGeometry.getAttribute("position");
+    const lineGeometry = new LineSegmentsGeometry();
+    lineGeometry.setPositions(Array.from(edgePositions.array));
+    edgeGeometry.dispose();
+
+    const material = new LineMaterial({
+      alphaToCoverage: true,
+      color: POLYHEDRON_EDGE_COLOR,
+      depthWrite: false,
+      fog: false,
+      linewidth: POLYHEDRON_EDGE_LINE_WIDTH_PIXELS,
+      opacity: Math.min(1, opacity * POLYHEDRON_EDGE_OPACITY_RATIO),
+      transparent: true,
+      worldUnits: false,
+    });
+
+    return new LineSegments2(lineGeometry, material);
+  }, [geometry, opacity]);
 
   useEffect(() => {
     return () => {
@@ -1250,11 +1279,16 @@ function Polyhedron({
     };
   }, [geometry]);
 
-  if (!geometry || !centerAtom) {
+  useEffect(() => {
+    return () => {
+      edgeLine?.geometry.dispose();
+      edgeLine?.material.dispose();
+    };
+  }, [edgeLine]);
+
+  if (!geometry || !centerAtom || !edgeLine) {
     return null;
   }
-
-  const color = atomColorForScheme(centerAtom, colorScheme);
 
   return (
     <group>
@@ -1268,15 +1302,7 @@ function Polyhedron({
           transparent
         />
       </mesh>
-      <lineSegments>
-        <edgesGeometry args={[geometry]} />
-        <lineBasicMaterial
-          color={POLYHEDRON_EDGE_COLOR}
-          depthWrite={false}
-          opacity={Math.min(1, opacity * POLYHEDRON_EDGE_OPACITY_RATIO)}
-          transparent
-        />
-      </lineSegments>
+      <primitive object={edgeLine} />
     </group>
   );
 }

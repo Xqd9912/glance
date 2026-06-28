@@ -1,5 +1,8 @@
 import type { AtomRadiusModel } from "../api/scene";
-import type { ColorScheme } from "./colorSchemes";
+import {
+  DEFAULT_COLOR_SCHEME_ID,
+  type ColorScheme,
+} from "./colorSchemes";
 import {
   DEFAULT_MATERIAL_PRESET_ID,
   type MaterialPresetId,
@@ -24,7 +27,7 @@ export const DEFAULT_STYLE: StyleState = {
   atomRadiusModel: "uniform",
   bondColorMode: "by-atom",
   bondThickness: 100,
-  colorScheme: "vesta-soft",
+  colorScheme: DEFAULT_COLOR_SCHEME_ID,
   fogEnabled: false,
   fogStart: 50,
   fogStrength: 50,
