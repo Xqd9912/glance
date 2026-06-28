@@ -1,7 +1,8 @@
 export type ExportFormat = "png" | "pdf";
 export type ExportComponentId = "legend" | "latticeVectors" | "structure";
 export type ExportLegendLayout = "horizontal" | "vertical";
-export type ExportMeshQuality = "low" | "medium" | "high" | "xhigh";
+export type MeshQuality = "low" | "medium" | "high" | "xhigh";
+export type ExportMeshQuality = MeshQuality;
 export type ExportSupersampling = 1 | 2 | 4;
 
 export interface ExportComponentSelection {
@@ -44,12 +45,19 @@ export const EXPORT_LEGEND_LAYOUT_OPTIONS: readonly ExportLegendLayout[] = [
   "horizontal",
   "vertical",
 ];
-export const EXPORT_MESH_QUALITY_OPTIONS: readonly ExportMeshQuality[] = [
+export const MESH_QUALITY_OPTIONS: readonly MeshQuality[] = [
   "low",
   "medium",
   "high",
   "xhigh",
 ];
+export const EXPORT_MESH_QUALITY_OPTIONS = MESH_QUALITY_OPTIONS;
+export const MESH_QUALITY_LABELS: Record<MeshQuality, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  xhigh: "XHigh",
+};
 
 export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
   aspectRatioLocked: false,

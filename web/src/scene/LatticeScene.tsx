@@ -5,7 +5,13 @@ import { Quaternion } from "three";
 import type { SceneSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
-import type { AtomRenderingMode, ComponentOpacityState, StyleState } from "../model";
+import {
+  DEFAULT_PREVIEW_MESH_QUALITY,
+  type AtomRenderingMode,
+  type ComponentOpacityState,
+  type MeshQuality,
+  type StyleState,
+} from "../model";
 import type { PreviewFpsStore } from "../model/previewFpsStore";
 import type { InteractionMode } from "../model/viewState";
 import { CameraHeadlight } from "./CameraHeadlight";
@@ -16,7 +22,7 @@ import {
 } from "./materialPresetResolver";
 import { PreviewCameraController } from "./PreviewCameraController";
 import {
-  PREVIEW_SCENE_MESH_DETAIL,
+  EXPORT_SCENE_MESH_DETAIL_PRESETS,
   PreviewSceneContent,
 } from "./StructureSceneObjects";
 import { computeSceneStructureLayout, type SceneLayout } from "./sceneLayout";
@@ -96,6 +102,7 @@ export function LatticeScene({
   inspectedAtomId = null,
   pulseAtomId = null,
   pulseToken = 0,
+  previewMeshQuality = DEFAULT_PREVIEW_MESH_QUALITY,
   previewFpsStore,
   showAtoms = true,
   showFpsOverlay = false,
@@ -129,6 +136,7 @@ export function LatticeScene({
   inspectedAtomId?: string | null;
   pulseAtomId?: string | null;
   pulseToken?: number;
+  previewMeshQuality?: MeshQuality;
   previewFpsStore?: PreviewFpsStore;
   showAtoms?: boolean;
   showFpsOverlay?: boolean;
@@ -200,7 +208,7 @@ export function LatticeScene({
         componentOpacity={componentOpacity}
         layout={layout}
         materialFamily={materialFamily}
-        meshDetail={PREVIEW_SCENE_MESH_DETAIL}
+        meshDetail={EXPORT_SCENE_MESH_DETAIL_PRESETS[previewMeshQuality]}
         scene={scene}
         inspectedAtomId={inspectedAtomId}
         interactionLocked={interactionLocked}

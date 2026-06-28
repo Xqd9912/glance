@@ -85,9 +85,11 @@ import {
   createDefaultExportSettings,
   createDefaultStyle,
   defaultAtomRenderingModeForScene,
+  defaultPreviewMeshQualityForScene,
   type AtomRenderingMode,
   type ExportProjectedSize,
   type ExportSettingsState,
+  type MeshQuality,
   hasPolyhedra,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
@@ -174,6 +176,9 @@ export function App() {
     useState<ExportProjectedSize | null>(null);
   const [atomRenderingMode, setAtomRenderingMode] = useState<AtomRenderingMode>(
     () => defaultAtomRenderingModeForScene(null),
+  );
+  const [previewMeshQuality, setPreviewMeshQuality] = useState<MeshQuality>(
+    () => defaultPreviewMeshQualityForScene(null),
   );
   const [cameraCommandVersion, setCameraCommandVersion] = useState(0);
   const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
@@ -267,6 +272,7 @@ export function App() {
       setComponentOpacity(createDefaultComponentOpacity());
       setStyle(createDefaultStyle());
       setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
+      setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
       setExportSettings(createDefaultExportSettings());
       setActiveCommonPanelTab("display");
       setLockedInteractionFeedbackCount(0);
@@ -356,6 +362,10 @@ export function App() {
   const handleAtomRenderingModeChange = useCallback((nextMode: AtomRenderingMode) => {
     setPulseAtom(null);
     setAtomRenderingMode(nextMode);
+  }, []);
+
+  const handlePreviewMeshQualityChange = useCallback((nextQuality: MeshQuality) => {
+    setPreviewMeshQuality(nextQuality);
   }, []);
 
   const handleAtomPulse = useCallback((atomId: string) => {
@@ -616,6 +626,7 @@ export function App() {
       setScene(nextScene);
       setComponentVisibility(createDefaultComponentVisibility(nextScene));
       setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
+      setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
       setPreviewStatus("ready");
     } catch (error) {
       setScene(null);
@@ -1014,6 +1025,7 @@ export function App() {
                 inspectedAtomId={inspectedAtomId}
                 pulseAtomId={pulseAtom?.atomId ?? null}
                 pulseToken={pulseAtom?.token ?? 0}
+                previewMeshQuality={previewMeshQuality}
                 componentOpacity={componentOpacity}
                 previewFpsStore={previewFpsStore}
                 style={style}
@@ -1190,12 +1202,14 @@ export function App() {
             interactionMode={viewState.interactionMode}
             isOpen={isInspectorOpen}
             isSceneLoading={previewStatus === "loading"}
+            previewMeshQuality={previewMeshQuality}
             showFpsOverlay={viewState.showFpsOverlay}
             onAtomRenderingModeChange={handleAtomRenderingModeChange}
             onBondAlgorithmChange={(nextBondAlgorithm) => {
               void handleBondAlgorithmChange(nextBondAlgorithm);
             }}
             onInteractionModeChange={handleInteractionModeChange}
+            onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
             onShowFpsOverlayChange={handleShowFpsOverlayChange}
           />
         </>

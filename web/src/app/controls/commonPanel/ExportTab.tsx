@@ -21,8 +21,9 @@ import {
   createDefaultExportSettings,
   EXPORT_FORMAT_OPTIONS,
   EXPORT_LEGEND_LAYOUT_OPTIONS,
-  EXPORT_MESH_QUALITY_OPTIONS,
   EXPORT_SUPERSAMPLING_OPTIONS,
+  MESH_QUALITY_LABELS,
+  MESH_QUALITY_OPTIONS,
   parseExportDimensionInput,
   setExportAspectRatioLocked,
   setExportComponentSelected,
@@ -52,12 +53,6 @@ import {
   COMMON_PANEL_SECTION_TITLE_TEXT_CLASS,
 } from "./styles";
 
-const EXPORT_MESH_QUALITY_LABELS: Record<ExportMeshQuality, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  xhigh: "XHigh",
-};
 const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
   pdf: "PDF",
   png: "PNG",
@@ -557,14 +552,14 @@ function ExportMeshQualityControl({
           aria-label="Export mesh quality"
           className="!h-6 w-full rounded-md p-0.5"
         >
-          {EXPORT_MESH_QUALITY_OPTIONS.map((option) => (
+          {MESH_QUALITY_OPTIONS.map((option) => (
             <TabsTrigger
               key={option}
               value={option}
-              aria-label={`${EXPORT_MESH_QUALITY_LABELS[option]} mesh quality`}
+              aria-label={`${MESH_QUALITY_LABELS[option]} mesh quality`}
               className="!h-5 rounded-[4px] px-0.5 py-0 text-[0.68rem] font-medium md:text-[0.68rem]"
             >
-              {EXPORT_MESH_QUALITY_LABELS[option]}
+              {MESH_QUALITY_LABELS[option]}
             </TabsTrigger>
           ))}
         </TabsList>

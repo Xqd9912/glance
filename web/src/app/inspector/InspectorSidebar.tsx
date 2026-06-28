@@ -28,7 +28,12 @@ import {
   INTERACTION_MODE_OPTIONS,
   type InteractionMode,
 } from "../viewState";
-import type { AtomRenderingMode } from "../../model";
+import {
+  MESH_QUALITY_LABELS,
+  MESH_QUALITY_OPTIONS,
+  type AtomRenderingMode,
+  type MeshQuality,
+} from "../../model";
 
 const INSPECTOR_BODY_TEXT_CLASS = "text-sm";
 const INSPECTOR_SELECT_TRIGGER_CLASS =
@@ -78,10 +83,12 @@ export function InspectorSidebar({
   interactionMode,
   isOpen,
   isSceneLoading,
+  previewMeshQuality,
   showFpsOverlay,
   onAtomRenderingModeChange,
   onBondAlgorithmChange,
   onInteractionModeChange,
+  onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
 }: {
   atomRenderingMode: AtomRenderingMode;
@@ -89,10 +96,12 @@ export function InspectorSidebar({
   interactionMode: InteractionMode;
   isOpen: boolean;
   isSceneLoading: boolean;
+  previewMeshQuality: MeshQuality;
   showFpsOverlay: boolean;
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
+  onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
 }) {
   return (
@@ -135,10 +144,12 @@ export function InspectorSidebar({
               bondAlgorithm={bondAlgorithm}
               interactionMode={interactionMode}
               isSceneLoading={isSceneLoading}
+              previewMeshQuality={previewMeshQuality}
               showFpsOverlay={showFpsOverlay}
               onAtomRenderingModeChange={onAtomRenderingModeChange}
               onBondAlgorithmChange={onBondAlgorithmChange}
               onInteractionModeChange={onInteractionModeChange}
+              onPreviewMeshQualityChange={onPreviewMeshQualityChange}
               onShowFpsOverlayChange={onShowFpsOverlayChange}
             />
           </TabsContent>
@@ -153,20 +164,24 @@ function SettingsPanel({
   bondAlgorithm,
   interactionMode,
   isSceneLoading,
+  previewMeshQuality,
   showFpsOverlay,
   onAtomRenderingModeChange,
   onBondAlgorithmChange,
   onInteractionModeChange,
+  onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
 }: {
   atomRenderingMode: AtomRenderingMode;
   bondAlgorithm: BondAlgorithm;
   interactionMode: InteractionMode;
   isSceneLoading: boolean;
+  previewMeshQuality: MeshQuality;
   showFpsOverlay: boolean;
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
+  onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
 }) {
   return (
@@ -197,6 +212,34 @@ function SettingsPanel({
               <SelectItem value="instanced" className={INSPECTOR_SELECT_ITEM_CLASS}>
                 Instanced
               </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </InspectorSelectRow>
+
+      <InspectorSelectRow label="Preview 3D mesh">
+        <Select
+          value={previewMeshQuality}
+          onValueChange={(value) => onPreviewMeshQualityChange(value as MeshQuality)}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Preview 3D mesh"
+            className={INSPECTOR_SELECT_TRIGGER_CLASS}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" className="!bg-background !text-foreground">
+            <SelectGroup>
+              {MESH_QUALITY_OPTIONS.map((option) => (
+                <SelectItem
+                  key={option}
+                  value={option}
+                  className={INSPECTOR_SELECT_ITEM_CLASS}
+                >
+                  {MESH_QUALITY_LABELS[option]}
+                </SelectItem>
+              ))}
             </SelectGroup>
           </SelectContent>
         </Select>

@@ -9,11 +9,13 @@ import {
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
   defaultAtomRenderingModeForScene,
+  defaultPreviewMeshQualityForScene,
   createDefaultExportSettings,
   createDefaultStyle,
   createDefaultComponentVisibility,
   INSPECTOR_OPEN_SCENE_OFFSET_X_PX,
   INSPECTOR_PREVIEW_SAFE_AREA,
+  PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD,
   parseExportDimensionInput,
   setExportAspectRatioLocked,
   setExportComponentSelected,
@@ -33,10 +35,20 @@ import {
 } from "../src/app/settings";
 
 describe("settings", () => {
-  test("defaults atom rendering to instanced for structures with at least 1000 atoms", () => {
+  test("uses one atom-count threshold for large preview defaults", () => {
+    const belowThreshold = PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD - 1;
+    const atThreshold = PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD;
+    const aboveThreshold = PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD + 1;
+
     expect(defaultAtomRenderingModeForScene(null)).toBe("mesh");
-    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(999))).toBe("mesh");
-    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(1000))).toBe("instanced");
+    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(belowThreshold))).toBe("mesh");
+    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(atThreshold))).toBe("mesh");
+    expect(defaultAtomRenderingModeForScene(sceneWithAtomCount(aboveThreshold))).toBe("instanced");
+
+    expect(defaultPreviewMeshQualityForScene(null)).toBe("medium");
+    expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(belowThreshold))).toBe("medium");
+    expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(atThreshold))).toBe("medium");
+    expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(aboveThreshold))).toBe("low");
   });
 
   test("defaults style controls to global 100 percent and by-atom bonds", () => {

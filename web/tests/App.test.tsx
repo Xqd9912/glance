@@ -13,6 +13,7 @@ import {
   createFigureExportZipBlob as actualCreateFigureExportZipBlob,
   createZipBlob as actualCreateZipBlob,
 } from "../src/app/exportFigure";
+import { PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD } from "../src/app/settings";
 
 interface FetchCall {
   input: RequestInfo | URL;
@@ -283,7 +284,7 @@ describe("App", () => {
     ).toEqual(["Atoms", "Bonds", "Unit cell", "Polyhedra"]);
   });
 
-  test("keeps atom rendering mode in the advanced sidebar", async () => {
+  test("keeps preview rendering controls in the advanced sidebar", async () => {
     const user = userEvent.setup();
 
     await renderLoadedStructure(user);
@@ -300,21 +301,35 @@ describe("App", () => {
     const atomRenderingSelect = within(sidebar).getByRole("combobox", {
       name: "Atom rendering mode",
     });
+    const previewMeshSelect = within(sidebar).getByRole("combobox", {
+      name: "Preview 3D mesh",
+    });
 
     expect(atomRenderingSelect.textContent).toContain("Mesh");
+    expect(previewMeshSelect.textContent).toContain("Medium");
 
     await user.click(atomRenderingSelect);
     await user.click(await screen.findByRole("option", { name: "Instanced" }));
+    await user.click(previewMeshSelect);
+    await user.click(await screen.findByRole("option", { name: "XHigh" }));
 
     expect(
       within(sidebar).getByRole("combobox", { name: "Atom rendering mode" }).textContent,
     ).toContain("Instanced");
+    expect(
+      within(sidebar).getByRole("combobox", { name: "Preview 3D mesh" }).textContent,
+    ).toContain("XHigh");
   });
 
-  test("defaults atom rendering to instanced for structures with at least 1000 atoms", async () => {
+  test("defaults large preview structures to instanced atoms and low mesh quality", async () => {
     const user = userEvent.setup();
 
-    await renderLoadedStructure(user, sceneWithPeriodicImages({ atomCount: 1000 }));
+    await renderLoadedStructure(
+      user,
+      sceneWithPeriodicImages({
+        atomCount: PREVIEW_PERFORMANCE_ATOM_COUNT_THRESHOLD + 1,
+      }),
+    );
 
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
     const sidebar = screen.getByRole("complementary", { name: "Sidebar" });
@@ -323,6 +338,9 @@ describe("App", () => {
         name: "Atom rendering mode",
       }).textContent,
     ).toContain("Instanced");
+    expect(
+      within(sidebar).getByRole("combobox", { name: "Preview 3D mesh" }).textContent,
+    ).toContain("Low");
   });
 
   test("shows VESTA as the automatic default for uploaded structures", async () => {

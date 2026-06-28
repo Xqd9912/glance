@@ -259,7 +259,7 @@ describe("computeSceneLayout", () => {
     }).material.kind).toBe("basic");
   });
 
-  test("keeps preview mesh detail fixed while export presets scale together", () => {
+  test("keeps preview mesh detail aligned with the medium quality preset", () => {
     expect(PREVIEW_SCENE_MESH_DETAIL).toEqual({
       bondRadialSegments: 16,
       sphereHeightSegments: 24,
