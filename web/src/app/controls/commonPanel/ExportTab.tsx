@@ -171,9 +171,10 @@ export function ExportTabContent({
               }
             />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex h-7 items-center gap-1.5 rounded-md px-1.5 transition-colors hover:bg-accent/60">
             <ExportComponentCheckbox
               checked={settings.components.legend}
+              className="h-full flex-1 px-0 hover:bg-transparent"
               component="legend"
               label="Legend"
               onSettingsChange={(component, checked) =>
@@ -468,11 +469,13 @@ function exportBackgroundTokenStyle(value: ExportBackground): CSSProperties {
 
 function ExportComponentCheckbox({
   checked,
+  className,
   component,
   label,
   onSettingsChange,
 }: {
   checked: boolean;
+  className?: string;
   component: ExportComponentId;
   label: string;
   onSettingsChange: (component: ExportComponentId, checked: boolean) => void;
@@ -482,6 +485,7 @@ function ExportComponentCheckbox({
       className={cn(
         "flex h-7 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1.5 transition-colors hover:bg-accent/60",
         COMMON_PANEL_BODY_TEXT_CLASS,
+        className,
       )}
     >
       <Checkbox

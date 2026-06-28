@@ -48,7 +48,7 @@ import {
   TOOL_ICON_BUTTON_FEEDBACK_ANIMATION_MS,
   type ToolButtonFeedbackPhase,
 } from "./controlFeedback";
-import { COMMON_PANEL_SECTION_TITLE_TEXT_CLASS } from "./styles";
+import { COMMON_PANEL_SECTION_TITLE_TEXT_CLASS, UI_DARK_COLOR } from "./styles";
 
 type ManualButtonFeedbackTarget = "apply" | "reset";
 
@@ -433,7 +433,7 @@ function ScreenAxisGizmoScene({
       })}
       <mesh renderOrder={20}>
         <sphereGeometry args={[SCREEN_AXIS_ORIGIN_RADIUS * 1.35, 32, 16]} />
-        <meshBasicMaterial color="#171717" depthTest={false} />
+        <meshBasicMaterial color={UI_DARK_COLOR} depthTest={false} />
       </mesh>
       <mesh renderOrder={21}>
         <sphereGeometry args={[SCREEN_AXIS_ORIGIN_RADIUS, 32, 16]} />
