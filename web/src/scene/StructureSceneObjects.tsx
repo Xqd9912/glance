@@ -4,9 +4,9 @@ import {
   Color,
   DoubleSide,
   Fog,
-  Mesh,
-  MeshBasicMaterial,
+  Group,
   Quaternion,
+  SpriteMaterial,
   Vector3,
 } from "three";
 import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
@@ -40,10 +40,11 @@ import type { SceneLayout } from "./sceneLayout";
 import type { VectorTuple } from "./viewMath";
 import { StructureMaterial, type StructureMeshMaterial } from "./StructureMaterial";
 import { InstancedAtoms } from "./InstancedAtoms";
+import { AtomSelectionRing } from "./AtomSelectionRing";
 import {
-  ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE,
-  ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY,
-  ATOM_HIGHLIGHT_HALO_SELECTED_SCALE,
+  ATOM_SELECTION_RING_PULSE_MIN_SCALE,
+  ATOM_SELECTION_RING_SELECTED_OPACITY,
+  ATOM_SELECTION_RING_SELECTED_SCALE,
   ATOM_HIGHLIGHT_PULSE_COLOR_MIX,
   ATOM_HIGHLIGHT_PULSE_EMISSIVE_INTENSITY,
   ATOM_HIGHLIGHT_PULSE_MS,
@@ -375,8 +376,8 @@ export const MemoizedStructureSceneObjects = memo(StructureSceneObjects);
 interface AtomSelectionHighlightTransition {
   startColorMix: number;
   startEmissiveIntensity: number;
-  startHaloOpacity: number;
-  startHaloScale: number;
+  startRingOpacity: number;
+  startRingScale: number;
   startTimeMs: number;
 }
 
@@ -410,12 +411,13 @@ function Atom({
   radiusScale: number;
 }) {
   const atomMaterialRef = useRef<StructureMeshMaterial | null>(null);
-  const haloMaterialRef = useRef<MeshBasicMaterial | null>(null);
-  const haloMeshRef = useRef<Mesh | null>(null);
+  const ringMaterialRef = useRef<SpriteMaterial | null>(null);
+  const ringGroupRef = useRef<Group | null>(null);
   const currentColorMixRef = useRef(0);
   const currentEmissiveIntensityRef = useRef(0);
-  const currentHaloOpacityRef = useRef(0);
-  const currentHaloScaleRef = useRef(ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE);
+  const currentRingOpacityRef = useRef(0);
+  const currentRingScaleRef = useRef(ATOM_SELECTION_RING_PULSE_MIN_SCALE);
+  const handledPulseTokenRef = useRef(0);
   const pulseStartTimeRef = useRef<number | null>(null);
   const selectionTransitionRef = useRef<AtomSelectionHighlightTransition | null>(null);
   const [isHighlightAnimationActive, setIsHighlightAnimationActive] = useState(false);
@@ -428,24 +430,25 @@ function Atom({
   const resetHighlight = useCallback(() => {
     currentColorMixRef.current = 0;
     currentEmissiveIntensityRef.current = 0;
-    currentHaloOpacityRef.current = 0;
-    currentHaloScaleRef.current = ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE;
+    currentRingOpacityRef.current = 0;
+    currentRingScaleRef.current = ATOM_SELECTION_RING_PULSE_MIN_SCALE;
 
     const atomMaterial = atomMaterialRef.current;
     if (atomMaterial) {
       applyAtomHighlight(atomMaterial, baseColor, 0, 0);
     }
 
-    const haloMaterial = haloMaterialRef.current;
-    const haloMesh = haloMeshRef.current;
-    if (haloMaterial && haloMesh) {
-      haloMesh.scale.setScalar(ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE);
-      haloMaterial.opacity = 0;
+    const ringMaterial = ringMaterialRef.current;
+    const ringGroup = ringGroupRef.current;
+    if (ringMaterial && ringGroup) {
+      ringGroup.scale.setScalar(ATOM_SELECTION_RING_PULSE_MIN_SCALE);
+      ringMaterial.opacity = 0;
     }
   }, [baseColor]);
 
   useEffect(() => {
     if (pulseToken === 0) {
+      handledPulseTokenRef.current = 0;
       pulseStartTimeRef.current = null;
       if (!inspected) {
         resetHighlight();
@@ -454,6 +457,11 @@ function Atom({
       return;
     }
 
+    if (pulseToken === handledPulseTokenRef.current) {
+      return;
+    }
+
+    handledPulseTokenRef.current = pulseToken;
     pulseStartTimeRef.current = performance.now();
     setIsHighlightAnimationActive(true);
   }, [inspected, pulseToken, resetHighlight]);
@@ -471,8 +479,8 @@ function Atom({
     selectionTransitionRef.current = {
       startColorMix: currentColorMixRef.current,
       startEmissiveIntensity: currentEmissiveIntensityRef.current,
-      startHaloOpacity: currentHaloOpacityRef.current,
-      startHaloScale: currentHaloScaleRef.current,
+      startRingOpacity: currentRingOpacityRef.current,
+      startRingScale: currentRingScaleRef.current,
       startTimeMs: performance.now(),
     };
     pulseStartTimeRef.current = null;
@@ -511,22 +519,13 @@ function Atom({
   return (
     <group position={atom.position}>
       {inspected ? (
-        <mesh ref={haloMeshRef} renderOrder={2}>
-          <sphereGeometry
-            args={[
-              scaledRadius,
-              meshDetail.sphereWidthSegments,
-              meshDetail.sphereHeightSegments,
-            ]}
-          />
-          <meshBasicMaterial
-            ref={haloMaterialRef}
-            color={color}
-            depthWrite={false}
-            opacity={0}
-            transparent
-          />
-        </mesh>
+        <AtomSelectionRing
+          materialRef={ringMaterialRef}
+          opacity={0}
+          radius={scaledRadius}
+          ringRef={ringGroupRef}
+          scale={ATOM_SELECTION_RING_PULSE_MIN_SCALE}
+        />
       ) : null}
       <mesh
         onClick={handleClick}
@@ -554,10 +553,10 @@ function Atom({
           baseColor={baseColor}
           currentColorMixRef={currentColorMixRef}
           currentEmissiveIntensityRef={currentEmissiveIntensityRef}
-          currentHaloOpacityRef={currentHaloOpacityRef}
-          currentHaloScaleRef={currentHaloScaleRef}
-          haloMaterialRef={haloMaterialRef}
-          haloMeshRef={haloMeshRef}
+          currentRingOpacityRef={currentRingOpacityRef}
+          currentRingScaleRef={currentRingScaleRef}
+          ringMaterialRef={ringMaterialRef}
+          ringGroupRef={ringGroupRef}
           inspected={inspected}
           onComplete={handleHighlightAnimationComplete}
           pulseStartTimeRef={pulseStartTimeRef}
@@ -573,10 +572,10 @@ function AtomHighlightAnimator({
   baseColor,
   currentColorMixRef,
   currentEmissiveIntensityRef,
-  currentHaloOpacityRef,
-  currentHaloScaleRef,
-  haloMaterialRef,
-  haloMeshRef,
+  currentRingOpacityRef,
+  currentRingScaleRef,
+  ringMaterialRef,
+  ringGroupRef,
   inspected,
   onComplete,
   pulseStartTimeRef,
@@ -586,10 +585,10 @@ function AtomHighlightAnimator({
   baseColor: Color;
   currentColorMixRef: { current: number };
   currentEmissiveIntensityRef: { current: number };
-  currentHaloOpacityRef: { current: number };
-  currentHaloScaleRef: { current: number };
-  haloMaterialRef: { current: MeshBasicMaterial | null };
-  haloMeshRef: { current: Mesh | null };
+  currentRingOpacityRef: { current: number };
+  currentRingScaleRef: { current: number };
+  ringMaterialRef: { current: SpriteMaterial | null };
+  ringGroupRef: { current: Group | null };
   inspected: boolean;
   onComplete: () => void;
   pulseStartTimeRef: { current: number | null };
@@ -606,25 +605,25 @@ function AtomHighlightAnimator({
     if (!atomMaterial) {
       return;
     }
-    const haloMaterial = haloMaterialRef.current;
-    const haloMesh = haloMeshRef.current;
+    const ringMaterial = ringMaterialRef.current;
+    const ringGroup = ringGroupRef.current;
 
     if (inspected) {
       const selectionTransition = selectionTransitionRef.current;
       if (!selectionTransition) {
         currentColorMixRef.current = ATOM_HIGHLIGHT_SELECTED_COLOR_MIX;
         currentEmissiveIntensityRef.current = ATOM_HIGHLIGHT_SELECTED_EMISSIVE_INTENSITY;
-        currentHaloOpacityRef.current = ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY;
-        currentHaloScaleRef.current = ATOM_HIGHLIGHT_HALO_SELECTED_SCALE;
+        currentRingOpacityRef.current = ATOM_SELECTION_RING_SELECTED_OPACITY;
+        currentRingScaleRef.current = ATOM_SELECTION_RING_SELECTED_SCALE;
         applyAtomHighlight(
           atomMaterial,
           baseColor,
           ATOM_HIGHLIGHT_SELECTED_COLOR_MIX,
           ATOM_HIGHLIGHT_SELECTED_EMISSIVE_INTENSITY,
         );
-        if (haloMaterial && haloMesh) {
-          haloMesh.scale.setScalar(ATOM_HIGHLIGHT_HALO_SELECTED_SCALE);
-          haloMaterial.opacity = ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY;
+        if (ringMaterial && ringGroup) {
+          ringGroup.scale.setScalar(ATOM_SELECTION_RING_SELECTED_SCALE);
+          ringMaterial.opacity = ATOM_SELECTION_RING_SELECTED_OPACITY;
         }
         onComplete();
         return;
@@ -644,22 +643,22 @@ function AtomHighlightAnimator({
         (ATOM_HIGHLIGHT_SELECTED_EMISSIVE_INTENSITY -
           selectionTransition.startEmissiveIntensity) *
           easedProgress;
-      const haloOpacity =
-        selectionTransition.startHaloOpacity +
-        (ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY - selectionTransition.startHaloOpacity) *
+      const ringOpacity =
+        selectionTransition.startRingOpacity +
+        (ATOM_SELECTION_RING_SELECTED_OPACITY - selectionTransition.startRingOpacity) *
           easedProgress;
-      const haloScale =
-        selectionTransition.startHaloScale +
-        (ATOM_HIGHLIGHT_HALO_SELECTED_SCALE - selectionTransition.startHaloScale) *
+      const ringScale =
+        selectionTransition.startRingScale +
+        (ATOM_SELECTION_RING_SELECTED_SCALE - selectionTransition.startRingScale) *
           easedProgress;
       currentColorMixRef.current = colorMix;
       currentEmissiveIntensityRef.current = emissiveIntensity;
-      currentHaloOpacityRef.current = haloOpacity;
-      currentHaloScaleRef.current = haloScale;
+      currentRingOpacityRef.current = ringOpacity;
+      currentRingScaleRef.current = ringScale;
       applyAtomHighlight(atomMaterial, baseColor, colorMix, emissiveIntensity);
-      if (haloMaterial && haloMesh) {
-        haloMesh.scale.setScalar(haloScale);
-        haloMaterial.opacity = haloOpacity;
+      if (ringMaterial && ringGroup) {
+        ringGroup.scale.setScalar(ringScale);
+        ringMaterial.opacity = ringOpacity;
       }
 
       if (progress >= 1) {
@@ -675,12 +674,12 @@ function AtomHighlightAnimator({
     if (pulseStartTime === null) {
       currentColorMixRef.current = 0;
       currentEmissiveIntensityRef.current = 0;
-      currentHaloOpacityRef.current = 0;
-      currentHaloScaleRef.current = ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE;
+      currentRingOpacityRef.current = 0;
+      currentRingScaleRef.current = ATOM_SELECTION_RING_PULSE_MIN_SCALE;
       applyAtomHighlight(atomMaterial, baseColor, 0, 0);
-      if (haloMaterial && haloMesh) {
-        haloMesh.scale.setScalar(ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE);
-        haloMaterial.opacity = 0;
+      if (ringMaterial && ringGroup) {
+        ringGroup.scale.setScalar(ATOM_SELECTION_RING_PULSE_MIN_SCALE);
+        ringMaterial.opacity = 0;
       }
       onComplete();
       return;
@@ -695,12 +694,12 @@ function AtomHighlightAnimator({
     const emissiveIntensity = ATOM_HIGHLIGHT_PULSE_EMISSIVE_INTENSITY * fade;
     currentColorMixRef.current = colorMix;
     currentEmissiveIntensityRef.current = emissiveIntensity;
-    currentHaloOpacityRef.current = 0;
-    currentHaloScaleRef.current = ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE;
+    currentRingOpacityRef.current = 0;
+    currentRingScaleRef.current = ATOM_SELECTION_RING_PULSE_MIN_SCALE;
     applyAtomHighlight(atomMaterial, baseColor, colorMix, emissiveIntensity);
-    if (haloMaterial && haloMesh) {
-      haloMesh.scale.setScalar(ATOM_HIGHLIGHT_HALO_PULSE_MIN_SCALE);
-      haloMaterial.opacity = 0;
+    if (ringMaterial && ringGroup) {
+      ringGroup.scale.setScalar(ATOM_SELECTION_RING_PULSE_MIN_SCALE);
+      ringMaterial.opacity = 0;
     }
 
     if (progress >= 1) {

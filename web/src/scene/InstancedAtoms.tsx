@@ -1,6 +1,14 @@
 import { type ThreeEvent, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Color, InstancedMesh, Matrix4, Quaternion, Vector3 } from "three";
+import {
+  Color,
+  Group,
+  InstancedMesh,
+  Matrix4,
+  Quaternion,
+  SpriteMaterial,
+  Vector3,
+} from "three";
 
 import type { AtomRadiusModel, AtomSpec } from "../api/scene";
 import { atomColorForScheme } from "../model/colorSchemes";
@@ -9,17 +17,20 @@ import { atomRadiusForModel } from "./sceneGeometry";
 import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
 import { StructureMaterial } from "./StructureMaterial";
 import type { SceneMeshDetail } from "./StructureSceneObjects";
+import { AtomSelectionRing } from "./AtomSelectionRing";
 import {
-  ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY,
-  ATOM_HIGHLIGHT_HALO_SELECTED_SCALE,
   ATOM_HIGHLIGHT_PULSE_COLOR_MIX,
   ATOM_HIGHLIGHT_PULSE_MS,
   ATOM_HIGHLIGHT_SELECT_MS,
   ATOM_HIGHLIGHT_SELECTED_COLOR_MIX,
   ATOM_HIGHLIGHT_TARGET_COLOR,
+  ATOM_SELECTION_RING_PULSE_MIN_SCALE,
+  ATOM_SELECTION_RING_SELECTED_OPACITY,
+  ATOM_SELECTION_RING_SELECTED_SCALE,
   atomPulseFade,
   easeOutCubic,
 } from "./atomHighlight";
+import type { VectorTuple } from "./viewMath";
 
 interface AtomColorInstanceSpec {
   atom: AtomSpec;
@@ -64,6 +75,11 @@ export function InstancedAtoms({
 }) {
   const meshRef = useRef<InstancedMesh | null>(null);
   const invalidate = useThree((state) => state.invalidate);
+  const handledPulseTokenRef = useRef(0);
+  const [activePulse, setActivePulse] = useState<{
+    atomId: string;
+    token: number;
+  } | null>(null);
   const isTransparent = opacity < 1;
   const atomColorInstances = useMemo<AtomColorInstanceSpec[]>(
     () =>
@@ -97,10 +113,42 @@ export function InstancedAtoms({
     atomIndexById,
     inspectedAtomId,
   );
-  const pulseInstance = inspectedInstance
+  const pulseInstance = inspectedInstance || !activePulse
     ? null
-    : instanceForAtomId(atomInstances, atomIndexById, pulseAtomId);
+    : instanceForAtomId(atomInstances, atomIndexById, activePulse.atomId);
   const activeHighlight = inspectedInstance ?? pulseInstance;
+
+  useEffect(() => {
+    if (pulseToken === 0 || !pulseAtomId) {
+      handledPulseTokenRef.current = 0;
+      setActivePulse(null);
+      return;
+    }
+
+    if (pulseToken === handledPulseTokenRef.current) {
+      return;
+    }
+
+    handledPulseTokenRef.current = pulseToken;
+    setActivePulse({
+      atomId: pulseAtomId,
+      token: pulseToken,
+    });
+  }, [pulseAtomId, pulseToken]);
+
+  useEffect(() => {
+    if (inspectedAtomId) {
+      setActivePulse(null);
+    }
+  }, [inspectedAtomId]);
+
+  const handlePulseComplete = useCallback(() => {
+    setActivePulse((currentPulse) =>
+      currentPulse && currentPulse.token === activePulse?.token
+        ? null
+        : currentPulse,
+    );
+  }, [activePulse?.token]);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -228,13 +276,13 @@ export function InstancedAtoms({
           index={activeHighlight.index}
           inspected={inspectedInstance !== null}
           meshRef={meshRef}
+          onComplete={handlePulseComplete}
         />
       ) : null}
       {inspectedInstance ? (
-        <AtomSelectionHalo
-          atom={inspectedInstance.instance.atom}
-          color={inspectedInstance.instance.color}
-          meshDetail={meshDetail}
+        <InstancedAtomSelectionRing
+          key={inspectedInstance.instance.atom.id}
+          position={inspectedInstance.instance.atom.position}
           radius={inspectedInstance.instance.radius}
         />
       ) : null}
@@ -276,11 +324,13 @@ function InstancedAtomHighlightAnimator({
   index,
   inspected,
   meshRef,
+  onComplete,
 }: {
   baseColor: Color;
   index: number;
   inspected: boolean;
   meshRef: { current: InstancedMesh | null };
+  onComplete: () => void;
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const startTimeRef = useRef(performance.now());
@@ -323,6 +373,7 @@ function InstancedAtomHighlightAnimator({
     if (progress >= 1) {
       if (!inspected) {
         setAtomInstanceColor(mesh, index, baseColor);
+        onComplete();
       }
       setIsActive(false);
       return;
@@ -334,36 +385,64 @@ function InstancedAtomHighlightAnimator({
   return null;
 }
 
-function AtomSelectionHalo({
-  atom,
-  color,
-  meshDetail,
+function InstancedAtomSelectionRing({
+  position,
   radius,
 }: {
-  atom: AtomSpec;
-  color: string;
-  meshDetail: SceneMeshDetail;
+  position: VectorTuple;
   radius: number;
 }) {
+  const invalidate = useThree((state) => state.invalidate);
+  const ringGroupRef = useRef<Group | null>(null);
+  const ringMaterialRef = useRef<SpriteMaterial | null>(null);
+  const startTimeRef = useRef(performance.now());
+  const [isActive, setIsActive] = useState(true);
+
+  useEffect(() => {
+    startTimeRef.current = performance.now();
+    setIsActive(true);
+    invalidate();
+  }, [invalidate]);
+
+  useFrame(() => {
+    if (!isActive) {
+      return;
+    }
+
+    const ringGroup = ringGroupRef.current;
+    const ringMaterial = ringMaterialRef.current;
+    if (!ringGroup || !ringMaterial) {
+      return;
+    }
+
+    const progress = Math.min(
+      1,
+      (performance.now() - startTimeRef.current) / ATOM_HIGHLIGHT_SELECT_MS,
+    );
+    const easedProgress = easeOutCubic(progress);
+    const scale =
+      ATOM_SELECTION_RING_PULSE_MIN_SCALE +
+      (ATOM_SELECTION_RING_SELECTED_SCALE - ATOM_SELECTION_RING_PULSE_MIN_SCALE) *
+        easedProgress;
+    ringGroup.scale.setScalar(scale);
+    ringMaterial.opacity = ATOM_SELECTION_RING_SELECTED_OPACITY * easedProgress;
+
+    if (progress >= 1) {
+      setIsActive(false);
+      return;
+    }
+
+    invalidate();
+  });
+
   return (
-    <mesh
-      position={atom.position}
-      renderOrder={2}
-      scale={ATOM_HIGHLIGHT_HALO_SELECTED_SCALE}
-    >
-      <sphereGeometry
-        args={[
-          radius,
-          meshDetail.sphereWidthSegments,
-          meshDetail.sphereHeightSegments,
-        ]}
-      />
-      <meshBasicMaterial
-        color={color}
-        depthWrite={false}
-        opacity={ATOM_HIGHLIGHT_HALO_SELECTED_OPACITY}
-        transparent
-      />
-    </mesh>
+    <AtomSelectionRing
+      materialRef={ringMaterialRef}
+      opacity={0}
+      position={position}
+      radius={radius}
+      ringRef={ringGroupRef}
+      scale={ATOM_SELECTION_RING_PULSE_MIN_SCALE}
+    />
   );
 }

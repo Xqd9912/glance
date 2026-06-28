@@ -40,6 +40,7 @@ import {
   LatticeScene,
   previewSafeAreaForViewport,
 } from "../scene/LatticeScene";
+import { ATOM_HIGHLIGHT_PULSE_MS } from "../scene/atomHighlight";
 import { createCameraPoseSnapshot } from "../scene/cameraPose";
 import {
   applyCrystalCameraRoll,
@@ -226,6 +227,22 @@ export function App() {
   useEffect(() => {
     inspectedAtomIdRef.current = inspectedAtomId;
   }, [inspectedAtomId]);
+
+  useEffect(() => {
+    if (!pulseAtom) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setPulseAtom((currentPulseAtom) =>
+        currentPulseAtom?.token === pulseAtom.token ? null : currentPulseAtom,
+      );
+    }, ATOM_HIGHLIGHT_PULSE_MS);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [pulseAtom]);
 
   const syncCameraOrientationToViewState = useCallback(() => {
     setCameraOrientationVersion((version) => version + 1);
