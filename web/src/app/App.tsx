@@ -286,7 +286,10 @@ export function App() {
   const resetLoadedPreviewState = useCallback(
     (
       nextScene: SceneSpec | null,
-      options: { preserveInspectorOpen?: boolean } = {},
+      options: {
+        preserveActiveCommonPanelTab?: boolean;
+        preserveInspectorOpen?: boolean;
+      } = {},
     ) => {
       setErrorMessage(null);
       setExportError(null);
@@ -302,7 +305,9 @@ export function App() {
       setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
       setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
       setExportSettings(createDefaultExportSettings());
-      setActiveCommonPanelTab("display");
+      if (!options.preserveActiveCommonPanelTab) {
+        setActiveCommonPanelTab("display");
+      }
       setLockedInteractionFeedbackCount(0);
       setIsStructureSummaryCollapsed(true);
 
@@ -876,7 +881,10 @@ export function App() {
     if (bondAlgorithm === DEFAULT_BOND_ALGORITHM || !currentFile) {
       setBondAlgorithm(DEFAULT_BOND_ALGORITHM);
       setPreviewStatus("ready");
-      resetLoadedPreviewState(scene, { preserveInspectorOpen: true });
+      resetLoadedPreviewState(scene, {
+        preserveActiveCommonPanelTab: true,
+        preserveInspectorOpen: true,
+      });
       return;
     }
 
@@ -887,7 +895,10 @@ export function App() {
       const nextScene = await uploadStructurePreview(currentFile);
       setBondAlgorithm(DEFAULT_BOND_ALGORITHM);
       setScene(nextScene);
-      resetLoadedPreviewState(nextScene, { preserveInspectorOpen: true });
+      resetLoadedPreviewState(nextScene, {
+        preserveActiveCommonPanelTab: true,
+        preserveInspectorOpen: true,
+      });
       setPreviewStatus("ready");
     } catch (error) {
       setPreviewStatus(scene ? "ready" : "error");

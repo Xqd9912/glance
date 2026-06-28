@@ -463,8 +463,9 @@ describe("App", () => {
     const resetControls = screen.getByRole("complementary", { name: "Common controls" });
     expect(resetControls).toBe(commonControls);
     expect(
-      within(resetControls).getByRole("tab", { name: "Display" }).getAttribute("aria-selected"),
+      within(resetControls).getByRole("tab", { name: "Style" }).getAttribute("aria-selected"),
     ).toBe("true");
+    await user.click(within(resetControls).getByRole("tab", { name: "Display" }));
     expect(
       within(resetControls)
         .getByRole("checkbox", { name: "Atoms" })
@@ -1754,6 +1755,7 @@ describe("App", () => {
 
     const commonControls = screen.getByRole("complementary", { name: "Common controls" });
     await user.click(within(commonControls).getByRole("checkbox", { name: "Atoms" }));
+    await user.click(within(commonControls).getByRole("tab", { name: "Style" }));
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
 
     await openPreviewContextMenu();
@@ -1769,6 +1771,15 @@ describe("App", () => {
     expect(screen.getByRole("combobox", { name: "Bonding algorithm" }).textContent).toContain(
       "VESTA",
     );
+    const resetCommonControls = screen.getByRole("complementary", {
+      name: "Common controls",
+    });
+    expect(
+      within(resetCommonControls)
+        .getByRole("tab", { name: "Style" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
+    await user.click(within(resetCommonControls).getByRole("tab", { name: "Display" }));
     expect(
       screen.getByRole("checkbox", { name: "Atoms" }).getAttribute("aria-checked"),
     ).toBe("true");
