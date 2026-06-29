@@ -72,7 +72,7 @@ describe("settings", () => {
       distinguishSimilarColors: true,
       fogAffectsUnitCell: false,
       fogAmount: 50,
-      fogEnabled: true,
+      fogEnabled: false,
       fogStart: 50,
       materialPreset: "classic-matte",
     });

@@ -202,6 +202,7 @@ export function StyleTabContent({
       ...currentStyle,
       fogAffectsUnitCell: createDefaultStyle().fogAffectsUnitCell,
       fogAmount: createDefaultStyle().fogAmount,
+      fogEnabled: createDefaultStyle().fogEnabled,
       fogStart: createDefaultStyle().fogStart,
     }));
 

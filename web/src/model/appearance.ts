@@ -37,7 +37,7 @@ export const DEFAULT_STYLE: StyleState = {
   distinguishSimilarColors: true,
   fogAffectsUnitCell: false,
   fogAmount: 50,
-  fogEnabled: true,
+  fogEnabled: false,
   fogStart: 50,
   materialPreset: DEFAULT_MATERIAL_PRESET_ID,
 };
