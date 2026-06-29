@@ -108,14 +108,16 @@ describe("crystal camera math", () => {
   });
 
   test("default standard view matches the Naumann cubic orientation", () => {
+    const state = createDefaultCrystalCameraState();
     const vectors = computeCrystalCameraVectors(
       CUBIC_CELL,
-      createDefaultCrystalCameraState(),
+      state,
     );
 
     expectVectorClose(vectors.outward, standardCubicOutward());
     expectVectorClose(vectors.up, standardCubicUp());
     expect(Math.abs(vectors.up.dot(vectors.outward))).toBeLessThan(0.000001);
+    expect(state.rollDegrees).toBeCloseTo(-15.896287849382702);
   });
 
   test("default standard view keeps the same orientation for rectangular orthogonal cells", () => {

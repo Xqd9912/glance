@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent, { type UserEvent } from "@testing-library/user-event";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ReactNode } from "react";
@@ -1330,7 +1330,7 @@ describe("App", () => {
     await user.clear(heightInput);
     await user.type(heightInput, "1000{Enter}");
 
-    expect(widthInput.value).toBe("1286");
+    expect(widthInput.value).toBe("1084");
     expect(heightInput.value).toBe("1000");
 
     await user.click(oneXSupersampling);
@@ -1541,7 +1541,7 @@ describe("App", () => {
       within(commonControls).getByRole("button", { name: "X Right" }).getAttribute("aria-pressed"),
     ).toBe("false");
     expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuenow"))
-      .toBe("0");
+      .toBe("344");
     expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuemin"))
       .toBe("0");
     expect(within(commonControls).getByRole("slider", { name: "Roll" }).getAttribute("aria-valuemax"))
@@ -1549,8 +1549,8 @@ describe("App", () => {
     const initialRollInput = within(commonControls).getByRole("textbox", {
       name: "Roll value",
     }) as HTMLInputElement;
-    expect(initialRollInput).toHaveProperty("value", "0");
-    expect(initialRollInput.style.width).toBe("1ch");
+    expect(initialRollInput).toHaveProperty("value", "344");
+    expect(initialRollInput.style.width).toBe("3ch");
     expect(initialRollInput.nextElementSibling?.textContent).toBe("°");
     const rollSlider = within(commonControls).getByRole("slider", { name: "Roll" });
     expect(rollSlider.className).not.toContain("focus-visible:ring-[3px]");
@@ -1586,7 +1586,7 @@ describe("App", () => {
     ).toHaveProperty("value", "0.17");
     expect(
       within(commonControls).getByRole("textbox", { name: "y b*" }),
-    ).toHaveProperty("value", "0.00");
+    ).toHaveProperty("value", "-0.05");
     expect(
       within(commonControls).getByRole("textbox", { name: "y c*" }),
     ).toHaveProperty("value", "1.00");
@@ -1625,7 +1625,7 @@ describe("App", () => {
 
     await user.tab();
 
-    expect(rollInput.value).toBe("0");
+    expect(rollInput.value).toBe("344");
 
     await user.click(rollInput);
     await user.type(rollInput, "-90{Enter}");
@@ -1768,9 +1768,13 @@ describe("App", () => {
       "x b*",
       "x c*",
     ]);
+    await act(async () => {
+      await new Promise((resolve) => window.setTimeout(resolve, 240));
+    });
+
     expect(
       within(commonControls).getByRole("textbox", { name: "Roll value" }),
-    ).toHaveProperty("value", "0");
+    ).toHaveProperty("value", "27");
   });
 
   test("routes gizmo clicks through the selected camera primary direction", async () => {
@@ -1991,6 +1995,13 @@ describe("App", () => {
     ).toBe("true");
 
     const zoomInput = screen.getByRole("textbox", { name: "Zoom percentage input" });
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    await user.click(within(commonControls).getByRole("tab", { name: "Pose" }));
+    const rollInput = within(commonControls).getByRole("textbox", {
+      name: "Roll value",
+    }) as HTMLInputElement;
+    const standardViewRoll = rollInput.value;
+
     await user.clear(zoomInput);
     await user.type(zoomInput, "250{Enter}");
 
@@ -1999,6 +2010,7 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Reset view" }));
 
     expect((zoomInput as HTMLInputElement).value).toBe("100");
+    expect(rollInput.value).toBe(standardViewRoll);
   });
 
   test("shows API parse errors without leaving a stale scene behind", async () => {

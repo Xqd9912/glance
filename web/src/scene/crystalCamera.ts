@@ -9,7 +9,6 @@ import type {
 import {
   computeStandardViewVectors,
   withDefaultCellVectors,
-  type StandardCameraPose,
   type VectorTuple,
 } from "./viewMath";
 
@@ -70,20 +69,15 @@ const FALLBACK_DIRECT_AXES: Record<CrystalAxisLabel, VectorTuple> = {
 export function createDefaultCrystalCameraState(
   vectors: VectorTuple[] = [],
 ): CrystalCameraState {
-  const basis = computeCrystalBasisVectors(vectors);
   const standardView = computeStandardViewVectors(vectors);
 
-  return {
-    direct: normalizeCoefficients(
-      vectorToDirectCoefficients(standardView.outward, basis),
-    ),
-    primary: "outward",
-    reciprocal: normalizeCoefficients(
-      vectorToReciprocalCoefficients(standardView.vertical, basis),
-    ),
-    secondary: "upward",
-    rollDegrees: 0,
-  };
+  return stateFromViewVectors(
+    vectors,
+    "outward",
+    "upward",
+    standardView.up,
+    standardView.outward,
+  );
 }
 
 export function defaultSecondaryDirectionForPrimary(
@@ -165,25 +159,6 @@ export function computeCrystalCameraPose(
     quaternion,
     target: vectorTuple(CAMERA_TARGET),
     up: vectorTuple(cameraVectors.up),
-  };
-}
-
-export function computeDefaultCrystalCameraPose(
-  vectors: VectorTuple[],
-  span: number,
-): StandardCameraPose {
-  const pose = computeCrystalCameraPose(
-    vectors,
-    createDefaultCrystalCameraState(vectors),
-    span,
-  );
-
-  return {
-    cameraPosition: pose.cameraPosition,
-    cameraUp: pose.cameraUp,
-    distance: pose.distance,
-    outward: pose.outward,
-    target: pose.target,
   };
 }
 

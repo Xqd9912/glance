@@ -45,6 +45,8 @@ import { ATOM_HIGHLIGHT_PULSE_MS } from "../scene/atomHighlight";
 import { createCameraPoseSnapshot } from "../scene/cameraPose";
 import {
   applyCrystalCameraRoll,
+  computeCrystalCameraPose,
+  createDefaultCrystalCameraState,
   secondaryDirectionForPrimaryChange,
   stateFromViewVectors,
   stateWithDirectAxis,
@@ -326,12 +328,16 @@ export function App() {
       setLockedInteractionFeedbackCount(0);
       setIsStructureSummaryCollapsed(true);
 
-      cameraOrientationRef.current.identity();
+      const nextCellVectors = nextScene?.cell.vectors;
+      const nextCameraState = createDefaultCrystalCameraState(nextCellVectors);
+      cameraOrientationRef.current.copy(
+        computeCrystalCameraPose(nextCellVectors ?? [], nextCameraState, 1).quaternion,
+      );
       clearCameraDerivedUiFreezeState();
       cameraInteractionStore.requestViewScale(DEFAULT_VIEW_SCALE);
       setCameraCommandVersion((version) => version + 1);
       setCameraOrientationVersion((version) => version + 1);
-      setViewState(createPreviewViewState(nextScene?.cell.vectors));
+      setViewState(createPreviewViewState(nextCellVectors));
     },
     [cameraInteractionStore, clearCameraDerivedUiFreezeState],
   );
@@ -384,12 +390,20 @@ export function App() {
   }, []);
 
   const handleResetView = useCallback(() => {
+    const cellVectors = scene?.cell.vectors;
+    const resetCameraState = createDefaultCrystalCameraState(cellVectors);
+
     clearCameraDerivedUiFreezeState();
     cameraInteractionStore.requestViewScale(DEFAULT_VIEW_SCALE);
+    cameraInteractionStore.requestCameraState(resetCameraState);
+    cameraOrientationRef.current.copy(
+      computeCrystalCameraPose(cellVectors ?? [], resetCameraState, 1).quaternion,
+    );
     setViewState((currentViewState) =>
-      resetPreviewViewState(currentViewState, scene?.cell.vectors),
+      resetPreviewViewState(currentViewState, cellVectors),
     );
     setCameraCommandVersion((version) => version + 1);
+    setCameraOrientationVersion((version) => version + 1);
   }, [cameraInteractionStore, clearCameraDerivedUiFreezeState, scene?.cell.vectors]);
 
   const handleCameraOrientationChange = useCallback(() => {

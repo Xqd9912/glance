@@ -74,6 +74,7 @@ const EMPTY_SAFE_AREA: PreviewSafeArea = {
   right: 0,
   top: 0,
 };
+const CAMERA_ORIENTATION_CHANGE_EPSILON = 0.002;
 const FPS_IDLE_TIMEOUT_MS = 550;
 const FPS_REPORT_INTERVAL_MS = 250;
 const FPS_SMOOTHING_WEIGHT = 0.18;
@@ -263,10 +264,12 @@ function CameraOrientationTracker({
   const lastNotificationTimeRef = useRef(0);
 
   useEffect(() => {
+    const orientationDelta =
+      cameraOrientationRef?.current.angleTo(camera.quaternion) ?? Infinity;
     cameraOrientationRef?.current.copy(camera.quaternion);
     lastNotifiedOrientationRef.current.copy(camera.quaternion);
     lastNotificationTimeRef.current = performance.now();
-    if (!suspendUpdates) {
+    if (!suspendUpdates && orientationDelta >= CAMERA_ORIENTATION_CHANGE_EPSILON) {
       onCameraOrientationChange?.();
     }
   }, [camera, cameraOrientationRef, onCameraOrientationChange, suspendUpdates]);
@@ -281,7 +284,10 @@ function CameraOrientationTracker({
 
     const now = performance.now();
     const orientationDelta = lastNotifiedOrientationRef.current.angleTo(camera.quaternion);
-    if (orientationDelta < 0.002 || now - lastNotificationTimeRef.current < 120) {
+    if (
+      orientationDelta < CAMERA_ORIENTATION_CHANGE_EPSILON ||
+      now - lastNotificationTimeRef.current < 120
+    ) {
       return;
     }
 
