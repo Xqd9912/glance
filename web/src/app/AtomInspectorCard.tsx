@@ -13,7 +13,7 @@ import {
   type InspectedAtomInfo,
 } from "./atomInspector";
 import { atomColorForScheme, type ElementColorOverrides } from "./colorSchemes";
-import type { StyleState } from "./settings";
+import type { StyleState } from "../model";
 import { GLASS_SURFACE_CLASS, TOOL_ICON_BUTTON_CLASS } from "./surface";
 
 export function AtomInspectorCard({

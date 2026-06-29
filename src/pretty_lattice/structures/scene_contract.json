@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "limits": {
+    "structureAtomCountThreshold": 1000
+  },
+  "bondAlgorithms": [
+    {
+      "value": "crystal-nn",
+      "pythonLabel": "CrystalNN",
+      "uiLabel": "CrystalNN"
+    },
+    {
+      "value": "minimum-distance",
+      "pythonLabel": "MinimumDistanceNN",
+      "uiLabel": "Minimum distance"
+    },
+    {
+      "value": "cut-off-dict",
+      "pythonLabel": "CutOffDictNN",
+      "uiLabel": "CutOffDictNN"
+    }
+  ],
+  "bondAlgorithmAliases": {
+    "vesta": "cut-off-dict"
+  },
+  "defaultBondAlgorithm": "crystal-nn",
+  "largeStructureBondAlgorithm": "cut-off-dict",
+  "imageReasons": ["boundary", "bonded"],
+  "visibilityDependencies": ["boundaryAtoms", "oneHopBondedAtoms"]
+}

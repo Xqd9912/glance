@@ -1,11 +1,8 @@
 import { AlertTriangleIcon, FolderOpen, ImageDown, RefreshCw, RotateCcw } from "lucide-react";
-import { Quaternion } from "three";
 import {
-  type ChangeEvent,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -23,41 +20,13 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { AtomInspectorCard } from "./AtomInspectorCard";
-import {
-  DEFAULT_BOND_ALGORITHM,
-  BACKEND_UNAVAILABLE_TITLE,
-  BACKEND_UNAVAILABLE_MESSAGE,
-  STATIC_SCENE_PREVIEW_NAME,
-  defaultBondAlgorithmForScene,
-  hasStaticScenePreview,
-  isBackendUnavailablePreviewError,
-  loadStaticScenePreview,
-  uploadStructurePreview,
-  type BondAlgorithm,
-  type SceneSpec,
-} from "../api/scene";
+import type { SceneSpec } from "../api/scene";
 import { inspectedAtomInfoForId } from "./atomInspector";
 import {
   LatticeScene,
   previewSafeAreaForViewport,
 } from "../scene/LatticeScene";
 import { ATOM_HIGHLIGHT_PULSE_MS } from "../scene/atomHighlight";
-import { createCameraPoseSnapshot } from "../scene/cameraPose";
-import {
-  applyCrystalCameraRoll,
-  computeCrystalCameraPose,
-  createDefaultCrystalCameraState,
-  secondaryDirectionForPrimaryChange,
-  stateFromViewVectors,
-  stateWithDirectAxis,
-  stateWithPrimaryDirection,
-  vectorsFromCameraQuaternion,
-  type CrystalAxisLabel,
-  type CrystalCameraPrimaryDirection,
-  type CrystalCameraScreenDirection,
-  type CrystalCameraState,
-} from "../scene/crystalCamera";
-import { computeStructureExportProjectedSize } from "../scene/exportFrame";
 import { OrientationGizmo } from "../scene/OrientationGizmo";
 import {
   CommonControlsPanel,
@@ -68,10 +37,10 @@ import { createCameraInteractionStore } from "./cameraInteractionStore";
 import { createPreviewFpsStore } from "../model/previewFpsStore";
 import { autoDistinctElementColorOverrides } from "./colorSchemes";
 import { deriveElementLegendEntries } from "./elementLegend";
-import {
-  downloadFigureExportFiles,
-  createFigureExportFiles,
-} from "./exportFigure";
+import { useFigureExportController } from "./hooks/useFigureExportController";
+import { useLockedInteractionFeedback } from "./hooks/useLockedInteractionFeedback";
+import { usePreviewCameraCommands } from "./hooks/usePreviewCameraCommands";
+import { useStructurePreview } from "./hooks/useStructurePreview";
 import { ElementLegend } from "./legend/ElementLegend";
 import {
   orientationGizmoContainerStyle,
@@ -79,7 +48,6 @@ import {
   useViewportSize,
 } from "./layout/overlayLayout";
 import { StructureSummaryCard } from "./panels/StructureSummaryCard";
-import type { PreviewStatus } from "./previewState";
 import {
   InspectorSidebar,
   InspectorToggle,
@@ -87,7 +55,6 @@ import {
 import {
   createDefaultComponentOpacity,
   createDefaultComponentVisibility,
-  createDefaultExportSettings,
   createDefaultStyle,
   DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
   DEFAULT_UNIT_CELL_LINE_STYLE,
@@ -96,96 +63,31 @@ import {
   defaultPreviewMeshQualityForScene,
   type AtomRenderingMode,
   type BondRenderingMode,
-  type ExportProjectedSize,
-  type ExportSettingsState,
   type MeshQuality,
   type UnitCellLineStyle,
   hasPolyhedra,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
-  syncExportSettingsProjectedSize,
   visibleSceneForComponents,
-} from "./settings";
-import {
-  DEFAULT_VIEW_SCALE,
-  createPreviewViewState,
-  resetPreviewViewState,
-  setPreviewCameraState,
-  setPreviewDragSensitivity,
-  setPreviewInteractionLocked,
-  setPreviewInteractionMode,
-  setPreviewLightStrength,
-  setPreviewShowFpsOverlay,
-  type InteractionMode,
-} from "./viewState";
+} from "../model";
 
-const LOCKED_INTERACTION_DRAG_THRESHOLD_PX = 4;
-const LOCKED_INTERACTION_WHEEL_IDLE_MS = 150;
-const MAX_STRUCTURE_UPLOAD_BYTES = 1 * 1024 * 1024;
-const STRUCTURE_FILE_TOO_LARGE_MESSAGE = "File is too large to preview.";
-const STRUCTURE_PARSE_ERROR_MESSAGE = "pymatgen could not parse this file.";
-const REDISPATCHED_CONTEXT_MENU_EVENT = "__prettyLatticeRedispatchedContextMenu";
-
-interface LockedInteractionPointer {
-  pointerId: number;
-  startX: number;
-  startY: number;
-  triggered: boolean;
+interface ResetLoadedPreviewOptions {
+  preserveActiveCommonPanelTab?: boolean;
+  preserveInspectorOpen?: boolean;
 }
 
-type RedispatchedContextMenuEvent = MouseEvent & {
-  [REDISPATCHED_CONTEXT_MENU_EVENT]?: boolean;
-};
-
-function isRedispatchedContextMenuEvent(event: MouseEvent): boolean {
-  return Boolean((event as RedispatchedContextMenuEvent)[REDISPATCHED_CONTEXT_MENU_EVENT]);
-}
-
-function isCanvasContextMenuTarget(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest("canvas") !== null;
-}
-
-function redispatchContextMenuEvent(
-  event: ReactMouseEvent<HTMLElement>,
-  nativeEvent: MouseEvent,
-) {
-  const redispatchedEvent = new MouseEvent("contextmenu", {
-    bubbles: true,
-    button: nativeEvent.button,
-    buttons: nativeEvent.buttons,
-    cancelable: true,
-    clientX: nativeEvent.clientX,
-    clientY: nativeEvent.clientY,
-    ctrlKey: nativeEvent.ctrlKey,
-    metaKey: nativeEvent.metaKey,
-    shiftKey: nativeEvent.shiftKey,
-  }) as RedispatchedContextMenuEvent;
-  redispatchedEvent[REDISPATCHED_CONTEXT_MENU_EVENT] = true;
-  event.currentTarget.dispatchEvent(redispatchedEvent);
-}
+type ResetLoadedPreviewState = (
+  nextScene: SceneSpec | null,
+  options?: ResetLoadedPreviewOptions,
+) => void;
 
 export function App() {
-  const isStaticScenePreview = hasStaticScenePreview();
-  const [scene, setScene] = useState<SceneSpec | null>(null);
-  const [previewStatus, setPreviewStatus] = useState<PreviewStatus>(() =>
-    isStaticScenePreview ? "loading" : "idle",
-  );
-  const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [currentFile, setCurrentFile] = useState<File | null>(null);
-  const [bondAlgorithm, setBondAlgorithm] =
-    useState<BondAlgorithm>(DEFAULT_BOND_ALGORITHM);
   const [componentVisibility, setComponentVisibility] = useState(
     createDefaultComponentVisibility,
   );
   const [componentOpacity, setComponentOpacity] = useState(createDefaultComponentOpacity);
   const [style, setStyle] = useState(createDefaultStyle);
-  const [exportSettings, setExportSettings] = useState(createDefaultExportSettings);
-  const [isExporting, setIsExporting] = useState(false);
-  const [exportError, setExportError] = useState<string | null>(null);
-  const [exportProjectedSize, setExportProjectedSize] =
-    useState<ExportProjectedSize | null>(null);
   const [atomRenderingMode, setAtomRenderingMode] = useState<AtomRenderingMode>(
     () => defaultAtomRenderingModeForScene(null),
   );
@@ -201,37 +103,54 @@ export function App() {
   const [showCrystalAxisLabels, setShowCrystalAxisLabels] = useState(
     DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
   );
-  const [cameraCommandVersion, setCameraCommandVersion] = useState(0);
-  const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
-  const [cameraOrientationVersion, setCameraOrientationVersion] = useState(0);
-  const [isCameraCommandAnimationActive, setIsCameraCommandAnimationActive] = useState(false);
-  const [isCameraControlsInteractionActive, setIsCameraControlsInteractionActive] =
-    useState(false);
-  const [isCameraRollInteractionActive, setIsCameraRollInteractionActive] = useState(false);
   const [inspectedAtomId, setInspectedAtomId] = useState<string | null>(null);
   const [pulseAtom, setPulseAtom] = useState<{ atomId: string; token: number } | null>(null);
-  const [cameraControlsFrozenState, setCameraControlsFrozenState] =
-    useState<CrystalCameraState | null>(null);
   const [activeCommonPanelTab, setActiveCommonPanelTab] =
     useState<CommonPanelTab>("display");
-  const [viewState, setViewState] = useState(createPreviewViewState);
   const [cameraInteractionStore] = useState(createCameraInteractionStore);
   const [previewFpsStore] = useState(createPreviewFpsStore);
-  const [lockedInteractionFeedbackCount, setLockedInteractionFeedbackCount] = useState(0);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
   const viewportSize = useViewportSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cameraOrientationRef = useRef(new Quaternion());
-  const orientationGizmoFrameRequestRef = useRef<(() => void) | null>(null);
-  const cameraControlFreezeCandidateRef = useRef<CrystalCameraState | null>(null);
-  const cameraControlFreezeRequestRef = useRef(0);
-  const cameraRollInteractionBaseStateRef = useRef<CrystalCameraState | null>(null);
   const inspectedAtomIdRef = useRef<string | null>(null);
-  const isCameraCommandAnimationActiveRef = useRef(false);
-  const isCameraControlsInteractionActiveRef = useRef(false);
-  const isCameraRollInteractionActiveRef = useRef(false);
-  const lockedInteractionPointerRef = useRef<LockedInteractionPointer | null>(null);
-  const lockedInteractionWheelIdleTimeoutRef = useRef<number | null>(null);
+  const resetLoadedPreviewStateRef = useRef<ResetLoadedPreviewState>(() => {});
+  const resetLoadedPreviewStateForPreview = useCallback<ResetLoadedPreviewState>(
+    (nextScene, options) => {
+      resetLoadedPreviewStateRef.current(nextScene, options);
+    },
+    [],
+  );
+  const handlePreviewCleared = useCallback(() => {
+    setInspectedAtomId(null);
+    setPulseAtom(null);
+    setIsInspectorOpen(false);
+    setIsStructureSummaryCollapsed(true);
+  }, []);
+  const handleBondAlgorithmSceneLoaded = useCallback((nextScene: SceneSpec) => {
+    setInspectedAtomId(null);
+    setPulseAtom(null);
+    setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
+    setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
+    setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
+    setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
+    setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
+  }, []);
+  const {
+    bondAlgorithm,
+    errorMessage,
+    errorTitle,
+    handleBondAlgorithmChange,
+    handleFileChange,
+    handleResetAllSettings,
+    previewStatus,
+    scene,
+    selectedFileName,
+    setErrorMessage,
+  } = useStructurePreview({
+    onBondAlgorithmSceneLoaded: handleBondAlgorithmSceneLoaded,
+    onPreviewCleared: handlePreviewCleared,
+    resetLoadedPreviewState: resetLoadedPreviewStateForPreview,
+  });
   const visibleScene = useMemo(
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
@@ -240,9 +159,79 @@ export function App() {
     () => inspectedAtomInfoForId(visibleScene, inspectedAtomId),
     [inspectedAtomId, visibleScene],
   );
-  const cameraControlsPanelState = useMemo<CrystalCameraState>(() => {
-    return cameraControlsFrozenState ?? viewState.camera;
-  }, [cameraControlsFrozenState, viewState.camera]);
+  const hasVisibleScene = visibleScene !== null;
+  const {
+    cameraAnimatedCommandVersion,
+    cameraCommandVersion,
+    cameraControlsPanelState,
+    cameraOrientationRef,
+    cameraOrientationVersion,
+    handleCameraCommandAnimationActiveChange,
+    handleCameraControlsInteractionActiveChange,
+    handleCameraOrientationChange,
+    handleCameraPrimaryChange,
+    handleCameraRollChange,
+    handleCameraRollPreviewChange,
+    handleCameraRollPreviewStart,
+    handleCameraSecondaryChange,
+    handleCameraStateChange,
+    handleDragSensitivityChange,
+    handleGizmoAxisClick,
+    handleInteractionLockedChange,
+    handleInteractionModeChange,
+    handleLightStrengthChange,
+    handleResetView,
+    handleShowFpsOverlayChange,
+    isCameraCommandAnimationActive,
+    isCameraControlsInteractionActive,
+    isCameraRollInteractionActive,
+    orientationGizmoFrameRequestRef,
+    requestOrientationGizmoFrame,
+    resetCameraForScene,
+    viewState,
+  } = usePreviewCameraCommands({
+    cameraInteractionStore,
+    previewFpsStore,
+    scene,
+    visibleScene,
+  });
+  const {
+    exportError,
+    exportProjectedSize,
+    exportSettings,
+    handleExportFigure,
+    handleExportSettingsChange,
+    isExporting,
+    resetExportState,
+    setExportError,
+    syncProjectedSizeForExportTab,
+  } = useFigureExportController({
+    atomRenderingMode,
+    bondRenderingMode,
+    cameraOrientationRef,
+    componentOpacity,
+    componentVisibility,
+    lightStrength: viewState.lightStrength,
+    scene,
+    selectedFileName,
+    showCrystalAxisLabels,
+    style,
+    unitCellLineStyle,
+    visibleScene,
+  });
+  const {
+    handleSceneContextMenuCapture,
+    handleScenePointerDownCapture,
+    handleScenePointerEndCapture,
+    handleScenePointerMoveCapture,
+    handleSceneWheelCapture,
+    lockedInteractionFeedbackCount,
+    resetLockedInteractionFeedback,
+    triggerLockedInteractionFeedback,
+  } = useLockedInteractionFeedback({
+    hasVisibleScene,
+    interactionLocked: viewState.interactionLocked,
+  });
 
   useEffect(() => {
     inspectedAtomIdRef.current = inspectedAtomId;
@@ -264,50 +253,13 @@ export function App() {
     };
   }, [pulseAtom]);
 
-  const syncCameraOrientationToViewState = useCallback(() => {
-    setCameraOrientationVersion((version) => version + 1);
-    setViewState((currentViewState) => {
-      if (!visibleScene) {
-        return currentViewState;
-      }
-
-      const poseVectors = vectorsFromCameraQuaternion(cameraOrientationRef.current);
-      return setPreviewCameraState(
-        currentViewState,
-        stateFromViewVectors(
-          visibleScene.cell.vectors,
-          currentViewState.camera.primary,
-          currentViewState.camera.secondary,
-          poseVectors.up,
-          poseVectors.outward,
-        ),
-      );
-    });
-  }, [visibleScene]);
-
-  const clearCameraDerivedUiFreezeState = useCallback(() => {
-    cameraControlFreezeRequestRef.current += 1;
-    cameraControlFreezeCandidateRef.current = null;
-    cameraRollInteractionBaseStateRef.current = null;
-    isCameraCommandAnimationActiveRef.current = false;
-    isCameraControlsInteractionActiveRef.current = false;
-    isCameraRollInteractionActiveRef.current = false;
-    setIsCameraCommandAnimationActive(false);
-    setIsCameraControlsInteractionActive(false);
-    setIsCameraRollInteractionActive(false);
-    setCameraControlsFrozenState(null);
-  }, []);
-
   const resetLoadedPreviewState = useCallback(
     (
       nextScene: SceneSpec | null,
-      options: {
-        preserveActiveCommonPanelTab?: boolean;
-        preserveInspectorOpen?: boolean;
-      } = {},
+      options: ResetLoadedPreviewOptions = {},
     ) => {
       setErrorMessage(null);
-      setExportError(null);
+      resetExportState();
       setInspectedAtomId(null);
       setPulseAtom(null);
       if (!options.preserveInspectorOpen) {
@@ -321,119 +273,23 @@ export function App() {
       setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
       setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
       setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
-      setExportSettings(createDefaultExportSettings());
       if (!options.preserveActiveCommonPanelTab) {
         setActiveCommonPanelTab("display");
       }
-      setLockedInteractionFeedbackCount(0);
+      resetLockedInteractionFeedback();
       setIsStructureSummaryCollapsed(true);
-
-      const nextCellVectors = nextScene?.cell.vectors;
-      const nextCameraState = createDefaultCrystalCameraState(nextCellVectors);
-      cameraOrientationRef.current.copy(
-        computeCrystalCameraPose(nextCellVectors ?? [], nextCameraState, 1).quaternion,
-      );
-      clearCameraDerivedUiFreezeState();
-      cameraInteractionStore.requestViewScale(DEFAULT_VIEW_SCALE);
-      setCameraCommandVersion((version) => version + 1);
-      setCameraOrientationVersion((version) => version + 1);
-      setViewState(createPreviewViewState(nextCellVectors));
+      resetCameraForScene(nextScene);
     },
-    [cameraInteractionStore, clearCameraDerivedUiFreezeState],
+    [
+      resetCameraForScene,
+      resetExportState,
+      resetLockedInteractionFeedback,
+    ],
   );
 
-  const startAnimatedCameraCommand = useCallback((cameraState: CrystalCameraState) => {
-    const frozenCameraState = cameraControlsPanelState;
-    const freezeRequest = cameraControlFreezeRequestRef.current + 1;
-    cameraControlFreezeRequestRef.current = freezeRequest;
-    cameraControlFreezeCandidateRef.current = frozenCameraState;
-    setCameraControlsFrozenState(frozenCameraState);
-    queueMicrotask(() => {
-      if (
-        cameraControlFreezeRequestRef.current !== freezeRequest ||
-        isCameraCommandAnimationActiveRef.current ||
-        isCameraControlsInteractionActiveRef.current
-      ) {
-        return;
-      }
-
-      cameraControlFreezeCandidateRef.current = null;
-      setCameraControlsFrozenState(null);
-    });
-    setViewState((currentViewState) => setPreviewCameraState(currentViewState, cameraState));
-    setCameraCommandVersion((version) => version + 1);
-    setCameraAnimatedCommandVersion((version) => version + 1);
-  }, [cameraControlsPanelState]);
-
-  const handleInteractionModeChange = useCallback((interactionMode: InteractionMode) => {
-    setViewState((currentViewState) =>
-      setPreviewInteractionMode(currentViewState, interactionMode),
-    );
-  }, []);
-
-  const handleDragSensitivityChange = useCallback((dragSensitivity: number) => {
-    setViewState((currentViewState) =>
-      setPreviewDragSensitivity(currentViewState, dragSensitivity),
-    );
-  }, []);
-
-  const handleLightStrengthChange = useCallback((lightStrength: number) => {
-    setViewState((currentViewState) =>
-      setPreviewLightStrength(currentViewState, lightStrength),
-    );
-  }, []);
-
-  const handleInteractionLockedChange = useCallback((interactionLocked: boolean) => {
-    setViewState((currentViewState) =>
-      setPreviewInteractionLocked(currentViewState, interactionLocked),
-    );
-  }, []);
-
-  const handleResetView = useCallback(() => {
-    const cellVectors = scene?.cell.vectors;
-    const resetCameraState = createDefaultCrystalCameraState(cellVectors);
-
-    clearCameraDerivedUiFreezeState();
-    cameraInteractionStore.requestViewScale(DEFAULT_VIEW_SCALE);
-    cameraInteractionStore.requestCameraState(resetCameraState);
-    cameraOrientationRef.current.copy(
-      computeCrystalCameraPose(cellVectors ?? [], resetCameraState, 1).quaternion,
-    );
-    setViewState((currentViewState) =>
-      resetPreviewViewState(currentViewState, cellVectors),
-    );
-    setCameraCommandVersion((version) => version + 1);
-    setCameraOrientationVersion((version) => version + 1);
-  }, [cameraInteractionStore, clearCameraDerivedUiFreezeState, scene?.cell.vectors]);
-
-  const handleCameraOrientationChange = useCallback(() => {
-    if (
-      isCameraCommandAnimationActiveRef.current ||
-      isCameraControlsInteractionActiveRef.current ||
-      isCameraRollInteractionActiveRef.current
-    ) {
-      return;
-    }
-
-    syncCameraOrientationToViewState();
-  }, [syncCameraOrientationToViewState]);
-
-  const requestOrientationGizmoFrame = useCallback(() => {
-    orientationGizmoFrameRequestRef.current?.();
-  }, []);
-
-  const handleCameraStateChange = useCallback((cameraState: CrystalCameraState) => {
-    startAnimatedCameraCommand(cameraState);
-  }, [startAnimatedCameraCommand]);
-
-  const handleShowFpsOverlayChange = useCallback((nextShowFpsOverlay: boolean) => {
-    setViewState((currentViewState) =>
-      setPreviewShowFpsOverlay(currentViewState, nextShowFpsOverlay),
-    );
-    if (!nextShowFpsOverlay) {
-      previewFpsStore.setFpsSnapshot(0);
-    }
-  }, [previewFpsStore]);
+  useLayoutEffect(() => {
+    resetLoadedPreviewStateRef.current = resetLoadedPreviewState;
+  }, [resetLoadedPreviewState]);
 
   const handleAtomRenderingModeChange = useCallback((nextMode: AtomRenderingMode) => {
     setPulseAtom(null);
@@ -479,350 +335,6 @@ export function App() {
     setInspectedAtomId(atomId);
   }, []);
 
-  const handleCameraPrimaryChange = useCallback(
-    (primary: CrystalCameraPrimaryDirection) => {
-      if (!visibleScene) {
-        return;
-      }
-
-      clearCameraDerivedUiFreezeState();
-      setViewState((currentViewState) => {
-        const secondary = secondaryDirectionForPrimaryChange(
-          currentViewState.camera.primary,
-          currentViewState.camera.secondary,
-          primary,
-        );
-
-        return setPreviewCameraState(
-          currentViewState,
-          stateWithPrimaryDirection(
-            visibleScene.cell.vectors,
-            cameraOrientationRef.current,
-            primary,
-            secondary,
-          ),
-        );
-      });
-    },
-    [clearCameraDerivedUiFreezeState, visibleScene],
-  );
-
-  const handleCameraSecondaryChange = useCallback(
-    (secondary: CrystalCameraScreenDirection) => {
-      if (!visibleScene) {
-        return;
-      }
-
-      clearCameraDerivedUiFreezeState();
-      setViewState((currentViewState) => {
-        if (secondary === currentViewState.camera.primary) {
-          return currentViewState;
-        }
-
-        return setPreviewCameraState(
-          currentViewState,
-          stateWithPrimaryDirection(
-            visibleScene.cell.vectors,
-            cameraOrientationRef.current,
-            currentViewState.camera.primary,
-            secondary,
-          ),
-        );
-      });
-    },
-    [clearCameraDerivedUiFreezeState, visibleScene],
-  );
-
-  const handleCameraRollPreviewStart = useCallback(() => {
-    if (!visibleScene) {
-      return;
-    }
-
-    cameraRollInteractionBaseStateRef.current = cameraControlsPanelState;
-    isCameraRollInteractionActiveRef.current = true;
-    setIsCameraRollInteractionActive(true);
-  }, [cameraControlsPanelState, visibleScene]);
-
-  const handleCameraRollPreviewChange = useCallback(
-    (rollDegrees: number) => {
-      if (!visibleScene) {
-        return;
-      }
-
-      const baseCameraState =
-        cameraRollInteractionBaseStateRef.current ?? cameraControlsPanelState;
-      cameraInteractionStore.requestCameraState(
-        applyCrystalCameraRoll(visibleScene.cell.vectors, baseCameraState, rollDegrees),
-      );
-    },
-    [cameraControlsPanelState, cameraInteractionStore, visibleScene],
-  );
-
-  const handleCameraRollChange = useCallback(
-    (rollDegrees: number) => {
-      if (!visibleScene) {
-        return;
-      }
-
-      const baseCameraState = cameraRollInteractionBaseStateRef.current ?? viewState.camera;
-      const nextCameraState = applyCrystalCameraRoll(
-        visibleScene.cell.vectors,
-        baseCameraState,
-        rollDegrees,
-      );
-      cameraRollInteractionBaseStateRef.current = null;
-      isCameraRollInteractionActiveRef.current = false;
-      setIsCameraRollInteractionActive(false);
-      setViewState((currentViewState) =>
-        setPreviewCameraState(
-          currentViewState,
-          nextCameraState,
-        ),
-      );
-      setCameraCommandVersion((version) => version + 1);
-    },
-    [viewState.camera, visibleScene],
-  );
-
-  const handleGizmoAxisClick = useCallback(
-    (axis: CrystalAxisLabel) => {
-      if (!visibleScene) {
-        return;
-      }
-
-      startAnimatedCameraCommand(
-        stateWithDirectAxis(visibleScene.cell.vectors, viewState.camera, axis),
-      );
-    },
-    [startAnimatedCameraCommand, viewState.camera, visibleScene],
-  );
-
-  const handleCameraCommandAnimationActiveChange = useCallback((isActive: boolean) => {
-    isCameraCommandAnimationActiveRef.current = isActive;
-    setIsCameraCommandAnimationActive(isActive);
-
-    if (isActive) {
-      setCameraControlsFrozenState(cameraControlFreezeCandidateRef.current);
-      return;
-    }
-
-    cameraControlFreezeRequestRef.current += 1;
-    cameraControlFreezeCandidateRef.current = null;
-    if (
-      !isCameraControlsInteractionActiveRef.current &&
-      !isCameraRollInteractionActiveRef.current
-    ) {
-      setCameraControlsFrozenState(null);
-      setCameraOrientationVersion((version) => version + 1);
-    }
-  }, []);
-
-  const handleCameraControlsInteractionActiveChange = useCallback(
-    (isActive: boolean, quaternionSnapshot?: Quaternion) => {
-      isCameraControlsInteractionActiveRef.current = isActive;
-      setIsCameraControlsInteractionActive(isActive);
-
-      if (isActive) {
-        cameraControlFreezeRequestRef.current += 1;
-        cameraControlFreezeCandidateRef.current = cameraControlsPanelState;
-        setCameraControlsFrozenState(cameraControlsPanelState);
-        return;
-      }
-
-      cameraControlFreezeRequestRef.current += 1;
-      cameraControlFreezeCandidateRef.current = null;
-      if (quaternionSnapshot) {
-        cameraOrientationRef.current.copy(quaternionSnapshot);
-      }
-      syncCameraOrientationToViewState();
-      if (!isCameraCommandAnimationActiveRef.current) {
-        setCameraControlsFrozenState(null);
-      }
-    },
-    [cameraControlsPanelState, syncCameraOrientationToViewState],
-  );
-
-  useEffect(() => {
-    if (!isStaticScenePreview) {
-      return;
-    }
-
-    let isCurrent = true;
-
-    async function loadExampleScene() {
-      try {
-        const nextScene = await loadStaticScenePreview();
-        if (!isCurrent || !nextScene) {
-          return;
-        }
-
-        setScene(nextScene);
-        setSelectedFileName(STATIC_SCENE_PREVIEW_NAME);
-        setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
-        resetLoadedPreviewState(nextScene);
-        setPreviewStatus("ready");
-      } catch {
-        if (!isCurrent) {
-          return;
-        }
-
-        setScene(null);
-        setInspectedAtomId(null);
-        setPulseAtom(null);
-        setSelectedFileName(null);
-        setPreviewStatus("error");
-        setErrorMessage("Static example could not be loaded.");
-      }
-    }
-
-    void loadExampleScene();
-
-    return () => {
-      isCurrent = false;
-    };
-  }, [isStaticScenePreview, resetLoadedPreviewState]);
-
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    event.target.value = "";
-    if (!file) {
-      return;
-    }
-
-    if (isStaticScenePreview) {
-      setErrorMessage(BACKEND_UNAVAILABLE_MESSAGE);
-      return;
-    }
-
-    if (file.size > MAX_STRUCTURE_UPLOAD_BYTES) {
-      setSelectedFileName(null);
-      setPreviewStatus("error");
-      setErrorMessage(STRUCTURE_FILE_TOO_LARGE_MESSAGE);
-      setScene(null);
-      setInspectedAtomId(null);
-      setPulseAtom(null);
-      setCurrentFile(null);
-      setIsInspectorOpen(false);
-      setIsStructureSummaryCollapsed(true);
-      return;
-    }
-
-    setSelectedFileName(file.name);
-    setPreviewStatus("loading");
-    setErrorMessage(null);
-    setScene(null);
-    setCurrentFile(file);
-    setBondAlgorithm(DEFAULT_BOND_ALGORITHM);
-    resetLoadedPreviewState(null);
-
-    try {
-      const nextScene = await uploadStructurePreview(file);
-      setScene(nextScene);
-      setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
-      resetLoadedPreviewState(nextScene);
-      setPreviewStatus("ready");
-    } catch (error) {
-      setScene(null);
-      setInspectedAtomId(null);
-      setPulseAtom(null);
-      setCurrentFile(null);
-      setSelectedFileName(null);
-      setIsInspectorOpen(false);
-      setPreviewStatus("error");
-      setErrorMessage(
-        isBackendUnavailablePreviewError(error)
-          ? error.message
-          : STRUCTURE_PARSE_ERROR_MESSAGE,
-      );
-    }
-  }
-
-  const handleBondAlgorithmChange = useCallback(
-    async (nextBondAlgorithm: BondAlgorithm) => {
-      if (!currentFile) {
-        if (scene) {
-          setErrorMessage(BACKEND_UNAVAILABLE_MESSAGE);
-        }
-        return;
-      }
-
-      setPreviewStatus("loading");
-      setErrorMessage(null);
-
-      try {
-        const nextScene = await uploadStructurePreview(currentFile, {
-          bondAlgorithm: nextBondAlgorithm,
-        });
-        setBondAlgorithm(nextBondAlgorithm);
-        setScene(nextScene);
-        setInspectedAtomId(null);
-        setPulseAtom(null);
-        setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
-        setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
-        setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
-        setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
-        setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
-        setPreviewStatus("ready");
-      } catch (error) {
-        if (isBackendUnavailablePreviewError(error)) {
-          setPreviewStatus(scene ? "ready" : "error");
-          setErrorMessage(error.message);
-          return;
-        }
-
-        setScene(null);
-        setInspectedAtomId(null);
-        setPulseAtom(null);
-        setCurrentFile(null);
-        setSelectedFileName(null);
-        setIsInspectorOpen(false);
-        setPreviewStatus("error");
-        setErrorMessage(STRUCTURE_PARSE_ERROR_MESSAGE);
-      }
-    },
-    [currentFile, scene],
-  );
-
-  const computeCurrentExportProjectedSize = useCallback(() => {
-    if (!visibleScene) {
-      return null;
-    }
-
-    return computeStructureExportProjectedSize({
-      cameraPose: createCameraPoseSnapshot(cameraOrientationRef.current),
-      componentOpacity,
-      scene: visibleScene,
-      showAtoms: componentVisibility.atoms,
-      showUnitCell: componentVisibility.unitCell,
-      style,
-    });
-  }, [
-    componentOpacity,
-    componentVisibility.atoms,
-    componentVisibility.unitCell,
-    style,
-    visibleScene,
-  ]);
-  const refreshExportProjectedSize = useCallback(() => {
-    const projectedSize = computeCurrentExportProjectedSize();
-    setExportProjectedSize(projectedSize);
-    return projectedSize;
-  }, [computeCurrentExportProjectedSize]);
-  const prepareExportSettings = useCallback(() => {
-    const projectedSize = refreshExportProjectedSize();
-    if (projectedSize === null) {
-      return exportSettings;
-    }
-
-    const nextExportSettings = syncExportSettingsProjectedSize(
-      exportSettings,
-      projectedSize,
-    );
-    if (nextExportSettings !== exportSettings) {
-      setExportSettings(nextExportSettings);
-    }
-    return nextExportSettings;
-  }, [exportSettings, refreshExportProjectedSize]);
   const elementColorOverrides = useMemo(
     () =>
       scene
@@ -838,11 +350,6 @@ export function App() {
     () => deriveElementLegendEntries(scene, style.colorScheme, elementColorOverrides),
     [elementColorOverrides, scene, style.colorScheme],
   );
-  const hasVisibleScene = visibleScene !== null;
-  const errorTitle =
-    errorMessage === BACKEND_UNAVAILABLE_MESSAGE
-      ? BACKEND_UNAVAILABLE_TITLE
-      : "Unsupported file";
   const previewSafeArea = previewSafeAreaForInspector();
   const sceneOffsetX = sceneOffsetXForInspector(isInspectorOpen, viewportSize.width);
   const effectivePreviewSafeArea = useMemo(
@@ -853,10 +360,6 @@ export function App() {
     () => orientationGizmoSizeForViewport(viewportSize, effectivePreviewSafeArea),
     [effectivePreviewSafeArea, viewportSize],
   );
-  const triggerLockedInteractionFeedback = useCallback(() => {
-    setLockedInteractionFeedbackCount((count) => count + 1);
-  }, []);
-
   useEffect(() => {
     if (!inspectedAtomId) {
       return;
@@ -868,233 +371,12 @@ export function App() {
   }, [componentVisibility.atoms, inspectedAtomId, inspectedAtomInfo, visibleScene]);
 
   useEffect(() => {
-    if (visibleScene) {
-      return;
-    }
-
-    setExportProjectedSize(null);
-  }, [visibleScene]);
-
-  useEffect(() => {
     if (activeCommonPanelTab !== "export") {
       return;
     }
 
-    const projectedSize = refreshExportProjectedSize();
-    if (projectedSize === null) {
-      return;
-    }
-
-    setExportSettings((currentSettings) =>
-      syncExportSettingsProjectedSize(currentSettings, projectedSize),
-    );
-  }, [activeCommonPanelTab, cameraOrientationVersion, refreshExportProjectedSize]);
-
-  const handleExportSettingsChange = useCallback(
-    (nextExportSettings: ExportSettingsState) => {
-      setExportSettings(nextExportSettings);
-      setExportError(null);
-    },
-    [],
-  );
-
-  const handleExportFigure = useCallback(async () => {
-    if (!scene || isExporting) {
-      return;
-    }
-
-    setIsExporting(true);
-    setExportError(null);
-
-    try {
-      const settingsForExport = prepareExportSettings();
-      const exportFiles = await createFigureExportFiles({
-        cameraOrientationRef,
-        componentOpacity,
-        componentVisibility,
-        atomRenderingMode,
-        bondRenderingMode,
-        fileName: selectedFileName,
-        lightStrength: viewState.lightStrength,
-        scene,
-        settings: settingsForExport,
-        showCrystalAxisLabels,
-        style,
-        unitCellLineStyle,
-      });
-      await downloadFigureExportFiles(exportFiles, selectedFileName);
-    } catch (error) {
-      setExportError(
-        error instanceof Error
-          ? error.message
-          : "Could not export this structure figure.",
-      );
-    } finally {
-      setIsExporting(false);
-    }
-  }, [
-    componentOpacity,
-    componentVisibility,
-    atomRenderingMode,
-    bondRenderingMode,
-    isExporting,
-    prepareExportSettings,
-    scene,
-    selectedFileName,
-    showCrystalAxisLabels,
-    style,
-    unitCellLineStyle,
-    viewState.lightStrength,
-  ]);
-
-  const handleResetAllSettings = useCallback(async () => {
-    if (!scene || previewStatus === "loading") {
-      return;
-    }
-
-    const defaultBondAlgorithm = defaultBondAlgorithmForScene(scene);
-
-    if (bondAlgorithm === defaultBondAlgorithm || !currentFile) {
-      setBondAlgorithm(defaultBondAlgorithm);
-      setPreviewStatus("ready");
-      resetLoadedPreviewState(scene, {
-        preserveActiveCommonPanelTab: true,
-        preserveInspectorOpen: true,
-      });
-      return;
-    }
-
-    setPreviewStatus("loading");
-    setErrorMessage(null);
-
-    try {
-      const nextScene = await uploadStructurePreview(currentFile);
-      setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
-      setScene(nextScene);
-      resetLoadedPreviewState(nextScene, {
-        preserveActiveCommonPanelTab: true,
-        preserveInspectorOpen: true,
-      });
-      setPreviewStatus("ready");
-    } catch (error) {
-      setPreviewStatus(scene ? "ready" : "error");
-      setErrorMessage(
-        isBackendUnavailablePreviewError(error)
-          ? error.message
-          : STRUCTURE_PARSE_ERROR_MESSAGE,
-      );
-    }
-  }, [
-    bondAlgorithm,
-    currentFile,
-    previewStatus,
-    resetLoadedPreviewState,
-    scene,
-  ]);
-
-  const clearLockedInteractionWheelGate = useCallback(() => {
-    if (lockedInteractionWheelIdleTimeoutRef.current === null) {
-      return;
-    }
-
-    window.clearTimeout(lockedInteractionWheelIdleTimeoutRef.current);
-    lockedInteractionWheelIdleTimeoutRef.current = null;
-  }, []);
-
-  useEffect(() => () => clearLockedInteractionWheelGate(), [clearLockedInteractionWheelGate]);
-
-  useEffect(() => {
-    if (!hasVisibleScene || !viewState.interactionLocked) {
-      clearLockedInteractionWheelGate();
-    }
-  }, [clearLockedInteractionWheelGate, hasVisibleScene, viewState.interactionLocked]);
-
-  const handleSceneWheelCapture = useCallback(() => {
-    if (!hasVisibleScene || !viewState.interactionLocked) {
-      clearLockedInteractionWheelGate();
-      return;
-    }
-
-    if (lockedInteractionWheelIdleTimeoutRef.current === null) {
-      triggerLockedInteractionFeedback();
-    } else {
-      window.clearTimeout(lockedInteractionWheelIdleTimeoutRef.current);
-    }
-
-    lockedInteractionWheelIdleTimeoutRef.current = window.setTimeout(() => {
-      lockedInteractionWheelIdleTimeoutRef.current = null;
-    }, LOCKED_INTERACTION_WHEEL_IDLE_MS);
-  }, [
-    clearLockedInteractionWheelGate,
-    hasVisibleScene,
-    triggerLockedInteractionFeedback,
-    viewState.interactionLocked,
-  ]);
-
-  const handleScenePointerDownCapture = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
-      if (!hasVisibleScene || !viewState.interactionLocked || event.button !== 0) {
-        lockedInteractionPointerRef.current = null;
-        return;
-      }
-
-      lockedInteractionPointerRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        triggered: false,
-      };
-    },
-    [hasVisibleScene, viewState.interactionLocked],
-  );
-
-  const handleScenePointerMoveCapture = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
-      const lockedPointer = lockedInteractionPointerRef.current;
-      if (
-        !hasVisibleScene ||
-        !viewState.interactionLocked ||
-        !lockedPointer ||
-        lockedPointer.pointerId !== event.pointerId ||
-        lockedPointer.triggered
-      ) {
-        return;
-      }
-
-      const dragDistance = Math.hypot(
-        event.clientX - lockedPointer.startX,
-        event.clientY - lockedPointer.startY,
-      );
-      if (dragDistance < LOCKED_INTERACTION_DRAG_THRESHOLD_PX) {
-        return;
-      }
-
-      lockedPointer.triggered = true;
-      triggerLockedInteractionFeedback();
-    },
-    [hasVisibleScene, triggerLockedInteractionFeedback, viewState.interactionLocked],
-  );
-
-  const handleScenePointerEndCapture = useCallback((event: ReactPointerEvent<HTMLElement>) => {
-    if (lockedInteractionPointerRef.current?.pointerId === event.pointerId) {
-      lockedInteractionPointerRef.current = null;
-    }
-  }, []);
-
-  const handleSceneContextMenuCapture = useCallback((event: ReactMouseEvent<HTMLElement>) => {
-    const nativeEvent = event.nativeEvent;
-    if (isRedispatchedContextMenuEvent(nativeEvent)) {
-      return;
-    }
-
-    if (!isCanvasContextMenuTarget(event.target)) {
-      return;
-    }
-
-    event.preventDefault();
-    event.stopPropagation();
-    redispatchContextMenuEvent(event, nativeEvent);
-  }, []);
+    syncProjectedSizeForExportTab();
+  }, [activeCommonPanelTab, cameraOrientationVersion, syncProjectedSizeForExportTab]);
 
   return (
     <main className="relative h-dvh min-w-80 overflow-hidden bg-background text-foreground">

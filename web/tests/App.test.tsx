@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import userEvent, { type UserEvent } from "@testing-library/user-event";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import type { ReactNode } from "react";
 import { Quaternion, Vector3 } from "three";
@@ -16,13 +16,9 @@ import {
 import {
   STRUCTURE_ATOM_COUNT_THRESHOLD,
   type ExportFormat,
-} from "../src/app/settings";
+} from "../src/model";
 import { MATERIAL_PRESET_OPTIONS } from "../src/model/materialPresets";
-
-interface FetchCall {
-  input: RequestInfo | URL;
-  init: RequestInit | undefined;
-}
+import { createAppTestHarness } from "./helpers/appHarness";
 
 class MockControls {
   enabled = true;
@@ -239,29 +235,32 @@ mock.module("../src/app/exportFigure", () => ({
 
 const { App } = await import("../src/app/App");
 const { createDefaultCrystalCameraState } = await import("../src/scene/crystalCamera");
-let fetchCalls: FetchCall[] = [];
-let fetchResponses: Response[] = [];
+const appHarness = createAppTestHarness(App);
+const {
+  errorResponse,
+  fetchCalls,
+  getFileInput,
+  htmlResponse,
+  jsonResponse,
+  openPreviewContextMenu,
+  queueFetchResponse,
+  structureFile,
+} = appHarness;
+
+async function renderLoadedStructure(user: ReturnType<typeof userEvent.setup>, scene = sceneWithPeriodicImages()) {
+  await appHarness.renderLoadedStructure(user, scene);
+}
 
 beforeEach(() => {
   Object.defineProperty(navigator, "gpu", {
     configurable: true,
     value: undefined,
   });
-  fetchCalls = [];
-  fetchResponses = [];
+  appHarness.resetFetchMock();
   exportDirectDownloads = [];
   exportZipDownloads = [];
   exportFailure = null;
   exportRequests = [];
-  globalThis.fetch = (async (input, init) => {
-    fetchCalls.push({ input, init });
-    const response = fetchResponses.shift();
-    if (!response) {
-      throw new Error("Unexpected fetch request.");
-    }
-
-    return response;
-  }) as typeof fetch;
 });
 
 describe("App", () => {
@@ -2143,64 +2142,6 @@ describe("App", () => {
     expect(screen.getByTestId("lattice-canvas").isConnected).toBe(true);
   });
 });
-
-async function renderLoadedStructure(user: UserEvent, scene = sceneWithPeriodicImages()) {
-  queueFetchResponse(jsonResponse(scene));
-
-  render(<App />);
-  await user.upload(getFileInput(), structureFile());
-  await screen.findByTestId("lattice-canvas");
-}
-
-async function openPreviewContextMenu() {
-  fireEvent.contextMenu(screen.getByTestId("lattice-canvas"));
-  await screen.findByRole("menu");
-}
-
-function queueFetchResponse(response: Response) {
-  fetchResponses.push(response);
-}
-
-function getFileInput(): HTMLInputElement {
-  const input = document.querySelector('input[type="file"]');
-  if (!(input instanceof HTMLInputElement)) {
-    throw new Error("Could not find structure file input.");
-  }
-
-  return input;
-}
-
-function jsonResponse(body: unknown): Response {
-  return {
-    headers: new Headers({ "content-type": "application/json" }),
-    json: async () => body,
-    ok: true,
-  } as Response;
-}
-
-function errorResponse(message: string): Response {
-  return {
-    headers: new Headers({ "content-type": "application/json" }),
-    json: async () => ({ detail: { message } }),
-    ok: false,
-    status: 422,
-  } as Response;
-}
-
-function htmlResponse(status: number): Response {
-  return {
-    headers: new Headers({ "content-type": "text/html; charset=utf-8" }),
-    json: async () => {
-      throw new SyntaxError("Unexpected token < in JSON at position 0");
-    },
-    ok: status >= 200 && status < 300,
-    status,
-  } as unknown as Response;
-}
-
-function structureFile(name = "NaCl.cif"): File {
-  return new File(["data_NaCl"], name, { type: "chemical/x-cif" });
-}
 
 function sceneWithPeriodicImages({
   atomCount = 2,

@@ -125,7 +125,7 @@ mock.module("three/examples/jsm/controls/TrackballControls.js", () => ({
 }));
 
 const { createDefaultComponentOpacity, createDefaultStyle } =
-  await import("../src/app/settings");
+  await import("../src/model");
 const { createCameraInteractionStore } =
   await import("../src/app/cameraInteractionStore");
 const { LatticeScene } = await import("../src/scene/LatticeScene");

@@ -7,7 +7,7 @@ import {
   createDefaultComponentVisibility,
   createDefaultStyle,
   visibleSceneForComponents,
-} from "../src/app/settings";
+} from "../src/model";
 import {
   STRUCTURE_MATERIAL_TARGETS,
   resolveStructureMaterialFamilyForStyle,

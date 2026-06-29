@@ -2,27 +2,28 @@ from __future__ import annotations
 
 import json
 from importlib.resources import files
-from typing import Literal, NotRequired, TypedDict
+from typing import Literal, NotRequired, TypedDict, cast
 
 BondAlgorithm = Literal["crystal-nn", "minimum-distance", "cut-off-dict"]
 ImageReason = Literal["boundary", "bonded"]
 VisibilityDependency = Literal["boundaryAtoms", "oneHopBondedAtoms"]
 
-STRUCTURE_ATOM_COUNT_THRESHOLD = int(
-    json.loads(files(__package__).joinpath("limits.json").read_text())[
-        "structureAtomCountThreshold"
-    ]
-)
+_SCENE_CONTRACT = json.loads(files(__package__).joinpath("scene_contract.json").read_text())
 
-DEFAULT_BOND_ALGORITHM: BondAlgorithm = "crystal-nn"
-LARGE_STRUCTURE_BOND_ALGORITHM: BondAlgorithm = "cut-off-dict"
+STRUCTURE_ATOM_COUNT_THRESHOLD = int(
+    _SCENE_CONTRACT["limits"]["structureAtomCountThreshold"]
+)
+DEFAULT_BOND_ALGORITHM = cast(BondAlgorithm, _SCENE_CONTRACT["defaultBondAlgorithm"])
+LARGE_STRUCTURE_BOND_ALGORITHM = cast(
+    BondAlgorithm, _SCENE_CONTRACT["largeStructureBondAlgorithm"]
+)
 BOND_ALGORITHM_LABELS: dict[BondAlgorithm, str] = {
-    "crystal-nn": "CrystalNN",
-    "minimum-distance": "MinimumDistanceNN",
-    "cut-off-dict": "CutOffDictNN",
+    cast(BondAlgorithm, entry["value"]): str(entry["pythonLabel"])
+    for entry in _SCENE_CONTRACT["bondAlgorithms"]
 }
 BOND_ALGORITHM_ALIASES: dict[str, BondAlgorithm] = {
-    "vesta": "cut-off-dict",
+    alias: cast(BondAlgorithm, value)
+    for alias, value in _SCENE_CONTRACT["bondAlgorithmAliases"].items()
 }
 
 

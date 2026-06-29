@@ -1,4 +1,5 @@
 import { STRUCTURE_ATOM_COUNT_THRESHOLD } from "../model/structureLimits";
+import sceneContract from "../../../src/pretty_lattice/structures/scene_contract.json";
 
 export interface SceneSpec {
   cell: {
@@ -14,14 +15,19 @@ export interface SceneSpec {
 export type BondAlgorithm = "crystal-nn" | "minimum-distance" | "cut-off-dict";
 export type AtomRadiusModel = "uniform" | "atomic" | "vdw" | "ionic";
 
-export const DEFAULT_BOND_ALGORITHM: BondAlgorithm = "crystal-nn";
-export const LARGE_STRUCTURE_BOND_ALGORITHM: BondAlgorithm = "cut-off-dict";
+export const DEFAULT_BOND_ALGORITHM: BondAlgorithm =
+  sceneContract.defaultBondAlgorithm as BondAlgorithm;
+export const LARGE_STRUCTURE_BOND_ALGORITHM: BondAlgorithm =
+  sceneContract.largeStructureBondAlgorithm as BondAlgorithm;
+export const IMAGE_REASONS = sceneContract.imageReasons as ImageReason[];
+export const VISIBILITY_DEPENDENCIES =
+  sceneContract.visibilityDependencies as VisibilityDependency[];
 
-export const BOND_ALGORITHM_OPTIONS: { label: string; value: BondAlgorithm }[] = [
-  { label: "CrystalNN", value: "crystal-nn" },
-  { label: "Minimum distance", value: "minimum-distance" },
-  { label: "CutOffDictNN", value: "cut-off-dict" },
-];
+export const BOND_ALGORITHM_OPTIONS: { label: string; value: BondAlgorithm }[] =
+  sceneContract.bondAlgorithms.map((entry) => ({
+    label: entry.uiLabel,
+    value: entry.value as BondAlgorithm,
+  }));
 
 export interface StructureSummary {
   formula: string;

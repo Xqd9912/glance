@@ -36,7 +36,7 @@ import {
   syncExportSettingsProjectedSize,
   validateExportSettings,
   visibleSceneForComponents,
-} from "../src/app/settings";
+} from "../src/model";
 
 describe("settings", () => {
   test("defaults rendering modes to batched paths and keeps the large-scene mesh quality threshold", () => {
