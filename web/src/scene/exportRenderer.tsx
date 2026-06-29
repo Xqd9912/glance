@@ -33,6 +33,9 @@ import {
   type OrientationGizmoAxisSpec,
 } from "./orientationGizmoMath";
 
+export const STRUCTURE_LINE_WIDTH_REFERENCE_RATIO = 0.001;
+export const STRUCTURE_LINE_WIDTH_MIN_PIXELS = 1;
+
 export interface RasterExportImage {
   blob: Blob;
   contentBounds?: RasterExportBounds;
@@ -139,6 +142,7 @@ export async function renderStructureRasterImage({
     width: renderWidth,
   });
   const meshDetail = EXPORT_SCENE_MESH_DETAIL_PRESETS[meshQuality];
+  const lineWidthScale = structureLineWidthScale(exportFramePlan, supersampling);
   const root = createRoot(canvas);
   let rootState: RootState | null = null;
   let resolveMounted: (() => void) | null = null;
@@ -189,13 +193,13 @@ export async function renderStructureRasterImage({
           layout={layout}
           materialFamily={materialFamily}
           meshDetail={meshDetail}
-          polyhedronEdgeLineWidthScale={supersampling * 2}
+          polyhedronEdgeLineWidthScale={lineWidthScale}
           scene={scene}
           showAtoms={showAtoms}
           showUnitCell={showUnitCell}
           style={style}
           unitCellLineColor={unitCellLineColor}
-          unitCellLineWidthScale={supersampling * 2}
+          unitCellLineWidthScale={lineWidthScale}
         />
         <RenderReady onReady={() => resolveMounted?.()} />
       </>,
@@ -219,6 +223,21 @@ export async function renderStructureRasterImage({
     root.unmount();
     canvas.remove();
   }
+}
+
+export function structureLineWidthScale(
+  framePlan: StructureExportFramePlan,
+  supersampling: number,
+): number {
+  const referenceSize = structureFrameReferenceSize(framePlan, supersampling);
+  const finalLineWidth = referenceSize
+    ? Math.max(
+        STRUCTURE_LINE_WIDTH_MIN_PIXELS,
+        referenceSize * STRUCTURE_LINE_WIDTH_REFERENCE_RATIO,
+      )
+    : 2;
+
+  return finalLineWidth * Math.max(1, supersampling);
 }
 
 function structureFrameContentBounds(
@@ -249,6 +268,18 @@ function structureFrameContentBounds(
     minY,
     width: Math.max(0, maxX - minX),
   };
+}
+
+function structureFrameReferenceSize(
+  framePlan: StructureExportFramePlan,
+  supersampling: number,
+): number | null {
+  const bounds = structureFrameContentBounds(framePlan, supersampling);
+  if (!bounds || bounds.width <= 0 || bounds.height <= 0) {
+    return null;
+  }
+
+  return Math.sqrt(bounds.width * bounds.height);
 }
 
 export async function renderLatticeVectorsRasterImage({

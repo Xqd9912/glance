@@ -35,7 +35,9 @@ import {
 } from "../src/scene/crystalCamera";
 import {
   computeStructureExportAspectRatio,
+  type StructureExportFramePlan,
 } from "../src/scene/exportFrame";
+import { structureLineWidthScale } from "../src/scene/exportRenderer";
 import {
   applyOrthographicFrustum,
   computeCameraFitZoom,
@@ -256,6 +258,13 @@ describe("computeSceneLayout", () => {
     });
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.sphereWidthSegments).toBe(72);
     expect(EXPORT_SCENE_MESH_DETAIL_PRESETS.xhigh.bondRadialSegments).toBe(32);
+  });
+
+  test("scales exported structure line width from the tight content bounds", () => {
+    expect(structureLineWidthScale(exportFramePlanWithBounds(2000, 2000), 1)).toBeCloseTo(2);
+    expect(structureLineWidthScale(exportFramePlanWithBounds(2000, 2000, 4), 4)).toBeCloseTo(8);
+    expect(structureLineWidthScale(exportFramePlanWithBounds(600, 600, 2), 2)).toBeCloseTo(2);
+    expect(structureLineWidthScale(exportFramePlanWithBounds(5000, 5000), 1)).toBeCloseTo(5);
   });
 
   test("builds by-atom bonds as one open cylinder side with a hard color boundary", () => {
@@ -610,6 +619,31 @@ function sceneWithLongC(): SceneSpec {
       ...sceneWithOffCenterAtoms().summary,
       atomCount: 2,
     },
+  };
+}
+
+function exportFramePlanWithBounds(
+  contentWidth: number,
+  contentHeight: number,
+  supersampling = 1,
+): StructureExportFramePlan {
+  return {
+    aspectRatio: contentWidth / contentHeight,
+    bounds: {
+      centerX: contentWidth / 2,
+      centerY: contentHeight / 2,
+      height: contentHeight,
+      maxX: contentWidth,
+      maxY: contentHeight,
+      minX: 0,
+      minY: 0,
+      width: contentWidth,
+    },
+    centerX: contentWidth / 2,
+    centerY: contentHeight / 2,
+    height: contentHeight * supersampling,
+    width: contentWidth * supersampling,
+    zoom: supersampling,
   };
 }
 
