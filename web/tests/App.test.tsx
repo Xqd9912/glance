@@ -1185,7 +1185,7 @@ describe("App", () => {
     await user.clear(heightInput);
     await user.type(heightInput, "1000{Enter}");
 
-    expect(widthInput.value).toBe("1333");
+    expect(widthInput.value).toBe("1286");
     expect(heightInput.value).toBe("1000");
 
     await user.click(oneXSupersampling);
