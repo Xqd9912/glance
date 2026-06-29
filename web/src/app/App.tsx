@@ -63,6 +63,7 @@ import {
 import { ViewControlRail } from "./controls/ViewControlRail";
 import { createCameraInteractionStore } from "./cameraInteractionStore";
 import { createPreviewFpsStore } from "../model/previewFpsStore";
+import { autoDistinctElementColorOverrides } from "./colorSchemes";
 import { deriveElementLegendEntries } from "./elementLegend";
 import {
   downloadFigureExportFiles,
@@ -438,6 +439,12 @@ export function App() {
       fogAffectsUnitCell,
     }));
   }, []);
+  const handleDistinguishSimilarColorsChange = useCallback((distinguishSimilarColors: boolean) => {
+    setStyle((currentStyle) => ({
+      ...currentStyle,
+      distinguishSimilarColors,
+    }));
+  }, []);
 
   const handleAtomPulse = useCallback((atomId: string) => {
     if (atomId === inspectedAtomIdRef.current) {
@@ -799,9 +806,20 @@ export function App() {
     }
     return nextExportSettings;
   }, [exportSettings, refreshExportProjectedSize]);
+  const elementColorOverrides = useMemo(
+    () =>
+      scene
+        ? autoDistinctElementColorOverrides(
+            scene.atoms,
+            style.colorScheme,
+            style.distinguishSimilarColors,
+          )
+        : undefined,
+    [scene, style.colorScheme, style.distinguishSimilarColors],
+  );
   const legendEntries = useMemo(
-    () => deriveElementLegendEntries(scene, style.colorScheme),
-    [scene, style.colorScheme],
+    () => deriveElementLegendEntries(scene, style.colorScheme, elementColorOverrides),
+    [elementColorOverrides, scene, style.colorScheme],
   );
   const hasVisibleScene = visibleScene !== null;
   const errorTitle =
@@ -1211,6 +1229,7 @@ export function App() {
       {inspectedAtomInfo ? (
         <AtomInspectorCard
           colorScheme={style.colorScheme}
+          colorOverrides={elementColorOverrides}
           info={inspectedAtomInfo}
           isInspectorOpen={isInspectorOpen}
           onClose={() => setInspectedAtomId(null)}
@@ -1310,6 +1329,7 @@ export function App() {
             isSceneLoading={previewStatus === "loading"}
             previewMeshQuality={previewMeshQuality}
             fogAffectsUnitCell={style.fogAffectsUnitCell}
+            distinguishSimilarColors={style.distinguishSimilarColors}
             showFpsOverlay={viewState.showFpsOverlay}
             showCrystalAxisLabels={showCrystalAxisLabels}
             unitCellLineStyle={unitCellLineStyle}
@@ -1323,6 +1343,7 @@ export function App() {
             onLightStrengthChange={handleLightStrengthChange}
             onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
             onFogAffectsUnitCellChange={handleFogAffectsUnitCellChange}
+            onDistinguishSimilarColorsChange={handleDistinguishSimilarColorsChange}
             onShowFpsOverlayChange={handleShowFpsOverlayChange}
             onShowCrystalAxisLabelsChange={setShowCrystalAxisLabels}
             onUnitCellLineStyleChange={setUnitCellLineStyle}

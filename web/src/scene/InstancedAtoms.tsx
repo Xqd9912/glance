@@ -11,7 +11,7 @@ import {
 } from "three";
 
 import type { AtomRadiusModel, AtomSpec } from "../api/scene";
-import { atomColorForScheme } from "../model/colorSchemes";
+import { atomColorForScheme, type ElementColorOverrides } from "../model/colorSchemes";
 import type { StyleState } from "../model";
 import { atomRadiusForModel } from "./sceneGeometry";
 import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
@@ -45,6 +45,7 @@ interface AtomInstanceSpec extends AtomColorInstanceSpec {
 export function InstancedAtoms({
   atoms,
   colorScheme,
+  colorOverrides,
   inspectedAtomId,
   interactionLocked,
   materialFamily,
@@ -60,6 +61,7 @@ export function InstancedAtoms({
 }: {
   atoms: AtomSpec[];
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   inspectedAtomId: string | null;
   interactionLocked: boolean;
   materialFamily: ResolvedStructureMaterialFamily;
@@ -84,14 +86,14 @@ export function InstancedAtoms({
   const atomColorInstances = useMemo<AtomColorInstanceSpec[]>(
     () =>
       atoms.map((atom) => {
-        const color = atomColorForScheme(atom, colorScheme);
+        const color = atomColorForScheme(atom, colorScheme, colorOverrides);
         return {
           atom,
           baseColor: new Color(color),
           color,
         };
       }),
-    [atoms, colorScheme],
+    [atoms, colorOverrides, colorScheme],
   );
   const atomInstances = useMemo<AtomInstanceSpec[]>(
     () =>

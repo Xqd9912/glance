@@ -25,7 +25,11 @@ import type {
   PolyhedronSpec,
   SceneSpec,
 } from "../api/scene";
-import { atomColorForScheme } from "../model/colorSchemes";
+import {
+  atomColorForScheme,
+  autoDistinctElementColorOverrides,
+  type ElementColorOverrides,
+} from "../model/colorSchemes";
 import type {
   AtomRenderingMode,
   BondRenderingMode,
@@ -320,6 +324,15 @@ export function StructureSceneObjects({
   unitCellLineStyle?: UnitCellLineStyle;
   unitCellLineWidthScale?: number;
 }) {
+  const colorOverrides = useMemo(
+    () =>
+      autoDistinctElementColorOverrides(
+        scene.atoms,
+        style.colorScheme,
+        style.distinguishSimilarColors,
+      ),
+    [scene.atoms, style.colorScheme, style.distinguishSimilarColors],
+  );
   const handlePointerMissed = useCallback(() => {
     if (interactionLocked) {
       return;
@@ -346,6 +359,7 @@ export function StructureSceneObjects({
             key={polyhedronIndex}
             atoms={scene.atoms}
             colorScheme={style.colorScheme}
+            colorOverrides={colorOverrides}
             materialFamily={materialFamily}
             opacity={componentOpacity.polyhedra / 100}
             polyhedron={polyhedron}
@@ -358,6 +372,7 @@ export function StructureSceneObjects({
             bonds={scene.bonds}
             colorMode={style.bondColorMode}
             colorScheme={style.colorScheme}
+            colorOverrides={colorOverrides}
             materialFamily={materialFamily}
             meshDetail={meshDetail}
             thicknessScale={style.bondThickness / 100}
@@ -371,6 +386,7 @@ export function StructureSceneObjects({
               bond={bond}
               colorMode={style.bondColorMode}
               colorScheme={style.colorScheme}
+              colorOverrides={colorOverrides}
               materialFamily={materialFamily}
               meshDetail={meshDetail}
               thicknessScale={style.bondThickness / 100}
@@ -382,6 +398,7 @@ export function StructureSceneObjects({
           <InstancedAtoms
             atoms={scene.atoms}
             colorScheme={style.colorScheme}
+            colorOverrides={colorOverrides}
             inspectedAtomId={inspectedAtomId}
             interactionLocked={interactionLocked}
             materialFamily={materialFamily}
@@ -401,6 +418,7 @@ export function StructureSceneObjects({
               key={atom.id}
               atom={atom}
               colorScheme={style.colorScheme}
+              colorOverrides={colorOverrides}
               inspected={inspectedAtomId === atom.id}
               interactionLocked={interactionLocked}
               materialFamily={materialFamily}
@@ -433,6 +451,7 @@ interface AtomSelectionHighlightTransition {
 function Atom({
   atom,
   colorScheme,
+  colorOverrides,
   inspected,
   interactionLocked,
   materialFamily,
@@ -447,6 +466,7 @@ function Atom({
 }: {
   atom: AtomSpec;
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   inspected: boolean;
   interactionLocked: boolean;
   materialFamily: ResolvedStructureMaterialFamily;
@@ -473,7 +493,7 @@ function Atom({
   const isTransparent = opacity < 1;
   const radius = atomRadiusForModel(atom, radiusModel);
   const scaledRadius = radius * radiusScale;
-  const color = atomColorForScheme(atom, colorScheme);
+  const color = atomColorForScheme(atom, colorScheme, colorOverrides);
   const baseColor = useMemo(() => new Color(color), [color]);
 
   const resetHighlight = useCallback(() => {
@@ -789,6 +809,7 @@ function BatchedBonds({
   bonds,
   colorMode,
   colorScheme,
+  colorOverrides,
   materialFamily,
   meshDetail,
   opacity,
@@ -798,6 +819,7 @@ function BatchedBonds({
   bonds: BondSpec[];
   colorMode: BondColorMode;
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   materialFamily: ResolvedStructureMaterialFamily;
   meshDetail: SceneMeshDetail;
   opacity: number;
@@ -814,6 +836,7 @@ function BatchedBonds({
         bonds,
         colorMode,
         colorScheme,
+        colorOverrides,
         radialSegments: meshDetail.bondRadialSegments,
         radius: BOND_RADIUS * thicknessScale,
       }),
@@ -821,6 +844,7 @@ function BatchedBonds({
       atoms,
       bonds,
       colorMode,
+      colorOverrides,
       colorScheme,
       meshDetail.bondRadialSegments,
       thicknessScale,
@@ -880,6 +904,7 @@ function createBondBatchBuild({
   bonds,
   colorMode,
   colorScheme,
+  colorOverrides,
   radialSegments,
   radius,
 }: {
@@ -887,6 +912,7 @@ function createBondBatchBuild({
   bonds: BondSpec[];
   colorMode: BondColorMode;
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   radialSegments: number;
   radius: number;
 }): BondBatchBuild | null {
@@ -896,6 +922,7 @@ function createBondBatchBuild({
     bonds,
     colorMode,
     colorScheme,
+    colorOverrides,
   });
 
   if (items.length === 0 || radius <= 0) {
@@ -939,11 +966,13 @@ function bondBatchItems({
   bonds,
   colorMode,
   colorScheme,
+  colorOverrides,
 }: {
   atoms: AtomSpec[];
   bonds: BondSpec[];
   colorMode: BondColorMode;
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
 }): BondBatchItem[] {
   const items: BondBatchItem[] = [];
 
@@ -965,7 +994,7 @@ function bondBatchItems({
     items.push({
       center: start.clone().add(end).multiplyScalar(0.5),
       endColor:
-        colorMode === "by-atom" ? atomColorForScheme(endAtom, colorScheme) : BOND_COLOR,
+        colorMode === "by-atom" ? atomColorForScheme(endAtom, colorScheme, colorOverrides) : BOND_COLOR,
       length,
       quaternion: new Quaternion().setFromUnitVectors(
         new Vector3(0, 1, 0),
@@ -974,7 +1003,9 @@ function bondBatchItems({
       startAtomIndex: bond.startAtomIndex,
       endAtomIndex: bond.endAtomIndex,
       startColor:
-        colorMode === "by-atom" ? atomColorForScheme(startAtom, colorScheme) : BOND_COLOR,
+        colorMode === "by-atom"
+          ? atomColorForScheme(startAtom, colorScheme, colorOverrides)
+          : BOND_COLOR,
     });
   }
 
@@ -1081,6 +1112,7 @@ function Bond({
   bond,
   colorMode,
   colorScheme,
+  colorOverrides,
   materialFamily,
   meshDetail,
   opacity,
@@ -1090,6 +1122,7 @@ function Bond({
   bond: BondSpec;
   colorMode: BondColorMode;
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   materialFamily: ResolvedStructureMaterialFamily;
   meshDetail: SceneMeshDetail;
   opacity: number;
@@ -1118,12 +1151,12 @@ function Bond({
 
     return {
       center,
-      endColor: atomColorForScheme(endAtom, colorScheme),
+      endColor: atomColorForScheme(endAtom, colorScheme, colorOverrides),
       length,
       quaternion,
-      startColor: atomColorForScheme(startAtom, colorScheme),
+      startColor: atomColorForScheme(startAtom, colorScheme, colorOverrides),
     };
-  }, [atoms, bond.endAtomIndex, bond.startAtomIndex, colorScheme]);
+  }, [atoms, bond.endAtomIndex, bond.startAtomIndex, colorOverrides, colorScheme]);
 
   if (!geometry) {
     return null;
@@ -1263,6 +1296,7 @@ function BondCylinder({
 function Polyhedron({
   atoms,
   colorScheme,
+  colorOverrides,
   lineWidthScale,
   materialFamily,
   opacity,
@@ -1270,6 +1304,7 @@ function Polyhedron({
 }: {
   atoms: AtomSpec[];
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   lineWidthScale: number;
   materialFamily: ResolvedStructureMaterialFamily;
   opacity: number;
@@ -1281,7 +1316,7 @@ function Polyhedron({
   );
   const centerAtom = atoms[polyhedron.centerAtomIndex];
   const color = centerAtom
-    ? atomColorForScheme(centerAtom, colorScheme)
+    ? atomColorForScheme(centerAtom, colorScheme, colorOverrides)
     : POLYHEDRON_EDGE_COLOR;
   const edgeLine = useMemo(() => {
     if (!geometry) {

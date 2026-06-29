@@ -2,6 +2,7 @@ import type { PDFDocument, PDFFont } from "pdf-lib";
 
 import type { SceneSpec } from "../api/scene";
 import { deriveElementLegendEntries, type ElementLegendEntry } from "./elementLegend";
+import { autoDistinctElementColorOverrides } from "./colorSchemes";
 import { createCameraPoseSnapshot, type CameraPoseSnapshot } from "../scene/cameraPose";
 import type {
   RasterExportBounds,
@@ -178,9 +179,14 @@ export async function createFigureExportFiles({
   }
 
   if (settings.components.legend) {
+    const elementColorOverrides = autoDistinctElementColorOverrides(
+      scene.atoms,
+      style.colorScheme,
+      style.distinguishSimilarColors,
+    );
     files.push(
       await createLegendExportFile({
-        entries: deriveElementLegendEntries(scene, style.colorScheme),
+        entries: deriveElementLegendEntries(scene, style.colorScheme, elementColorOverrides),
         fileName: `${stem}-legend.${settings.format}`,
         format: settings.format,
         background: settings.background,
@@ -1064,9 +1070,14 @@ async function renderCombinedExportRaster({
   const accessoryPadding = Math.round(accessoryReferenceSize * EXPORT_ACCESSORY_PADDING_RATIO);
 
   if (settings.components.legend) {
+    const elementColorOverrides = autoDistinctElementColorOverrides(
+      scene.atoms,
+      style.colorScheme,
+      style.distinguishSimilarColors,
+    );
     const renderedLegend = renderLegendCanvas({
       background: "transparent",
-      entries: deriveElementLegendEntries(scene, style.colorScheme),
+      entries: deriveElementLegendEntries(scene, style.colorScheme, elementColorOverrides),
       includeText: settings.format !== "pdf",
       layout: settings.legendLayout,
       style: legendExportStyle(settings, accessoryReferenceSize),

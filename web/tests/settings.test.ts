@@ -68,6 +68,7 @@ describe("settings", () => {
       bondColorMode: "by-atom",
       bondThickness: 100,
       colorScheme: "vesta-soft",
+      distinguishSimilarColors: true,
       fogAffectsUnitCell: false,
       fogAmount: 50,
       fogEnabled: true,

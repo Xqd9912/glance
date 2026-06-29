@@ -15,9 +15,9 @@ describe("deriveElementLegendEntries", () => {
         ]),
       ),
     ).toEqual([
-      { color: "#e4d171", element: "Na" },
-      { color: "#96dc8d", element: "Cl" },
-      { color: "#d86253", element: "O" },
+      { color: "#e7d15f", element: "Na" },
+      { color: "#87e17c", element: "Cl" },
+      { color: "#e15949", element: "O" },
     ]);
   });
 
@@ -70,8 +70,8 @@ describe("deriveElementLegendEntries", () => {
         ]),
       ),
     ).toEqual([
-      { color: "#e4d171", element: "Na" },
-      { color: "#96dc8d", element: "Cl" },
+      { color: "#e7d15f", element: "Na" },
+      { color: "#87e17c", element: "Cl" },
     ]);
   });
 });

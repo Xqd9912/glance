@@ -16,6 +16,7 @@ export interface StyleState {
   bondColorMode: BondColorMode;
   bondThickness: number;
   colorScheme: ColorScheme;
+  distinguishSimilarColors: boolean;
   fogAffectsUnitCell: boolean;
   fogAmount: number;
   fogEnabled: boolean;
@@ -29,6 +30,7 @@ export const DEFAULT_STYLE: StyleState = {
   bondColorMode: "by-atom",
   bondThickness: 100,
   colorScheme: DEFAULT_COLOR_SCHEME_ID,
+  distinguishSimilarColors: true,
   fogAffectsUnitCell: false,
   fogAmount: 50,
   fogEnabled: true,

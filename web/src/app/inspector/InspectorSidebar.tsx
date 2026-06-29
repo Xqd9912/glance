@@ -106,6 +106,7 @@ export function InspectorSidebar({
   atomRenderingMode,
   bondRenderingMode,
   bondAlgorithm,
+  distinguishSimilarColors,
   dragSensitivity,
   interactionMode,
   lightStrength,
@@ -119,6 +120,7 @@ export function InspectorSidebar({
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
+  onDistinguishSimilarColorsChange,
   onDragSensitivityChange,
   onInteractionModeChange,
   onLightStrengthChange,
@@ -131,6 +133,7 @@ export function InspectorSidebar({
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
   bondAlgorithm: BondAlgorithm;
+  distinguishSimilarColors: boolean;
   dragSensitivity: number;
   interactionMode: InteractionMode;
   lightStrength: number;
@@ -144,6 +147,7 @@ export function InspectorSidebar({
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onDistinguishSimilarColorsChange: (distinguishSimilarColors: boolean) => void;
   onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onLightStrengthChange: (lightStrength: number) => void;
@@ -160,7 +164,7 @@ export function InspectorSidebar({
       aria-hidden={!isOpen}
       inert={!isOpen}
       className={cn(
-        "absolute inset-y-0 right-0 z-20 flex w-[340px] max-w-[calc(100vw-1rem)] flex-col border-l border-border bg-[#fdfdfd] text-foreground",
+        "absolute inset-y-0 right-0 z-20 flex w-[360px] max-w-[calc(100vw-1rem)] flex-col border-l border-border bg-[#fdfdfd] text-foreground",
         "transition-transform duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
         isOpen ? "translate-x-0" : "translate-x-full",
       )}
@@ -192,6 +196,7 @@ export function InspectorSidebar({
               atomRenderingMode={atomRenderingMode}
               bondRenderingMode={bondRenderingMode}
               bondAlgorithm={bondAlgorithm}
+              distinguishSimilarColors={distinguishSimilarColors}
               dragSensitivity={dragSensitivity}
               interactionMode={interactionMode}
               lightStrength={lightStrength}
@@ -204,6 +209,7 @@ export function InspectorSidebar({
               onAtomRenderingModeChange={onAtomRenderingModeChange}
               onBondRenderingModeChange={onBondRenderingModeChange}
               onBondAlgorithmChange={onBondAlgorithmChange}
+              onDistinguishSimilarColorsChange={onDistinguishSimilarColorsChange}
               onDragSensitivityChange={onDragSensitivityChange}
               onInteractionModeChange={onInteractionModeChange}
               onLightStrengthChange={onLightStrengthChange}
@@ -224,6 +230,7 @@ function SettingsPanel({
   atomRenderingMode,
   bondRenderingMode,
   bondAlgorithm,
+  distinguishSimilarColors,
   dragSensitivity,
   interactionMode,
   lightStrength,
@@ -236,6 +243,7 @@ function SettingsPanel({
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
+  onDistinguishSimilarColorsChange,
   onDragSensitivityChange,
   onInteractionModeChange,
   onLightStrengthChange,
@@ -248,6 +256,7 @@ function SettingsPanel({
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
   bondAlgorithm: BondAlgorithm;
+  distinguishSimilarColors: boolean;
   dragSensitivity: number;
   interactionMode: InteractionMode;
   lightStrength: number;
@@ -260,6 +269,7 @@ function SettingsPanel({
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onDistinguishSimilarColorsChange: (distinguishSimilarColors: boolean) => void;
   onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onLightStrengthChange: (lightStrength: number) => void;
@@ -312,6 +322,12 @@ function SettingsPanel({
         checked={fogAffectsUnitCell}
         label="Apply depth cueing to unit cell"
         onCheckedChange={onFogAffectsUnitCellChange}
+      />
+
+      <InspectorSwitchRow
+        checked={distinguishSimilarColors}
+        label="Distinguish similar colors"
+        onCheckedChange={onDistinguishSimilarColorsChange}
       />
 
       <InspectorSelectRow label="Atom mesh">
@@ -619,7 +635,7 @@ function InspectorSwitchRow({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return (
-    <label
+    <div
       className={cn(
         "flex min-h-8 items-center justify-between gap-2",
         INSPECTOR_BODY_TEXT_CLASS,
@@ -633,7 +649,7 @@ function InspectorSwitchRow({
         thumbClassName="size-3 data-[state=checked]:translate-x-3"
         onCheckedChange={onCheckedChange}
       />
-    </label>
+    </div>
   );
 }
 

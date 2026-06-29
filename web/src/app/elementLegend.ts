@@ -1,5 +1,6 @@
 import type { SceneSpec } from "../api/scene";
 import {
+  type ElementColorOverrides,
   elementColorForScheme,
   type ColorScheme,
 } from "./colorSchemes";
@@ -12,6 +13,7 @@ export interface ElementLegendEntry {
 export function deriveElementLegendEntries(
   scene: SceneSpec | null,
   colorScheme: ColorScheme = "vesta-soft",
+  colorOverrides?: ElementColorOverrides,
 ): ElementLegendEntry[] {
   if (!scene) {
     return [];
@@ -29,7 +31,7 @@ export function deriveElementLegendEntries(
 
     seenElements.add(atom.element);
     entries.push({
-      color: elementColorForScheme(atom.element, colorScheme),
+      color: elementColorForScheme(atom.element, colorScheme, colorOverrides),
       element: atom.element,
     });
   }

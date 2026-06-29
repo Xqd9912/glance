@@ -753,12 +753,18 @@ describe("App", () => {
     const depthCueingUnitCellSwitch = within(inspector).getByRole("switch", {
       name: "Apply depth cueing to unit cell",
     });
+    const distinguishSimilarColorsSwitch = within(inspector).getByRole("switch", {
+      name: "Distinguish similar colors",
+    });
     const unitCellLineSelect = within(inspector).getByRole("combobox", {
       name: "Unit cell line style",
     });
 
     expect(hideCrystalAxisLabelsSwitch.getAttribute("aria-checked")).toBe("false");
     expect(depthCueingUnitCellSwitch.getAttribute("aria-checked")).toBe("false");
+    expect(distinguishSimilarColorsSwitch.getAttribute("aria-checked")).toBe("true");
+    await user.click(within(inspector).getByText("Distinguish similar colors"));
+    expect(distinguishSimilarColorsSwitch.getAttribute("aria-checked")).toBe("true");
     expect(screen.getByTestId("mock-orientation-gizmo").getAttribute("data-show-labels")).toBe(
       "true",
     );
@@ -769,6 +775,10 @@ describe("App", () => {
     );
     await user.click(depthCueingUnitCellSwitch);
     expect(depthCueingUnitCellSwitch.getAttribute("aria-checked")).toBe("true");
+    await user.click(distinguishSimilarColorsSwitch);
+    expect(distinguishSimilarColorsSwitch.getAttribute("aria-checked")).toBe("false");
+    await user.click(distinguishSimilarColorsSwitch);
+    expect(distinguishSimilarColorsSwitch.getAttribute("aria-checked")).toBe("true");
 
     expect(unitCellLineSelect.textContent).toContain("Solid");
     await user.click(unitCellLineSelect);
@@ -790,6 +800,7 @@ describe("App", () => {
     expect(exportRequests[0]?.showCrystalAxisLabels).toBe(false);
     expect(exportRequests[0]?.unitCellLineStyle).toBe("dashed");
     expect(exportRequests[0]?.style.fogAffectsUnitCell).toBe(true);
+    expect(exportRequests[0]?.style.distinguishSimilarColors).toBe(true);
   });
 
   test("toggles polyhedra independently from atoms, bonds, and unit cell", async () => {

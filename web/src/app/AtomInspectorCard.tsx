@@ -12,23 +12,25 @@ import {
   formatCellOffset,
   type InspectedAtomInfo,
 } from "./atomInspector";
-import { atomColorForScheme } from "./colorSchemes";
+import { atomColorForScheme, type ElementColorOverrides } from "./colorSchemes";
 import type { StyleState } from "./settings";
 import { GLASS_SURFACE_CLASS, TOOL_ICON_BUTTON_CLASS } from "./surface";
 
 export function AtomInspectorCard({
   colorScheme,
+  colorOverrides,
   info,
   isInspectorOpen,
   onClose,
 }: {
   colorScheme: StyleState["colorScheme"];
+  colorOverrides?: ElementColorOverrides;
   info: InspectedAtomInfo;
   isInspectorOpen: boolean;
   onClose: () => void;
 }) {
   const { atom, canonicalAtom } = info;
-  const atomColor = atomColorForScheme(canonicalAtom, colorScheme);
+  const atomColor = atomColorForScheme(canonicalAtom, colorScheme, colorOverrides);
   const handleCopy = useCallback(() => {
     void navigator.clipboard?.writeText(atomInspectorCopyText(info));
   }, [info]);
