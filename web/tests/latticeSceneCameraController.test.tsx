@@ -58,6 +58,7 @@ let mockCamera = new OrthographicCamera();
 let mockDomElement = document.createElement("canvas");
 let invalidateCalls = 0;
 let latestFrameCallback: (() => void) | null = null;
+let latestCanvasCameraProps: unknown = null;
 let latestCanvasFrameloop: unknown = null;
 let latestControls: MockControls | null = null;
 let latticeSceneRenderCount = 0;
@@ -67,6 +68,7 @@ function resetMockCamera() {
   mockDomElement = document.createElement("canvas");
   invalidateCalls = 0;
   latestFrameCallback = null;
+  latestCanvasCameraProps = null;
   latestCanvasFrameloop = null;
   latestControls = null;
   latticeSceneRenderCount = 0;
@@ -74,13 +76,16 @@ function resetMockCamera() {
 
 mock.module("@react-three/fiber", () => ({
   Canvas: ({
+    camera,
     children,
     frameloop,
   }: {
+    camera?: unknown;
     children: ReactNode;
     frameloop?: unknown;
   }) =>
     (() => {
+      latestCanvasCameraProps = camera;
       latestCanvasFrameloop = frameloop;
       return (
         <div data-testid="lattice-canvas">
@@ -126,6 +131,7 @@ const { createCameraInteractionStore } =
 const { LatticeScene } = await import("../src/scene/LatticeScene");
 const {
   applyCrystalCameraRoll,
+  computeCrystalCameraPose,
   computeCrystalCameraVectors,
   createDefaultCrystalCameraState,
   stateWithDirectAxis,
@@ -159,6 +165,35 @@ describe("LatticeScene camera commands", () => {
     );
 
     expect(latestCanvasFrameloop).toBe("demand");
+  });
+
+  test("initializes the canvas camera from the active crystal camera pose", () => {
+    const scene = orthogonalScene();
+    const defaultCamera = createDefaultCrystalCameraState(scene.cell.vectors);
+    const aCamera = stateWithDirectAxis(scene.cell.vectors, defaultCamera, "a");
+    const expectedPose = computeCrystalCameraPose(
+      scene.cell.vectors,
+      aCamera,
+      4,
+    );
+
+    render(
+      <LatticeScene
+        cameraCommandVersion={0}
+        cameraInteractionStore={createCameraInteractionStore()}
+        cameraState={aCamera}
+        componentOpacity={createDefaultComponentOpacity()}
+        interactionLocked={false}
+        interactionMode="trackball"
+        resetCounter={0}
+        scene={scene}
+        style={createDefaultStyle()}
+      />,
+    );
+
+    expect(latestCanvasCameraProps).toMatchObject({
+      position: expectedPose.cameraPosition,
+    });
   });
 
   test("applies drag sensitivity to camera controls", () => {

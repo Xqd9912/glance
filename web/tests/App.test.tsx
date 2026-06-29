@@ -229,6 +229,7 @@ mock.module("../src/app/exportFigure", () => ({
 }));
 
 const { App } = await import("../src/app/App");
+const { createDefaultCrystalCameraState } = await import("../src/scene/crystalCamera");
 let fetchCalls: FetchCall[] = [];
 let fetchResponses: Response[] = [];
 
@@ -331,6 +332,35 @@ describe("App", () => {
         .getAllByRole("checkbox")
         .map((checkbox) => checkbox.getAttribute("aria-label")),
     ).toEqual(["Atoms", "Bonds", "Unit cell", "Polyhedra"]);
+  });
+
+  test("initializes uploaded structure camera controls from the uploaded cell", async () => {
+    const user = userEvent.setup();
+    const scene = sceneWithPeriodicImages();
+    scene.cell.vectors = [
+      [10, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+    ];
+    const defaultCamera = createDefaultCrystalCameraState(scene.cell.vectors);
+    queueFetchResponse(jsonResponse(scene));
+
+    render(<App />);
+
+    await user.upload(getFileInput(), structureFile());
+    await screen.findByTestId("lattice-canvas");
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    await user.click(within(commonControls).getByRole("tab", { name: "Pose" }));
+
+    expect(
+      within(commonControls).getByRole("textbox", { name: "z a" }),
+    ).toHaveProperty("value", defaultCamera.direct[0].toFixed(2));
+    expect(
+      within(commonControls).getByRole("textbox", { name: "z b" }),
+    ).toHaveProperty("value", defaultCamera.direct[1].toFixed(2));
+    expect(
+      within(commonControls).getByRole("textbox", { name: "z c" }),
+    ).toHaveProperty("value", defaultCamera.direct[2].toFixed(2));
   });
 
   test("keeps preview rendering controls in the advanced sidebar", async () => {

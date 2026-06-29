@@ -670,10 +670,7 @@ export function App() {
     try {
       const nextScene = await uploadStructurePreview(file);
       setScene(nextScene);
-      setComponentVisibility(createDefaultComponentVisibility(nextScene));
-      setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
-      setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
-      setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
+      resetLoadedPreviewState(nextScene);
       setPreviewStatus("ready");
     } catch (error) {
       setScene(null);

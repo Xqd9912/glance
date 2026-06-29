@@ -170,12 +170,12 @@ export function LatticeScene({
   );
   const cameraProps = useMemo<OrthographicCanvasCameraProps>(
     () => ({
-      position: layout.standardPose.cameraPosition,
+      position: layout.cameraPose.cameraPosition,
       zoom: 1,
       near: 0.01,
-      far: Math.max(1000, layout.standardPose.distance + layout.span * 8),
+      far: Math.max(1000, layout.cameraPose.distance + layout.span * 8),
     }),
-    [layout.span, layout.standardPose.cameraPosition, layout.standardPose.distance],
+    [layout.cameraPose.cameraPosition, layout.cameraPose.distance, layout.span],
   );
   const materialFamily = useMemo(
     () => resolveStructureMaterialFamilyForStyle(style),
