@@ -8,6 +8,7 @@ import type {
   BondRenderingMode,
   ComponentOpacityState,
   StyleState,
+  UnitCellLineStyle,
 } from "../model";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import { applyCameraPoseSnapshot } from "./cameraPose";
@@ -32,6 +33,7 @@ export function ExportSceneContent({
   showUnitCell,
   style,
   unitCellLineColor,
+  unitCellLineStyle = "solid",
   unitCellLineWidthScale = 1,
 }: {
   atomRenderingMode: AtomRenderingMode;
@@ -48,6 +50,7 @@ export function ExportSceneContent({
   showUnitCell: boolean;
   style: StyleState;
   unitCellLineColor?: string;
+  unitCellLineStyle?: UnitCellLineStyle;
   unitCellLineWidthScale?: number;
 }) {
   const { camera } = useThree();
@@ -80,6 +83,7 @@ export function ExportSceneContent({
         showUnitCell={showUnitCell}
         style={style}
         unitCellLineColor={unitCellLineColor}
+        unitCellLineStyle={unitCellLineStyle}
         unitCellLineWidthScale={unitCellLineWidthScale}
       />
     </>

@@ -1,6 +1,6 @@
 export type ExportFormat = "png" | "jpg" | "pdf";
 export type ExportBackground = "transparent" | "white" | "black";
-export type ExportComponentId = "legend" | "latticeVectors" | "structure";
+export type ExportComponentId = "legend" | "crystalAxes" | "structure";
 export type ExportLegendLayout = "horizontal" | "vertical";
 export type MeshQuality = "low" | "medium" | "high" | "xhigh";
 export type ExportMeshQuality = MeshQuality;
@@ -8,7 +8,7 @@ export type ExportSupersampling = 1 | 2 | 4;
 
 export interface ExportComponentSelection {
   legend: boolean;
-  latticeVectors: boolean;
+  crystalAxes: boolean;
   structure: boolean;
 }
 
@@ -73,7 +73,7 @@ export const DEFAULT_EXPORT_SETTINGS: ExportSettingsState = {
   combineComponents: true,
   components: {
     legend: false,
-    latticeVectors: false,
+    crystalAxes: false,
     structure: true,
   },
   format: "png",

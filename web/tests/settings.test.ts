@@ -8,6 +8,8 @@ import {
   STYLE_FOG_STRENGTH_MIN,
   STYLE_SCALE_MAX,
   STYLE_SCALE_MIN,
+  DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
+  DEFAULT_UNIT_CELL_LINE_STYLE,
   defaultAtomRenderingModeForScene,
   defaultBondRenderingModeForScene,
   defaultPreviewMeshQualityForScene,
@@ -55,6 +57,8 @@ describe("settings", () => {
     expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(belowThreshold))).toBe("medium");
     expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(atThreshold))).toBe("medium");
     expect(defaultPreviewMeshQualityForScene(sceneWithAtomCount(aboveThreshold))).toBe("low");
+    expect(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS).toBe(true);
+    expect(DEFAULT_UNIT_CELL_LINE_STYLE).toBe("solid");
   });
 
   test("defaults style controls to 40 percent atoms, 100 percent bonds, and by-atom bonds", () => {
@@ -85,7 +89,7 @@ describe("settings", () => {
       combineComponents: true,
       components: {
         legend: false,
-        latticeVectors: false,
+        crystalAxes: false,
         structure: true,
       },
       format: "png",
@@ -200,7 +204,7 @@ describe("settings", () => {
     expect(setExportMeshQuality(defaultSettings, "xhigh").meshQuality).toBe("xhigh");
     expect(setExportComponentSelected(defaultSettings, "legend", true).components).toEqual({
       legend: true,
-      latticeVectors: false,
+      crystalAxes: false,
       structure: true,
     });
     expect(setExportLegendLayout(defaultSettings, "vertical").legendLayout).toBe("vertical");
@@ -234,7 +238,7 @@ describe("settings", () => {
         ...defaultSettings,
         components: {
           legend: false,
-          latticeVectors: false,
+          crystalAxes: false,
           structure: false,
         },
       }),

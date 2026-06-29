@@ -10,6 +10,7 @@ import type {
   ExportMeshQuality,
   ExportSupersampling,
   StyleState,
+  UnitCellLineStyle,
 } from "../model";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import {
@@ -80,16 +81,19 @@ export interface RenderStructureRasterOptions {
   style: StyleState;
   supersampling: ExportSupersampling;
   unitCellLineColor?: string;
+  unitCellLineStyle: UnitCellLineStyle;
   width: number;
 }
 
-export interface RenderLatticeVectorsRasterOptions {
+export interface RenderCrystalAxesRasterOptions {
   backgroundColor: string | null;
   cameraPose: CameraPoseSnapshot;
   cellVectors: SceneSpec["cell"]["vectors"];
   cropPaddingRatio?: number;
   imageFormat: RasterExportImageFormat;
+  includeLabelTextItems?: boolean;
   labelColor?: string;
+  labelHaloColor?: string;
   showLabelHalo?: boolean;
   showLabels?: boolean;
   size: number;
@@ -111,6 +115,7 @@ export async function renderStructureRasterImage({
   style,
   supersampling,
   unitCellLineColor,
+  unitCellLineStyle,
   width,
 }: RenderStructureRasterOptions): Promise<RasterExportImage> {
   const renderWidth = width * supersampling;
@@ -193,6 +198,7 @@ export async function renderStructureRasterImage({
           showUnitCell={showUnitCell}
           style={style}
           unitCellLineColor={unitCellLineColor}
+          unitCellLineStyle={unitCellLineStyle}
           unitCellLineWidthScale={lineWidthScale}
         />
         <RenderReady onReady={() => resolveMounted?.()} />
@@ -276,18 +282,21 @@ function structureFrameReferenceSize(
   return Math.sqrt(bounds.width * bounds.height);
 }
 
-export async function renderLatticeVectorsRasterImage({
+export async function renderCrystalAxesRasterImage({
   backgroundColor,
   cameraPose,
   cellVectors,
   cropPaddingRatio = 0.04,
   imageFormat,
+  includeLabelTextItems,
   labelColor,
+  labelHaloColor,
   showLabelHalo = true,
   showLabels = true,
   size,
   supersampling,
-}: RenderLatticeVectorsRasterOptions): Promise<RasterExportImage> {
+}: RenderCrystalAxesRasterOptions): Promise<RasterExportImage> {
+  const includeProjectedTextItems = includeLabelTextItems ?? !showLabels;
   const renderSize = size * supersampling;
   const canvas = document.createElement("canvas");
   canvas.width = renderSize;
@@ -345,6 +354,7 @@ export async function renderLatticeVectorsRasterImage({
           axes={axes}
           cameraPose={cameraPose}
           labelColor={labelColor}
+          labelHaloColor={labelHaloColor}
           showLabelHalo={showLabelHalo}
           showLabels={showLabels}
         />
@@ -357,7 +367,7 @@ export async function renderLatticeVectorsRasterImage({
     state.advance(performance.now(), true);
     state.advance(performance.now() + 16, true);
 
-    const projectedTextItems = latticeVectorTextItems({
+    const projectedTextItems = crystalAxisTextItems({
       axes,
       cameraPose,
       crop: {
@@ -371,16 +381,16 @@ export async function renderLatticeVectorsRasterImage({
     const cropped = cropTransparentCanvas(
       canvas,
       cropPaddingRatio,
-      showLabels ? [] : textBounds(projectedTextItems),
+      includeProjectedTextItems ? textBounds(projectedTextItems) : [],
     );
-    const textItems = showLabels
-      ? undefined
-      : projectedTextItems.map((item) => ({
+    const textItems = includeProjectedTextItems
+      ? projectedTextItems.map((item) => ({
           ...item,
           size: item.size / supersampling,
           x: (item.x - cropped.crop.sourceX) / supersampling,
           y: (item.y - cropped.crop.sourceY) / supersampling,
-        }));
+        }))
+      : undefined;
     const outputCanvas =
       supersampling === 1
         ? cropped.canvas
@@ -430,7 +440,7 @@ function cropTransparentCanvas(
   readableCanvas.height = sourceCanvas.height;
   const sourceContext = readableCanvas.getContext("2d", { willReadFrequently: true });
   if (!sourceContext) {
-    throw new Error("Could not prepare the lattice vectors crop canvas.");
+    throw new Error("Could not prepare the crystal axes crop canvas.");
   }
 
   sourceContext.drawImage(sourceCanvas, 0, 0);
@@ -468,7 +478,7 @@ function cropTransparentCanvas(
   outputCanvas.height = targetHeight;
   const outputContext = outputCanvas.getContext("2d");
   if (!outputContext) {
-    throw new Error("Could not crop the lattice vectors export canvas.");
+    throw new Error("Could not crop the crystal axes export canvas.");
   }
 
   outputContext.drawImage(
@@ -527,7 +537,7 @@ function mergeBounds(
   }));
 }
 
-function latticeVectorTextItems({
+function crystalAxisTextItems({
   axes,
   cameraPose,
   crop,

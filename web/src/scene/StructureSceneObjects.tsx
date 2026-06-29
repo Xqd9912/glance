@@ -33,6 +33,7 @@ import type {
   ComponentOpacityState,
   ExportMeshQuality,
   StyleState,
+  UnitCellLineStyle,
 } from "../model";
 import {
   BOND_RADIUS,
@@ -75,6 +76,8 @@ export const POLYHEDRON_SURFACE_OPACITY = 0.5;
 export const POLYHEDRON_EDGE_COLOR = "#f2f5f9";
 export const POLYHEDRON_EDGE_LINE_WIDTH_PIXELS = 1;
 export const POLYHEDRON_EDGE_OPACITY = 0.8;
+const CELL_FRAME_DASH_SIZE = 0.14;
+const CELL_FRAME_GAP_SIZE = 0.05;
 const POLYHEDRON_EDGE_OPACITY_RATIO =
   POLYHEDRON_EDGE_OPACITY / POLYHEDRON_SURFACE_OPACITY;
 export const SCENE_FOG_COLOR = "#fafafa";
@@ -127,6 +130,7 @@ export function PreviewSceneContent({
   showAtoms,
   showUnitCell,
   style,
+  unitCellLineStyle = "solid",
   unitCellLineWidthScale = 1,
 }: {
   atomRenderingMode: AtomRenderingMode;
@@ -147,6 +151,7 @@ export function PreviewSceneContent({
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
+  unitCellLineStyle?: UnitCellLineStyle;
   unitCellLineWidthScale?: number;
 }) {
   const atomById = useMemo(() => new Map(scene.atoms.map((atom) => [atom.id, atom])), [scene]);
@@ -174,6 +179,7 @@ export function PreviewSceneContent({
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
+        unitCellLineStyle={unitCellLineStyle}
         unitCellLineWidthScale={unitCellLineWidthScale}
       />
     </>
@@ -280,6 +286,7 @@ export function StructureSceneObjects({
   showUnitCell,
   style,
   unitCellLineColor,
+  unitCellLineStyle = "solid",
   unitCellLineWidthScale = 1,
 }: {
   atomById: Map<string, AtomSpec>;
@@ -302,6 +309,7 @@ export function StructureSceneObjects({
   showUnitCell: boolean;
   style: StyleState;
   unitCellLineColor?: string;
+  unitCellLineStyle?: UnitCellLineStyle;
   unitCellLineWidthScale?: number;
 }) {
   const handlePointerMissed = useCallback(() => {
@@ -320,6 +328,7 @@ export function StructureSceneObjects({
             color={unitCellLineColor}
             lineWidthScale={unitCellLineWidthScale}
             opacity={componentOpacity.unitCell / 100}
+            lineStyle={unitCellLineStyle}
             vectors={scene.cell.vectors}
           />
         ) : null}
@@ -1324,11 +1333,13 @@ function Polyhedron({
 function CellFrame({
   color = CELL_FRAME_COLOR,
   lineWidthScale,
+  lineStyle,
   opacity,
   vectors,
 }: {
   color?: string;
   lineWidthScale: number;
+  lineStyle: UnitCellLineStyle;
   opacity: number;
   vectors: VectorTuple[];
 }) {
@@ -1339,15 +1350,24 @@ function CellFrame({
     const material = new LineMaterial({
       alphaToCoverage: true,
       color,
+      dashed: lineStyle === "dashed",
       depthWrite: opacity >= 1,
+      dashSize: CELL_FRAME_DASH_SIZE,
       fog: false,
+      gapSize: CELL_FRAME_GAP_SIZE,
       linewidth: lineWidth,
       opacity,
       transparent: opacity < 1,
       worldUnits: false,
     });
-    return new LineSegments2(geometry, material);
-  }, [color, lineWidthScale, opacity, vectors]);
+    const line = new LineSegments2(geometry, material);
+    if (lineStyle === "dashed") {
+      material.defines.USE_DASH = "";
+      material.needsUpdate = true;
+      line.computeLineDistances();
+    }
+    return line;
+  }, [color, lineStyle, lineWidthScale, opacity, vectors]);
 
   useEffect(() => {
     return () => {

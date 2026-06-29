@@ -13,6 +13,7 @@ import {
   Color,
   Group,
   LinearFilter,
+  LinearMipmapLinearFilter,
   OrthographicCamera,
   Quaternion,
   SRGBColorSpace,
@@ -43,7 +44,10 @@ export const ORIENTATION_GIZMO_LABEL_DISTANCE = 1.3;
 const LABEL_HIT_RADIUS_PX = 24;
 const LABEL_SCALE = 0.38;
 const LABEL_FILL_COLOR = "#343434";
-const LABEL_HALO_COLOR = "rgb(255 255 255)";
+const LABEL_HALO_COLOR = "#fafafa";
+const LABEL_TEXTURE_SIZE = 1024;
+const LABEL_FONT_SIZE = 608;
+const LABEL_OUTLINE_RADIUS = 44;
 const ORIGIN_SPHERE_RADIUS = 0.13;
 const SHAFT_LENGTH = 0.82;
 const SHAFT_RADIUS = 0.055;
@@ -57,6 +61,7 @@ export function OrientationGizmo({
   frameRequestRef,
   onAxisClick,
   orientationVersion = 0,
+  showLabels = true,
   style,
 }: {
   cameraOrientationRef: CameraOrientationRef;
@@ -65,6 +70,7 @@ export function OrientationGizmo({
   frameRequestRef?: MutableRefObject<(() => void) | null>;
   onAxisClick?: (axis: OrientationGizmoAxisLabel) => void;
   orientationVersion?: number;
+  showLabels?: boolean;
   style?: CSSProperties;
 }) {
   const visualCanvasRef = useRef<HTMLDivElement | null>(null);
@@ -224,6 +230,7 @@ export function OrientationGizmo({
             axes={axes}
             cameraOrientationRef={cameraOrientationRef}
             hoveredAxis={hoveredAxis}
+            showLabels={showLabels}
           />
         </Canvas>
       </div>
@@ -283,10 +290,12 @@ function OrientationGizmoScene({
   axes,
   cameraOrientationRef,
   hoveredAxis,
+  showLabels,
 }: {
   axes: OrientationGizmoAxisSpec[];
   cameraOrientationRef: CameraOrientationRef;
   hoveredAxis: OrientationGizmoAxisLabel | null;
+  showLabels: boolean;
 }) {
   const groupRef = useRef<Group | null>(null);
   const nextRotationRef = useRef(new Quaternion());
@@ -302,7 +311,11 @@ function OrientationGizmoScene({
 
   return (
     <group ref={groupRef}>
-      <OrientationGizmoAxes axes={axes} hoveredAxis={hoveredAxis} />
+      <OrientationGizmoAxes
+        axes={axes}
+        hoveredAxis={hoveredAxis}
+        showLabels={showLabels}
+      />
     </group>
   );
 }
@@ -311,12 +324,14 @@ export function StaticOrientationGizmoScene({
   axes,
   cameraPose,
   labelColor = LABEL_FILL_COLOR,
+  labelHaloColor = LABEL_HALO_COLOR,
   showLabelHalo = true,
   showLabels = true,
 }: {
   axes: OrientationGizmoAxisSpec[];
   cameraPose: CameraPoseSnapshot;
   labelColor?: string;
+  labelHaloColor?: string;
   showLabelHalo?: boolean;
   showLabels?: boolean;
 }) {
@@ -331,6 +346,7 @@ export function StaticOrientationGizmoScene({
         axes={axes}
         hoveredAxis={null}
         labelColor={labelColor}
+        labelHaloColor={labelHaloColor}
         showLabelHalo={showLabelHalo}
         showLabels={showLabels}
       />
@@ -342,12 +358,14 @@ function OrientationGizmoAxes({
   axes,
   hoveredAxis,
   labelColor = LABEL_FILL_COLOR,
+  labelHaloColor = LABEL_HALO_COLOR,
   showLabelHalo = true,
   showLabels = true,
 }: {
   axes: OrientationGizmoAxisSpec[];
   hoveredAxis: OrientationGizmoAxisLabel | null;
   labelColor?: string;
+  labelHaloColor?: string;
   showLabelHalo?: boolean;
   showLabels?: boolean;
 }) {
@@ -359,6 +377,7 @@ function OrientationGizmoAxes({
           hovered={axis.label === hoveredAxis}
           key={axis.label}
           labelColor={labelColor}
+          labelHaloColor={labelHaloColor}
           showLabelHalo={showLabelHalo}
           showLabel={showLabels}
         />
@@ -375,12 +394,14 @@ function AxisArrow({
   axis,
   hovered,
   labelColor,
+  labelHaloColor,
   showLabelHalo,
   showLabel,
 }: {
   axis: OrientationGizmoAxisSpec;
   hovered: boolean;
   labelColor: string;
+  labelHaloColor: string;
   showLabelHalo: boolean;
   showLabel: boolean;
 }) {
@@ -414,6 +435,7 @@ function AxisArrow({
           hovered={hovered}
           label={axis.label}
           labelColor={labelColor}
+          labelHaloColor={labelHaloColor}
           showHalo={showLabelHalo}
           position={[0, ORIENTATION_GIZMO_LABEL_DISTANCE, 0]}
         />
@@ -426,71 +448,98 @@ function AxisLabel({
   hovered,
   label,
   labelColor,
+  labelHaloColor,
   position,
   showHalo,
 }: {
   hovered: boolean;
   label: string;
   labelColor: string;
+  labelHaloColor: string;
   position: VectorTuple;
   showHalo: boolean;
 }) {
-  const texture = useMemo(
-    () => createLabelTexture(label, hovered, labelColor, showHalo),
-    [hovered, label, labelColor, showHalo],
-  );
+  const fillTexture = useMemo(() => createLabelTexture(label, "fill"), [label]);
+  const outlineTexture = useMemo(() => createLabelTexture(label, "outline"), [label]);
+  const fillColor = hovered ? "#111111" : labelColor;
 
-  useEffect(() => () => texture.dispose(), [texture]);
+  useEffect(() => () => fillTexture.dispose(), [fillTexture]);
+  useEffect(() => () => outlineTexture.dispose(), [outlineTexture]);
 
   return (
-    <sprite
-      position={position}
-      renderOrder={10}
-      scale={[LABEL_SCALE, LABEL_SCALE, 1]}
-    >
-      <spriteMaterial
-        depthTest={false}
-        depthWrite={false}
-        map={texture}
-        transparent
-      />
-    </sprite>
+    <group position={position}>
+      {showHalo ? (
+        <sprite
+          renderOrder={9}
+          scale={[LABEL_SCALE, LABEL_SCALE, 1]}
+        >
+          <spriteMaterial
+            color={labelHaloColor}
+            depthTest={false}
+            depthWrite={false}
+            map={outlineTexture}
+            transparent
+          />
+        </sprite>
+      ) : null}
+      <sprite
+        renderOrder={10}
+        scale={[LABEL_SCALE, LABEL_SCALE, 1]}
+      >
+        <spriteMaterial
+          color={fillColor}
+          depthTest={false}
+          depthWrite={false}
+          map={fillTexture}
+          transparent
+        />
+      </sprite>
+    </group>
   );
 }
 
-function createLabelTexture(
-  label: string,
-  hovered: boolean,
-  labelColor: string,
-  showHalo: boolean,
-) {
+function createLabelTexture(label: string, layer: "fill" | "outline") {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = LABEL_TEXTURE_SIZE;
+  canvas.height = LABEL_TEXTURE_SIZE;
 
   if (context) {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.font = "italic 500 304px Geist, 'Helvetica Neue', Arial, sans-serif";
+    context.font = `italic 500 ${LABEL_FONT_SIZE}px Geist, 'Helvetica Neue', Arial, sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.lineJoin = "round";
     context.miterLimit = 2;
-    if (showHalo) {
-      context.strokeStyle = LABEL_HALO_COLOR;
-      context.lineWidth = 40;
-      context.strokeText(label, canvas.width / 2, canvas.height / 2 + 2);
+    context.fillStyle = "#ffffff";
+    if (layer === "outline") {
+      drawLabelOutline(context, label);
+    } else {
+      context.fillText(label, canvas.width / 2, canvas.height / 2 + 4);
     }
-    context.fillStyle = hovered ? "#111111" : labelColor;
-    context.fillText(label, canvas.width / 2, canvas.height / 2 + 2);
   }
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
-  texture.generateMipmaps = false;
+  texture.generateMipmaps = true;
   texture.magFilter = LinearFilter;
-  texture.minFilter = LinearFilter;
+  texture.minFilter = LinearMipmapLinearFilter;
 
   return texture;
+}
+
+function drawLabelOutline(context: CanvasRenderingContext2D, label: string) {
+  const centerX = context.canvas.width / 2;
+  const centerY = context.canvas.height / 2 + 4;
+  const steps = 24;
+
+  for (let index = 0; index < steps; index += 1) {
+    const angle = (index / steps) * Math.PI * 2;
+    context.fillText(
+      label,
+      centerX + Math.cos(angle) * LABEL_OUTLINE_RADIUS,
+      centerY + Math.sin(angle) * LABEL_OUTLINE_RADIUS,
+    );
+  }
 }

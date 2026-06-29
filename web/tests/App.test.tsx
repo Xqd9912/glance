@@ -120,8 +120,17 @@ mock.module("three/examples/jsm/controls/TrackballControls.js", () => ({
 }));
 
 mock.module("../src/scene/OrientationGizmo", () => ({
-  OrientationGizmo: ({ onAxisClick }: { onAxisClick?: (axis: "a" | "b" | "c") => void }) => (
-    <div data-testid="mock-orientation-gizmo">
+  OrientationGizmo: ({
+    onAxisClick,
+    showLabels = true,
+  }: {
+    onAxisClick?: (axis: "a" | "b" | "c") => void;
+    showLabels?: boolean;
+  }) => (
+    <div
+      data-show-labels={String(showLabels)}
+      data-testid="mock-orientation-gizmo"
+    >
       <button type="button" onClick={() => onAxisClick?.("a")}>
         gizmo a
       </button>
@@ -172,12 +181,12 @@ async function createFigureExportFilesMock(
       format: options.settings.format,
     });
   }
-  if (options.settings.components.latticeVectors) {
+  if (options.settings.components.crystalAxes) {
     files.push({
-      blob: new Blob(["lattice vectors"], {
+      blob: new Blob(["crystal axes"], {
         type: exportMimeType(options.settings.format),
       }),
-      fileName: `NaCl-latt-vec.${options.settings.format}`,
+      fileName: `NaCl-crystal-axes.${options.settings.format}`,
       format: options.settings.format,
     });
   }
@@ -363,7 +372,7 @@ describe("App", () => {
     ).toHaveProperty("value", defaultCamera.direct[2].toFixed(2));
   });
 
-  test("keeps preview rendering controls in the advanced sidebar", async () => {
+  test("keeps preview rendering controls in the settings sidebar", async () => {
     const user = userEvent.setup();
 
     await renderLoadedStructure(user);
@@ -621,8 +630,8 @@ describe("App", () => {
     const inspector = screen.getByRole("complementary", { name: "Sidebar" });
     expect(inspector.isConnected).toBe(true);
     expect(within(inspector).queryByRole("heading", { name: "Inspector" })).toBeNull();
-    const advancedTab = within(inspector).getByRole("tab", { name: "Advanced" });
-    expect(advancedTab.isConnected).toBe(true);
+    const settingsTab = within(inspector).getByRole("tab", { name: "Settings" });
+    expect(settingsTab.isConnected).toBe(true);
     expect(inspector.querySelector("[data-slot='separator']")).toBeNull();
     expect(within(inspector).queryByText("Renderer")).toBeNull();
     expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
@@ -707,6 +716,26 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Sidebar" }));
     const inspector = screen.getByRole("complementary", { name: "Sidebar" });
     expect(within(inspector).queryByRole("combobox", { name: "Renderer" })).toBeNull();
+    const showCrystalAxisLabelsSwitch = within(inspector).getByRole("switch", {
+      name: "Show crystal axis labels",
+    });
+    const unitCellLineSelect = within(inspector).getByRole("combobox", {
+      name: "Unit cell line style",
+    });
+
+    expect(showCrystalAxisLabelsSwitch.getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByTestId("mock-orientation-gizmo").getAttribute("data-show-labels")).toBe(
+      "true",
+    );
+    await user.click(showCrystalAxisLabelsSwitch);
+    expect(showCrystalAxisLabelsSwitch.getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByTestId("mock-orientation-gizmo").getAttribute("data-show-labels")).toBe(
+      "false",
+    );
+
+    expect(unitCellLineSelect.textContent).toContain("Solid");
+    await user.click(unitCellLineSelect);
+    await user.click(await screen.findByRole("option", { name: "Dashed" }));
 
     expect(fetchCalls).toHaveLength(1);
     expect(screen.getByTestId("lattice-canvas").getAttribute("data-render-backend")).toBe(
@@ -721,6 +750,8 @@ describe("App", () => {
     expect(exportDirectDownloads[0]?.sourceFileName).toBe("NaCl.cif");
     expect(exportDirectDownloads[0]?.file.fileName).toBe("NaCl.png");
     expect(exportZipDownloads).toHaveLength(0);
+    expect(exportRequests[0]?.showCrystalAxisLabels).toBe(false);
+    expect(exportRequests[0]?.unitCellLineStyle).toBe("dashed");
   });
 
   test("toggles polyhedra independently from atoms, bonds, and unit cell", async () => {
@@ -1141,8 +1172,8 @@ describe("App", () => {
     const structureCheckbox = within(commonControls).getByRole("checkbox", {
       name: "Export Structure",
     });
-    const latticeVectorsCheckbox = within(commonControls).getByRole("checkbox", {
-      name: "Export Lattice vectors",
+    const crystalAxesCheckbox = within(commonControls).getByRole("checkbox", {
+      name: "Export Crystal axes",
     });
     const legendCheckbox = within(commonControls).getByRole("checkbox", {
       name: "Export Legend",
@@ -1160,7 +1191,7 @@ describe("App", () => {
     expect(widthInput.value).toBe("2000");
     expect(heightInput.value).toBe("2000");
     expect(structureCheckbox.getAttribute("aria-checked")).toBe("true");
-    expect(latticeVectorsCheckbox.getAttribute("aria-checked")).toBe("false");
+    expect(crystalAxesCheckbox.getAttribute("aria-checked")).toBe("false");
     expect(legendCheckbox.getAttribute("aria-checked")).toBe("false");
     expect(combineSwitch.getAttribute("aria-checked")).toBe("true");
     expect(horizontalLegendLayout.getAttribute("aria-selected")).toBe("true");
@@ -1173,7 +1204,7 @@ describe("App", () => {
     await user.click(combineSwitch);
     expect(combineSwitch.getAttribute("aria-checked")).toBe("false");
 
-    await user.click(latticeVectorsCheckbox);
+    await user.click(crystalAxesCheckbox);
     await user.click(legendCheckbox);
     await user.click(verticalLegendLayout);
     await user.click(backgroundButton);
@@ -1191,7 +1222,7 @@ describe("App", () => {
     expect(exportRequests[0]?.settings.background).toBe("black");
     expect(exportRequests[0]?.settings.components).toEqual({
       legend: true,
-      latticeVectors: true,
+      crystalAxes: true,
       structure: true,
     });
     expect(exportRequests[0]?.settings.legendLayout).toBe("vertical");
@@ -1199,7 +1230,7 @@ describe("App", () => {
     expect(exportZipDownloads[0]?.sourceFileName).toBe("NaCl.cif");
     expect(exportZipDownloads[0]?.files.map((file) => file.fileName)).toEqual([
       "NaCl.png",
-      "NaCl-latt-vec.png",
+      "NaCl-crystal-axes.png",
       "NaCl-legend.png",
     ]);
 
@@ -1262,7 +1293,7 @@ describe("App", () => {
     expect(exportZipDownloads[1]?.sourceFileName).toBe("NaCl.cif");
     expect(exportZipDownloads[1]?.files.map((file) => file.fileName)).toEqual([
       "NaCl.pdf",
-      "NaCl-latt-vec.pdf",
+      "NaCl-crystal-axes.pdf",
       "NaCl-legend.pdf",
     ]);
 
@@ -1292,7 +1323,7 @@ describe("App", () => {
     });
     expect(exportZipDownloads[2]?.files.map((file) => file.fileName)).toEqual([
       "NaCl.jpg",
-      "NaCl-latt-vec.jpg",
+      "NaCl-crystal-axes.jpg",
       "NaCl-legend.jpg",
     ]);
 

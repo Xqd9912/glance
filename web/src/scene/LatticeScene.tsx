@@ -13,6 +13,7 @@ import {
   type ComponentOpacityState,
   type MeshQuality,
   type StyleState,
+  type UnitCellLineStyle,
 } from "../model";
 import type { PreviewFpsStore } from "../model/previewFpsStore";
 import type { InteractionMode } from "../model/viewState";
@@ -110,6 +111,7 @@ export function LatticeScene({
   showUnitCell = true,
   style,
   suspendCameraOrientationUpdates = false,
+  unitCellLineStyle = "solid",
 }: {
   cameraOrientationRef?: CameraOrientationRef;
   atomRenderingMode?: AtomRenderingMode;
@@ -146,6 +148,7 @@ export function LatticeScene({
   showUnitCell?: boolean;
   style: StyleState;
   suspendCameraOrientationUpdates?: boolean;
+  unitCellLineStyle?: UnitCellLineStyle;
 }) {
   const layoutSourceScene = layoutScene ?? scene;
   const structureLayout = useMemo(
@@ -224,6 +227,7 @@ export function LatticeScene({
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
+        unitCellLineStyle={unitCellLineStyle}
       />
       <CameraOrientationTracker
         cameraOrientationRef={cameraOrientationRef}

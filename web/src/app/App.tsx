@@ -85,6 +85,8 @@ import {
   createDefaultComponentVisibility,
   createDefaultExportSettings,
   createDefaultStyle,
+  DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
+  DEFAULT_UNIT_CELL_LINE_STYLE,
   defaultAtomRenderingModeForScene,
   defaultBondRenderingModeForScene,
   defaultPreviewMeshQualityForScene,
@@ -93,6 +95,7 @@ import {
   type ExportProjectedSize,
   type ExportSettingsState,
   type MeshQuality,
+  type UnitCellLineStyle,
   hasPolyhedra,
   previewSafeAreaForInspector,
   sceneOffsetXForInspector,
@@ -186,6 +189,12 @@ export function App() {
   );
   const [previewMeshQuality, setPreviewMeshQuality] = useState<MeshQuality>(
     () => defaultPreviewMeshQualityForScene(null),
+  );
+  const [unitCellLineStyle, setUnitCellLineStyle] = useState<UnitCellLineStyle>(
+    DEFAULT_UNIT_CELL_LINE_STYLE,
+  );
+  const [showCrystalAxisLabels, setShowCrystalAxisLabels] = useState(
+    DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
   );
   const [cameraCommandVersion, setCameraCommandVersion] = useState(0);
   const [cameraAnimatedCommandVersion, setCameraAnimatedCommandVersion] = useState(0);
@@ -305,6 +314,8 @@ export function App() {
       setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
       setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
       setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
+      setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
+      setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
       setExportSettings(createDefaultExportSettings());
       if (!options.preserveActiveCommonPanelTab) {
         setActiveCommonPanelTab("display");
@@ -711,6 +722,8 @@ export function App() {
         setAtomRenderingMode(defaultAtomRenderingModeForScene(nextScene));
         setBondRenderingMode(defaultBondRenderingModeForScene(nextScene));
         setPreviewMeshQuality(defaultPreviewMeshQualityForScene(nextScene));
+        setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
+        setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
         setPreviewStatus("ready");
       } catch (error) {
         if (isBackendUnavailablePreviewError(error)) {
@@ -855,7 +868,9 @@ export function App() {
         fileName: selectedFileName,
         scene,
         settings: settingsForExport,
+        showCrystalAxisLabels,
         style,
+        unitCellLineStyle,
       });
       await downloadFigureExportFiles(exportFiles, selectedFileName);
     } catch (error) {
@@ -876,7 +891,9 @@ export function App() {
     prepareExportSettings,
     scene,
     selectedFileName,
+    showCrystalAxisLabels,
     style,
+    unitCellLineStyle,
   ]);
 
   const handleResetAllSettings = useCallback(async () => {
@@ -1089,6 +1106,7 @@ export function App() {
                 showAtoms={componentVisibility.atoms}
                 showFpsOverlay={viewState.showFpsOverlay}
                 showUnitCell={componentVisibility.unitCell}
+                unitCellLineStyle={unitCellLineStyle}
               />
             ) : (
               <div
@@ -1160,6 +1178,7 @@ export function App() {
           frameRequestRef={orientationGizmoFrameRequestRef}
           onAxisClick={handleGizmoAxisClick}
           orientationVersion={cameraOrientationVersion}
+          showLabels={showCrystalAxisLabels}
           style={orientationGizmoContainerStyle(effectivePreviewSafeArea, orientationGizmoSize)}
         />
       ) : null}
@@ -1273,6 +1292,8 @@ export function App() {
             isSceneLoading={previewStatus === "loading"}
             previewMeshQuality={previewMeshQuality}
             showFpsOverlay={viewState.showFpsOverlay}
+            showCrystalAxisLabels={showCrystalAxisLabels}
+            unitCellLineStyle={unitCellLineStyle}
             onAtomRenderingModeChange={handleAtomRenderingModeChange}
             onBondRenderingModeChange={handleBondRenderingModeChange}
             onBondAlgorithmChange={(nextBondAlgorithm) => {
@@ -1282,6 +1303,8 @@ export function App() {
             onInteractionModeChange={handleInteractionModeChange}
             onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
             onShowFpsOverlayChange={handleShowFpsOverlayChange}
+            onShowCrystalAxisLabelsChange={setShowCrystalAxisLabels}
+            onUnitCellLineStyleChange={setUnitCellLineStyle}
           />
         </>
       ) : null}

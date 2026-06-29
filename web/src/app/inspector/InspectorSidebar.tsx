@@ -49,6 +49,7 @@ import {
   type AtomRenderingMode,
   type BondRenderingMode,
   type MeshQuality,
+  type UnitCellLineStyle,
 } from "../../model";
 
 const INSPECTOR_BODY_TEXT_CLASS = "text-sm";
@@ -103,6 +104,8 @@ export function InspectorSidebar({
   isSceneLoading,
   previewMeshQuality,
   showFpsOverlay,
+  showCrystalAxisLabels,
+  unitCellLineStyle,
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
@@ -110,6 +113,8 @@ export function InspectorSidebar({
   onInteractionModeChange,
   onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
+  onShowCrystalAxisLabelsChange,
+  onUnitCellLineStyleChange,
 }: {
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
@@ -120,6 +125,8 @@ export function InspectorSidebar({
   isSceneLoading: boolean;
   previewMeshQuality: MeshQuality;
   showFpsOverlay: boolean;
+  showCrystalAxisLabels: boolean;
+  unitCellLineStyle: UnitCellLineStyle;
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
@@ -127,6 +134,8 @@ export function InspectorSidebar({
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
+  onShowCrystalAxisLabelsChange: (showCrystalAxisLabels: boolean) => void;
+  onUnitCellLineStyleChange: (lineStyle: UnitCellLineStyle) => void;
 }) {
   return (
     <aside
@@ -153,7 +162,7 @@ export function InspectorSidebar({
               value="settings"
               className="h-8 flex-none px-0 text-[0.875rem] font-semibold after:bottom-[-2px]"
             >
-              Advanced
+              Settings
             </TabsTrigger>
           </TabsList>
         </header>
@@ -172,6 +181,8 @@ export function InspectorSidebar({
               isSceneLoading={isSceneLoading}
               previewMeshQuality={previewMeshQuality}
               showFpsOverlay={showFpsOverlay}
+              showCrystalAxisLabels={showCrystalAxisLabels}
+              unitCellLineStyle={unitCellLineStyle}
               onAtomRenderingModeChange={onAtomRenderingModeChange}
               onBondRenderingModeChange={onBondRenderingModeChange}
               onBondAlgorithmChange={onBondAlgorithmChange}
@@ -179,6 +190,8 @@ export function InspectorSidebar({
               onInteractionModeChange={onInteractionModeChange}
               onPreviewMeshQualityChange={onPreviewMeshQualityChange}
               onShowFpsOverlayChange={onShowFpsOverlayChange}
+              onShowCrystalAxisLabelsChange={onShowCrystalAxisLabelsChange}
+              onUnitCellLineStyleChange={onUnitCellLineStyleChange}
             />
           </TabsContent>
         </div>
@@ -196,6 +209,8 @@ function SettingsPanel({
   isSceneLoading,
   previewMeshQuality,
   showFpsOverlay,
+  showCrystalAxisLabels,
+  unitCellLineStyle,
   onAtomRenderingModeChange,
   onBondRenderingModeChange,
   onBondAlgorithmChange,
@@ -203,6 +218,8 @@ function SettingsPanel({
   onInteractionModeChange,
   onPreviewMeshQualityChange,
   onShowFpsOverlayChange,
+  onShowCrystalAxisLabelsChange,
+  onUnitCellLineStyleChange,
 }: {
   atomRenderingMode: AtomRenderingMode;
   bondRenderingMode: BondRenderingMode;
@@ -212,6 +229,8 @@ function SettingsPanel({
   isSceneLoading: boolean;
   previewMeshQuality: MeshQuality;
   showFpsOverlay: boolean;
+  showCrystalAxisLabels: boolean;
+  unitCellLineStyle: UnitCellLineStyle;
   onAtomRenderingModeChange: (mode: AtomRenderingMode) => void;
   onBondRenderingModeChange: (mode: BondRenderingMode) => void;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
@@ -219,6 +238,8 @@ function SettingsPanel({
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
   onPreviewMeshQualityChange: (meshQuality: MeshQuality) => void;
   onShowFpsOverlayChange: (showFpsOverlay: boolean) => void;
+  onShowCrystalAxisLabelsChange: (showCrystalAxisLabels: boolean) => void;
+  onUnitCellLineStyleChange: (lineStyle: UnitCellLineStyle) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -227,6 +248,37 @@ function SettingsPanel({
         label="Show FPS"
         onCheckedChange={onShowFpsOverlayChange}
       />
+
+      <InspectorSwitchRow
+        checked={showCrystalAxisLabels}
+        label="Show crystal axis labels"
+        onCheckedChange={onShowCrystalAxisLabelsChange}
+      />
+
+      <InspectorSelectRow label="Unit cell line style">
+        <Select
+          value={unitCellLineStyle}
+          onValueChange={(value) => onUnitCellLineStyleChange(value as UnitCellLineStyle)}
+        >
+          <SelectTrigger
+            size="sm"
+            aria-label="Unit cell line style"
+            className={INSPECTOR_SELECT_TRIGGER_CLASS}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent position="popper" className="!bg-background !text-foreground">
+            <SelectGroup>
+              <SelectItem value="solid" className={INSPECTOR_SELECT_ITEM_CLASS}>
+                Solid
+              </SelectItem>
+              <SelectItem value="dashed" className={INSPECTOR_SELECT_ITEM_CLASS}>
+                Dashed
+              </SelectItem>
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </InspectorSelectRow>
 
       <InspectorSelectRow label="Atom Mesh">
         <Select

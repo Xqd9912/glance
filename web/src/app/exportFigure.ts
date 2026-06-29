@@ -18,6 +18,7 @@ import type {
   ExportSettingsState,
   ExportSupersampling,
   StyleState,
+  UnitCellLineStyle,
 } from "./settings";
 import {
   EXPORT_RENDER_DIMENSION_MAX,
@@ -36,7 +37,9 @@ export interface CreateFigureExportOptions {
   fileName: string | null;
   scene: SceneSpec;
   settings: ExportSettingsState;
+  showCrystalAxisLabels: boolean;
   style: StyleState;
+  unitCellLineStyle: UnitCellLineStyle;
 }
 
 export interface FigureExportFile {
@@ -61,7 +64,7 @@ interface LegendExportStyle {
 
 const LEGEND_EXPORT_FONT_RATIO = 0.045;
 const LEGEND_SWATCH_STROKE_RATIO = 0.1;
-const LATTICE_VECTOR_EXPORT_SIZE_RATIO = 1;
+const CRYSTAL_AXIS_EXPORT_SIZE_RATIO = 1;
 const EXPORT_ACCESSORY_PADDING_RATIO = 0.08;
 const EXPORT_ACCESSORY_LONG_SIDE_WEIGHT = 0.25;
 const JPG_EXPORT_QUALITY = 0.95;
@@ -73,6 +76,7 @@ const DARK_BACKGROUND_TEXT_COLOR = "#eeeeee";
 const LIGHT_BACKGROUND_TEXT_COLOR = "#202020";
 const DARK_BACKGROUND_TEXT_HALO_COLOR = "#111111";
 const LIGHT_BACKGROUND_TEXT_HALO_COLOR = "#fafafa";
+const CRYSTAL_AXIS_LABEL_HALO_COLOR = "#ffffff";
 const DARK_BACKGROUND_UNIT_CELL_LINE_COLOR = "#bbbbbb";
 
 interface CombinedExportRasterOptions {
@@ -83,7 +87,9 @@ interface CombinedExportRasterOptions {
   componentVisibility: ComponentVisibilityState;
   scene: SceneSpec;
   settings: ExportSettingsState;
+  showCrystalAxisLabels: boolean;
   style: StyleState;
+  unitCellLineStyle: UnitCellLineStyle;
   visibleScene: SceneSpec | null;
 }
 
@@ -103,7 +109,9 @@ export async function createFigureExportFiles({
   fileName,
   scene,
   settings,
+  showCrystalAxisLabels,
   style,
+  unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile[]> {
   const validation = validateExportSettings(settings);
   if (!validation.valid) {
@@ -121,7 +129,9 @@ export async function createFigureExportFiles({
         fileName,
         scene,
         settings,
+        showCrystalAxisLabels,
         style,
+        unitCellLineStyle,
       }),
     ];
   }
@@ -140,20 +150,23 @@ export async function createFigureExportFiles({
         fileName,
         scene,
         settings,
+        showCrystalAxisLabels,
         style,
+        unitCellLineStyle,
       }),
     );
   }
 
-  if (settings.components.latticeVectors) {
+  if (settings.components.crystalAxes) {
     files.push(
-      await createLatticeVectorsExportFile({
+      await createCrystalAxesExportFile({
         cameraPose: createCameraPoseSnapshot(cameraOrientationRef.current),
-        fileName: `${stem}-latt-vec.${settings.format}`,
+        fileName: `${stem}-crystal-axes.${settings.format}`,
         format: settings.format,
         background: settings.background,
         scene,
-        size: latticeVectorExportSize(settings),
+        showCrystalAxisLabels,
+        size: crystalAxisExportSize(settings),
         supersampling: settings.supersampling,
       }),
     );
@@ -185,7 +198,9 @@ async function createCombinedExportFile({
   fileName,
   scene,
   settings,
+  showCrystalAxisLabels,
   style,
+  unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   const visibleScene = visibleSceneForComponents(scene, componentVisibility);
   const cameraPose = createCameraPoseSnapshot(cameraOrientationRef.current);
@@ -197,7 +212,9 @@ async function createCombinedExportFile({
     componentVisibility,
     scene,
     settings,
+    showCrystalAxisLabels,
     style,
+    unitCellLineStyle,
     visibleScene,
   });
 
@@ -228,7 +245,9 @@ export async function createFigureExportFile({
   fileName,
   scene,
   settings,
+  showCrystalAxisLabels,
   style,
+  unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   return createStructureExportFile({
     cameraOrientationRef,
@@ -239,7 +258,9 @@ export async function createFigureExportFile({
     fileName,
     scene,
     settings,
+    showCrystalAxisLabels,
     style,
+    unitCellLineStyle,
   });
 }
 
@@ -253,6 +274,7 @@ async function createStructureExportFile({
   scene,
   settings,
   style,
+  unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   const validation = validateExportSettings(settings);
   if (!validation.valid) {
@@ -273,6 +295,7 @@ async function createStructureExportFile({
     componentVisibility,
     settings,
     style,
+    unitCellLineStyle,
     visibleScene,
   });
 
@@ -515,11 +538,11 @@ function legendExportStyle(
   };
 }
 
-function latticeVectorExportSize(
+function crystalAxisExportSize(
   settings: ExportSettingsState,
   referenceSize = exportAccessoryReferenceSize(settings),
 ): number {
-  return Math.round(referenceSize * LATTICE_VECTOR_EXPORT_SIZE_RATIO);
+  return Math.round(referenceSize * CRYSTAL_AXIS_EXPORT_SIZE_RATIO);
 }
 
 function exportAccessoryReferenceSize(settings: ExportSettingsState): number {
@@ -581,12 +604,13 @@ function drawLegendSwatch(
   context.restore();
 }
 
-async function createLatticeVectorsExportFile({
+async function createCrystalAxesExportFile({
   background,
   cameraPose,
   fileName,
   format,
   scene,
+  showCrystalAxisLabels,
   size,
   supersampling,
 }: {
@@ -595,18 +619,21 @@ async function createLatticeVectorsExportFile({
   fileName: string;
   format: ExportFormat;
   scene: SceneSpec;
+  showCrystalAxisLabels: boolean;
   size: number;
   supersampling: ExportSupersampling;
 }): Promise<FigureExportFile> {
-  const { renderLatticeVectorsRasterImage } = await import("../scene/exportRenderer");
-  const rasterImage = await renderLatticeVectorsRasterImage({
+  const { renderCrystalAxesRasterImage } = await import("../scene/exportRenderer");
+  const rasterImage = await renderCrystalAxesRasterImage({
     backgroundColor: exportBackgroundColor(background),
     cameraPose,
     cellVectors: scene.cell.vectors,
     imageFormat: rasterFormatForExportFormat(format),
+    includeLabelTextItems: format === "pdf" && showCrystalAxisLabels,
     labelColor: exportTextColor(background),
-    showLabelHalo: false,
-    showLabels: format !== "pdf",
+    labelHaloColor: CRYSTAL_AXIS_LABEL_HALO_COLOR,
+    showLabelHalo: format !== "pdf" && background !== "black" && showCrystalAxisLabels,
+    showLabels: format !== "pdf" && showCrystalAxisLabels,
     size,
     supersampling,
   });
@@ -940,6 +967,7 @@ async function renderExportRaster({
   componentVisibility,
   settings,
   style,
+  unitCellLineStyle,
   visibleScene,
 }: {
   atomRenderingMode: AtomRenderingMode;
@@ -949,6 +977,7 @@ async function renderExportRaster({
   componentVisibility: ComponentVisibilityState;
   settings: ExportSettingsState;
   style: StyleState;
+  unitCellLineStyle: UnitCellLineStyle;
   visibleScene: SceneSpec;
 }): Promise<RasterExportImage> {
   const { renderStructureRasterImage } = await import("../scene/exportRenderer");
@@ -969,6 +998,7 @@ async function renderExportRaster({
     supersampling: settings.supersampling,
     unitCellLineColor:
       settings.background === "black" ? DARK_BACKGROUND_UNIT_CELL_LINE_COLOR : undefined,
+    unitCellLineStyle,
     width: settings.width,
   });
 }
@@ -981,7 +1011,9 @@ async function renderCombinedExportRaster({
   componentVisibility,
   scene,
   settings,
+  showCrystalAxisLabels,
   style,
+  unitCellLineStyle,
   visibleScene,
 }: CombinedExportRasterOptions): Promise<RasterExportImage> {
   const layers: CombinedExportLayer[] = [];
@@ -1000,6 +1032,7 @@ async function renderCombinedExportRaster({
       componentVisibility,
       settings,
       style,
+      unitCellLineStyle,
       visibleScene,
     });
     structureBounds = structureImage.contentBounds ?? structureBounds;
@@ -1043,28 +1076,33 @@ async function renderCombinedExportRaster({
     });
   }
 
-  if (settings.components.latticeVectors) {
-    const { renderLatticeVectorsRasterImage } = await import("../scene/exportRenderer");
-    const latticeVectorsImage = await renderLatticeVectorsRasterImage({
+  if (settings.components.crystalAxes) {
+    const { renderCrystalAxesRasterImage } = await import("../scene/exportRenderer");
+    const crystalAxesImage = await renderCrystalAxesRasterImage({
       backgroundColor: null,
       cameraPose,
       cellVectors: scene.cell.vectors,
       imageFormat: "png",
+      includeLabelTextItems: settings.format === "pdf" && showCrystalAxisLabels,
       labelColor: exportTextColor(settings.background),
-      showLabelHalo: false,
-      showLabels: settings.format !== "pdf",
-      size: latticeVectorExportSize(settings, accessoryReferenceSize),
+      labelHaloColor: CRYSTAL_AXIS_LABEL_HALO_COLOR,
+      showLabelHalo:
+        settings.format !== "pdf" &&
+        settings.background !== "black" &&
+        showCrystalAxisLabels,
+      showLabels: settings.format !== "pdf" && showCrystalAxisLabels,
+      size: crystalAxisExportSize(settings, accessoryReferenceSize),
       supersampling: settings.supersampling,
     });
-    const position = combinedLatticeVectorsPosition(
+    const position = combinedCrystalAxesPosition(
       structureBounds,
-      latticeVectorsImage.width,
-      latticeVectorsImage.height,
+      crystalAxesImage.width,
+      crystalAxesImage.height,
       accessoryPadding,
     );
     layers.push({
-      image: latticeVectorsImage,
-      textItems: settings.format === "pdf" ? latticeVectorsImage.textItems ?? [] : [],
+      image: crystalAxesImage,
+      textItems: settings.format === "pdf" ? crystalAxesImage.textItems ?? [] : [],
       x: position.x,
       y: position.y,
     });
@@ -1124,7 +1162,7 @@ function combinedLegendPosition(
   };
 }
 
-function combinedLatticeVectorsPosition(
+function combinedCrystalAxesPosition(
   structureBounds: RasterExportBounds,
   layerWidth: number,
   layerHeight: number,

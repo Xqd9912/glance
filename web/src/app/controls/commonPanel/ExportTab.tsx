@@ -165,9 +165,9 @@ export function ExportTabContent({
               }
             />
             <ExportComponentCheckbox
-              checked={settings.components.latticeVectors}
-              component="latticeVectors"
-              label="Lattice vectors"
+              checked={settings.components.crystalAxes}
+              component="crystalAxes"
+              label="Crystal axes"
               onSettingsChange={(component, checked) =>
                 onSettingsChange(setExportComponentSelected(settings, component, checked))
               }
