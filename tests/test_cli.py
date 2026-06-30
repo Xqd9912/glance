@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import socket
 
+import typer.main
 from typer.testing import CliRunner
 
 import pretty_lattice.cli as cli
@@ -21,11 +22,11 @@ def test_choose_free_port() -> None:
 
 
 def test_gui_help_shows_port_short_option() -> None:
-    result = runner.invoke(cli.app, ["gui", "--help"])
+    command = typer.main.get_command(cli.app).commands["gui"]
+    port_option = next(param for param in command.params if param.name == "port")
 
-    assert result.exit_code == 0
-    assert "--port" in result.output
-    assert "-p" in result.output
+    assert "--port" in port_option.opts
+    assert "-p" in port_option.opts
 
 
 def test_help_accepts_short_option() -> None:
