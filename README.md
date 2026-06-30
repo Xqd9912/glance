@@ -3,13 +3,13 @@
 <p align="center">
   Pretty Lattice is a crystal visualization tool for creating beautiful, publication-ready figures.
 </p>
-
 <p align="center">
-  <a href="https://github.com/songfeitong/pretty-lattice/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/pretty-lattice/ci.yml?branch=main&label=build&style=flat-square"></a>
+  <a href="https://github.com/songfeitong/pretty-lattice/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/pretty-lattice/ci.yml?branch=main&label=CI&style=flat-square"></a>
   <a href="https://pypi.org/project/pretty-lattice/"><img alt="PyPI" src="https://img.shields.io/pypi/v/pretty-lattice?style=flat-square"></a>
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-3776ab?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
 </p>
+
 
 - **Pretty**: tasteful defaults for colors, materials, lighting, and depth
 - **Simple**: an intuitive browser GUI for loading, viewing, and exporting structures
@@ -50,18 +50,25 @@ Requirements:
 
 ## Quick start
 
+After installation, start the local GUI:
+
 ```shell
 prl gui
 ```
 
-Pretty Lattice starts a local server and opens the browser automatically.
+Pretty Lattice starts a local server and opens your browser automatically.
+
+Run once without installing:
+
+```shell
+uvx --from pretty-lattice prl gui
+```
 
 Useful launch options:
 
 ```shell
 prl gui --no-open     # start the server without opening a browser
-prl gui --port 8765   # use a specific port
-prl gui -p 0          # choose any free port automatically
+prl gui -p 0          # choose any available port automatically
 ```
 
 ## Examples
