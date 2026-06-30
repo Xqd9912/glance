@@ -4,8 +4,7 @@
 **Created:** 6/26/2026 15:59:27  
 **Updated:** 6/26/2026 16:18:57  
 **Exported:** 6/26/2026 16:25:54  
-**Link:** [https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952-pretty-lattice/c/6a3e315c-a9f0-83e8-aa74-f80d0609a3d6](https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952-pretty-lattice/c/6a3e315c-a9f0-83e8-aa74-f80d0609a3d6)  
-
+**Link:** [redacted]
 ## Prompt:
 2026/6/26 15:59:24
 
@@ -18,9 +17,9 @@
 
 结论：**VESTA 的逻辑不是“只把 a/b/c 对准屏幕法线”，而是同时确定两个向量：projection vector + upward vector。剩下那个自由度就是由 upward vector 决定的。**
 
-官方手册里说得比较明确：VESTA 的 Orientation 里有两个方向，一个是投影方向，即“从视点到屏幕”的方向；另一个是屏幕向上的方向。投影方向可以是 direct lattice vector `[uvw]`，而在 `Project along [uvw]` 模式下，upward vector 用的是 reciprocal-lattice vector `[hkl]*`。两者必须满足 `hu + kv + lw = 0`，否则 VESTA 会自动决定/修正 upward direction。([jp-minerals.org](https://jp-minerals.org/vesta/en/doc/VESTAch10.html))
+官方手册里说得比较明确：VESTA 的 Orientation 里有两个方向，一个是投影方向，即“从视点到屏幕”的方向；另一个是屏幕向上的方向。投影方向可以是 direct lattice vector `[uvw]`，而在 `Project along [uvw]` 模式下，upward vector 用的是 reciprocal-lattice vector `[hkl]*`。两者必须满足 `hu + kv + lw = 0`，否则 VESTA 会自动决定/修正 upward direction。(jp-minerals.org)
 
-对顶部工具栏的 `a / b / c / a* / b* / c*` 按钮，官方手册只说它们是 “View along the a/b/c/a*/b*/c* axis”，没有把默认 roll 的 hard-coded 表写出来。([jp-minerals.org](https://jp-minerals.org/vesta/en/doc/VESTAch4.html)) 但结合教程里给出的默认 Orientation 数值，基本可以推断 VESTA 的默认规则是：
+对顶部工具栏的 `a / b / c / a* / b* / c*` 按钮，官方手册只说它们是 “View along the a/b/c/a*/b*/c* axis”，没有把默认 roll 的 hard-coded 表写出来。(jp-minerals.org) 但结合教程里给出的默认 Orientation 数值，基本可以推断 VESTA 的默认规则是：
 
 | 按钮 | projection vector | 默认屏幕向上 |
 |---|---:|---:|
@@ -28,7 +27,7 @@
 | `b` | `[010]`，沿 b 看 | `[001]*`，也就是 **c\*** 朝上 |
 | `c` | `[001]`，沿 c 看 | `[010]*`，也就是 **b\*** 朝上 |
 
-证据是：AIST 的 VESTA 3.1 教程明确说，按 `C` 按钮可以回到初始取向；初始 Orientation 是 projection vector 从 c 轴 `[001]`，upward vector 是 b 轴方向 `[010]`。同一教程里，为了沿 a 轴看，会把 projection 改成 `[100]`，upward 改成 `[001]`；另一个 CaTiO₃ 教程里，为了沿 b 轴看，会把 projection 改成 `[010]`，upward 也改成 `[001]`。([unit.aist.go.jp](https://unit.aist.go.jp/mmri/ja/organization/db-nomura/common/images/HELP2N-CIF-Diamond-J.pdf))
+证据是：AIST 的 VESTA 3.1 教程明确说，按 `C` 按钮可以回到初始取向；初始 Orientation 是 projection vector 从 c 轴 `[001]`，upward vector 是 b 轴方向 `[010]`。同一教程里，为了沿 a 轴看，会把 projection 改成 `[100]`，upward 改成 `[001]`；另一个 CaTiO₃ 教程里，为了沿 b 轴看，会把 projection 改成 `[010]`，upward 也改成 `[001]`。(unit.aist.go.jp)
 
 所以人话版就是：
 
@@ -45,7 +44,7 @@ b: projection = direct(0,1,0), up = reciprocal(0,0,1)
 c: projection = direct(0,0,1), up = reciprocal(0,1,0)
 ```
 
-然后用 Gram-Schmidt 把 up 投影到屏幕平面内。VESTA 版本历史也提到，Projection vector 和 Upward vector 不完全正交时，会用 Gram-Schmidt 计算屏幕向上方向。([jp-minerals.org](https://jp-minerals.org/vesta/en/changes.html))
+然后用 Gram-Schmidt 把 up 投影到屏幕平面内。VESTA 版本历史也提到，Projection vector 和 Upward vector 不完全正交时，会用 Gram-Schmidt 计算屏幕向上方向。(jp-minerals.org)
 
 ```ts
 z = normalize(projection)                 // 注意 VESTA 定义是“视点 -> 屏幕”，即进屏幕
@@ -59,8 +58,8 @@ x = normalize(cross(y, z))                 // screen right，符号按你的 thr
 
 **Sources:**
 
-- [10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS](https://jp-minerals.org/vesta/en/doc/VESTAch10.html)
-- [例1） 3](https://unit.aist.go.jp/mmri/ja/organization/db-nomura/common/images/HELP2N-CIF-Diamond-J.pdf)
+- 10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS
+- 例1） 3
 
 ## Prompt:
 2026/6/26 16:18:16
@@ -83,9 +82,9 @@ $$
 p\cdot q = hu + kv + lw = 0
 $$
 
-也就是 VESTA 手册里说的 `hu + kv + lw = 0`。如果满足，这个 upward vector 才能直接作为屏幕里的“上方”方向。官方手册明确说，不满足时，屏幕向上方向会由 VESTA 自动决定。([JP-Minerals](https://jp-minerals.org/vesta/en/doc/VESTAch10.html))
+也就是 VESTA 手册里说的 `hu + kv + lw = 0`。如果满足，这个 upward vector 才能直接作为屏幕里的“上方”方向。官方手册明确说，不满足时，屏幕向上方向会由 VESTA 自动决定。(JP-Minerals)
 
-不过更具体一点，VESTA 版本历史里写过：从 v2.1.2 开始，当 `Projection vector` 和 `Upward vector` 不正交时，屏幕向上方向会用 **Gram-Schmidt process** 来计算。([JP-Minerals](https://jp-minerals.org/vesta/en/changes.html?utm_source=chatgpt.com))
+不过更具体一点，VESTA 版本历史里写过：从 v2.1.2 开始，当 `Projection vector` 和 `Upward vector` 不正交时，屏幕向上方向会用 **Gram-Schmidt process** 来计算。(JP-Minerals)
 
 所以它实际大概是这样处理的：
 
@@ -139,9 +138,9 @@ const right = normalize(cross(up, view));
 
 **Sources:**
 
-- [10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS](https://jp-minerals.org/vesta/en/doc/VESTAch10.html)
+- 10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS
 
 
 
 ---
-Powered by [ChatGPT Exporter](https://www.chatgptexporter.com)
+Powered by ChatGPT Exporter

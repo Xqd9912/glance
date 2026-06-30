@@ -44,13 +44,11 @@ export function StructureSummaryCard({
     scene: SceneSpec | null;
   }>(() => ({ codes: new Set(), scene: null }));
   const hasExpandableContent = Boolean(scene);
-  const dismissedWarningCodes =
-    dismissedWarnings.scene === scene ? dismissedWarnings.codes : new Set<string>();
-  const visibleWarnings = useMemo(
-    () =>
-      scene?.warnings?.filter((warning) => !dismissedWarningCodes.has(warning.code)) ?? [],
-    [dismissedWarningCodes, scene?.warnings],
-  );
+  const visibleWarnings = useMemo(() => {
+    const dismissedWarningCodes =
+      dismissedWarnings.scene === scene ? dismissedWarnings.codes : null;
+    return scene?.warnings?.filter((warning) => !dismissedWarningCodes?.has(warning.code)) ?? [];
+  }, [dismissedWarnings, scene]);
   const toggleDetailsLabel = isCollapsed ? "Expand details" : "Collapse details";
 
   return (
@@ -164,8 +162,9 @@ export function StructureSummaryCard({
           )}
         >
           <div
+            data-slot="structure-summary-details-body"
             aria-hidden={isCollapsed ? "true" : undefined}
-            className="min-h-0 pt-2.5"
+            className={cn("min-h-0", isCollapsed ? "pt-0" : "pt-2.5")}
           >
             {scene ? (
               <div className="flex flex-col gap-2.5 max-[760px]:hidden">

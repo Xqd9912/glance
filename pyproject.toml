@@ -7,6 +7,7 @@ name = "pretty-lattice"
 version = "0.1.0"
 description = "Local web GUI for rendering crystal structures as publication-ready figures."
 readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115.0",

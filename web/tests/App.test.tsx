@@ -1853,6 +1853,9 @@ describe("App", () => {
     const detailsRegion = structureCard.querySelector(
       "[data-slot='structure-summary-details']",
     ) as HTMLElement | null;
+    const detailsBody = structureCard.querySelector(
+      "[data-slot='structure-summary-details-body']",
+    ) as HTMLElement | null;
     const expandButton = within(structureCard).getByRole("button", {
       name: "Expand details",
     });
@@ -1860,6 +1863,7 @@ describe("App", () => {
     expect(expandButton.getAttribute("aria-expanded")).toBe("false");
     expect(detailsRegion?.className).toContain("transition-[grid-template-rows]");
     expect(detailsRegion?.className).toContain("grid-rows-[0fr]");
+    expect(detailsBody?.className).toContain("pt-0");
 
     await user.click(expandButton);
 
@@ -1868,6 +1872,7 @@ describe("App", () => {
     });
     expect(collapseButton.getAttribute("aria-expanded")).toBe("true");
     expect(detailsRegion?.className).toContain("grid-rows-[1fr]");
+    expect(detailsBody?.className).toContain("pt-2.5");
 
     await user.click(collapseButton);
 
@@ -1877,6 +1882,7 @@ describe("App", () => {
         .getAttribute("aria-expanded"),
     ).toBe("false");
     expect(detailsRegion?.className).toContain("grid-rows-[0fr]");
+    expect(detailsBody?.className).toContain("pt-0");
   });
 
   test("keeps manually expanded structure details open when controls overflow the viewport", async () => {

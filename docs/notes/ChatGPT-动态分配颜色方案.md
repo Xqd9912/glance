@@ -4,8 +4,7 @@
 **Created:** 6/29/2026 22:21:05  
 **Updated:** 6/29/2026 23:18:51  
 **Exported:** 6/29/2026 23:22:22  
-**Link:** [https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952-pretty-lattice/c/6a427f4d-e270-83e8-8fd4-de25495d5e05](https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952-pretty-lattice/c/6a427f4d-e270-83e8-8fd4-de25495d5e05)  
-
+**Link:** [redacted]
 ## Prompt:
 2026/6/29 22:21:01
 
@@ -22,21 +21,21 @@
 
 ## 1. 主流软件的常见逻辑
 
-**Jmol / JSmol**：默认是固定的 CPK/Jmol 元素色，`color cpk` 按元素上色；但它也有 `chain`、二级结构、残基、charge、temperature 等其他上色模式。也就是说，元素色固定，动态/属性色另开模式。([Jmol](https://jmol.sourceforge.net/jscolors/))
+**Jmol / JSmol**：默认是固定的 CPK/Jmol 元素色，`color cpk` 按元素上色；但它也有 `chain`、二级结构、残基、charge、temperature 等其他上色模式。也就是说，元素色固定，动态/属性色另开模式。(Jmol)
 
-**VESTA**：也是按元素存半径和颜色；颜色可以在属性面板里按元素编辑，`elements.ini` 存默认半径/颜色。bicolor bond 也是直接取两端原子的颜色。它不像是自动为“当前结构里的元素集合”重新优化颜色。([JP-Minerals](https://jp-minerals.org/vesta/en/doc/VESTAch12.html))
+**VESTA**：也是按元素存半径和颜色；颜色可以在属性面板里按元素编辑，`elements.ini` 存默认半径/颜色。bicolor bond 也是直接取两端原子的颜色。它不像是自动为“当前结构里的元素集合”重新优化颜色。(JP-Minerals)
 
-**pymatgen**：可视化默认用 Jmol scheme；用户可以传 `element_color_mapping` 覆盖。也就是“固定表 + 手动覆盖”。([pymatgen](https://pymatgen.org/pymatgen.vis.html))
+**pymatgen**：可视化默认用 Jmol scheme；用户可以传 `element_color_mapping` 覆盖。也就是“固定表 + 手动覆盖”。(pymatgen)
 
-**Avogadro**：默认按元素上色；另外提供按 charge、index、distance 等属性的 colormap。([Avogadro](https://two.avogadro.cc/docs/menus/view-menu.html))
+**Avogadro**：默认按元素上色；另外提供按 charge、index、distance 等属性的 colormap。(Avogadro)
 
-**OVITO**：如果 particle type 名字匹配化学元素，会从内部元素预设数据库自动给显示颜色、半径、质量等；同时它有 `Color by type` 给离散类型上色，也有 `Color coding` 把连续属性映射到渐变色。([OVITO](https://www.ovito.org/manual/reference/pipelines/data_objects/particles.html))
+**OVITO**：如果 particle type 名字匹配化学元素，会从内部元素预设数据库自动给显示颜色、半径、质量等；同时它有 `Color by type` 给离散类型上色，也有 `Color coding` 把连续属性映射到渐变色。(OVITO)
 
 所以大趋势是：**元素色 = 固定、可识别、可复现；属性色/类别色 = 可动态分配。**
 
 ## 2. 最接近你说的“动态元素配色”的例子：Crystal Toolkit / Materials Project 系
 
-Crystal Toolkit 这里很有意思。它的 `Legend` 支持 `"VESTA"`, `"Jmol"`, `"accessible"`，也支持按 scalar site property 或 categorical site property 上色。源码里明确有一个 `generate_accessible_color_scheme_on_the_fly(site_collection)`。([docs.crystaltoolkit.org](https://docs.crystaltoolkit.org/_modules/crystal_toolkit/core/legend.html))
+Crystal Toolkit 这里很有意思。它的 `Legend` 支持 `"VESTA"`, `"Jmol"`, `"accessible"`，也支持按 scalar site property 或 categorical site property 上色。源码里明确有一个 `generate_accessible_color_scheme_on_the_fly(site_collection)`。(docs.crystaltoolkit.org)
 
 它的 **accessible 动态方案**大概是：
 
@@ -46,17 +45,17 @@ Crystal Toolkit 这里很有意思。它的 `Legend` 支持 `"VESTA"`, `"Jmol"`,
 
 对常见元素保留类似 CPK 的语义偏好：O→朱红，N→天蓝，C→黑，H→白，F/Cl→蓝绿，Fe/P→橙，S→黄，Br/I→紫红；
 
-剩下的元素再从没用过的 palette 里分配；如果当前元素数超过 palette 数量，就 warning。([docs.crystaltoolkit.org](https://docs.crystaltoolkit.org/_modules/crystal_toolkit/core/legend.html))
+剩下的元素再从没用过的 palette 里分配；如果当前元素数超过 palette 数量，就 warning。(docs.crystaltoolkit.org)
 
-它还有 categorical site property 的动态上色：用 ColorBrewer 的 `Set1_9`，通过 `LabelEncoder` 把类别映射到 9 个颜色；类别太多就 warning。([docs.crystaltoolkit.org](https://docs.crystaltoolkit.org/_modules/crystal_toolkit/core/legend.html))
+它还有 categorical site property 的动态上色：用 ColorBrewer 的 `Set1_9`，通过 `LabelEncoder` 把类别映射到 9 个颜色；类别太多就 warning。(docs.crystaltoolkit.org)
 
 这个实践非常值得我们参考：**不是完全抛弃元素语义，而是在一个有限的 accessible palette 里优先锁定 C/O/N/H/S/卤素/Fe 这些“大家有预期”的颜色。**
 
 ## 3. Mol* / RCSB PDB 的做法：动态颜色用于 chain / entity，不主要用于元素
 
-Mol* 的默认生物大分子视图大量使用动态类别色，比如 Chain ID：每条 polymer chain 用不同颜色；RCSB 文档还说它用 ColorBrewer 风格的 sequential / diverging / qualitative palettes，定性 palette 包括 Set-1、Set-2、Set-3、Dark-2、Paired、Many-Distinct 等，其中 Many-Distinct 有 25 个颜色，并用于 chain ID 的默认着色。([RCSB PDB](https://www.rcsb.org/docs/3d-viewers/mol%2A/maneuvering-in-mol%2A))
+Mol* 的默认生物大分子视图大量使用动态类别色，比如 Chain ID：每条 polymer chain 用不同颜色；RCSB 文档还说它用 ColorBrewer 风格的 sequential / diverging / qualitative palettes，定性 palette 包括 Set-1、Set-2、Set-3、Dark-2、Paired、Many-Distinct 等，其中 Many-Distinct 有 25 个颜色，并用于 chain ID 的默认着色。(RCSB PDB)
 
-Mol* 的 palette 机制也支持“generate distinct colors”：参数包括 hue、chroma、luminance、maxCount、clusteringStepCount、minSampleCount。源码里 `distinctColors` 是在 HCL/Lab 空间采样、聚类、按对比度排序，并注明受 iWantHue 启发。([dash-molstar.readthedocs.io](https://dash-molstar.readthedocs.io/en/latest/representations.html))
+Mol* 的 palette 机制也支持“generate distinct colors”：参数包括 hue、chroma、luminance、maxCount、clusteringStepCount、minSampleCount。源码里 `distinctColors` 是在 HCL/Lab 空间采样、聚类、按对比度排序，并注明受 iWantHue 启发。(dash-molstar.readthedocs.io)
 
 这个对我们也很有启发：**如果要做真正的自动区分，可以在 OKLab/OKLCH 或 Lab/HCL 空间里优化，而不是在 RGB 里拍脑袋。**
 
@@ -64,9 +63,9 @@ Mol* 的 palette 机制也支持“generate distinct colors”：参数包括 hu
 
 **元素语义 palette**：Jmol/CPK、RasMol/CPK、VESTA、PubChem 这一类。优点是用户熟悉，缺点是很多元素颜色相近，尤其过渡金属、镧系、某些浅色元素。
 
-**小 N 类别 palette**：Okabe-Ito、Paul Tol、ColorBrewer qualitative，例如 Set1/Set2/Set3/Dark2/Paired/Accent。ColorBrewer 明确说 qualitative schemes 适合 nominal/categorical data，主要靠 hue 区分类别，不表达大小顺序。([colorbrewer2.org](https://colorbrewer2.org/learnmore/schemes_full.html))
+**小 N 类别 palette**：Okabe-Ito、Paul Tol、ColorBrewer qualitative，例如 Set1/Set2/Set3/Dark2/Paired/Accent。ColorBrewer 明确说 qualitative schemes 适合 nominal/categorical data，主要靠 hue 区分类别，不表达大小顺序。(colorbrewer2.org)
 
-**大 N / 自动生成 palette**：iWantHue、Glasbey、distinctipy、Mol* distinctColors 这类。它们的共同逻辑是：在感知空间里挑一组彼此距离尽量大的颜色。iWantHue 的定位就是生成 optimally distinct colors；Glasbey 也是为 categorical data 算法生成颜色；distinctipy 则是每次选一个尽量远离已有颜色的新颜色。([medialab.github.io](https://medialab.github.io/iwanthue/))
+**大 N / 自动生成 palette**：iWantHue、Glasbey、distinctipy、Mol* distinctColors 这类。它们的共同逻辑是：在感知空间里挑一组彼此距离尽量大的颜色。iWantHue 的定位就是生成 optimally distinct colors；Glasbey 也是为 categorical data 算法生成颜色；distinctipy 则是每次选一个尽量远离已有颜色的新颜色。(medialab.github.io)
 
 ## 5. 我对 pretty-lattice 的建议
 
@@ -104,16 +103,16 @@ Mol* 的 palette 机制也支持“generate distinct colors”：参数包括 hu
 
 **Sources:**
 
-- [Colors](https://jmol.sourceforge.net/jscolors/)
-- [12 PROPERTIES OF OBJECTS](https://jp-minerals.org/vesta/en/doc/VESTAch12.html)
-- [pymatgen.vis package — pymatgen 2026.5.18 documentation](https://pymatgen.org/pymatgen.vis.html)
-- [View Menu — Avogadro 2.0.0 documentation](https://two.avogadro.cc/docs/menus/view-menu.html)
-- [Particles — OVITO User Manual 3.15.5 documentation](https://www.ovito.org/manual/reference/pipelines/data_objects/particles.html)
-- [crystal_toolkit.core.legend — Crystal Toolkit  documentation](https://docs.crystaltoolkit.org/_modules/crystal_toolkit/core/legend.html)
-- [Maneuvering in Mol*](https://www.rcsb.org/docs/3d-viewers/mol%2A/maneuvering-in-mol%2A)
-- [Representations — dash-molstar 1.4.0 documentation](https://dash-molstar.readthedocs.io/en/latest/representations.html)
-- [Color scheme types - ColorBrewer](https://colorbrewer2.org/learnmore/schemes_full.html)
-- [iWantHue](https://medialab.github.io/iwanthue/)
+- Colors
+- 12 PROPERTIES OF OBJECTS
+- pymatgen.vis package — pymatgen 2026.5.18 documentation
+- View Menu — Avogadro 2.0.0 documentation
+- Particles — OVITO User Manual 3.15.5 documentation
+- crystal_toolkit.core.legend — Crystal Toolkit  documentation
+- Maneuvering in Mol*
+- Representations — dash-molstar 1.4.0 documentation
+- Color scheme types - ColorBrewer
+- iWantHue
 
 ## Prompt:
 2026/6/29 23:16:19
@@ -145,12 +144,12 @@ Mol* 的 palette 机制也支持“generate distinct colors”：参数包括 hu
 这比两种极端都好。
 
 **纯固定候选池的问题**：  
-比如固定一个 Okabe-Ito 或 ColorBrewer Set1。它确实可区分，但风格会突然变成“统计图配色”，不再像 Jmol/VESTA/Pretty 的元素色。ColorBrewer 的 qualitative palettes 本来就是给 nominal/categorical data 用的，主要靠 hue 区分，不表达大小顺序；这适合 chain/site type，不一定适合元素语义。([ColorBrewer](https://colorbrewer2.org/learnmore/schemes_full.html?utm_source=chatgpt.com))
+比如固定一个 Okabe-Ito 或 ColorBrewer Set1。它确实可区分，但风格会突然变成“统计图配色”，不再像 Jmol/VESTA/Pretty 的元素色。ColorBrewer 的 qualitative palettes 本来就是给 nominal/categorical data 用的，主要靠 hue 区分，不表达大小顺序；这适合 chain/site type，不一定适合元素语义。(ColorBrewer)
 
 **完全现场优化的问题**：  
 如果直接在 OKLCH/Lab 空间里找最大距离颜色，结果可能很好分辨，但会缺乏“元素色”的气质：O 可能变绿，N 可能变橙，图是清楚了，但失去化学语义。
 
-所以推荐混合方案：**现场生成候选色，但从 base colormap 的 style envelope 里生成**。这和 Glasbey / iWantHue 的思想一致：在感知空间里寻找彼此尽量远的颜色，而不是在 RGB 里随便挑。Glasbey 类方法会从允许色域中选出与已有颜色“最大感知差异”的新颜色；iWantHue 也强调在 Hue-Chroma-Lightness 空间里生成 optimally distinct colors。([Colorcet](https://colorcet.holoviz.org/user_guide/Categorical.html?utm_source=chatgpt.com))
+所以推荐混合方案：**现场生成候选色，但从 base colormap 的 style envelope 里生成**。这和 Glasbey / iWantHue 的思想一致：在感知空间里寻找彼此尽量远的颜色，而不是在 RGB 里随便挑。Glasbey 类方法会从允许色域中选出与已有颜色“最大感知差异”的新颜色；iWantHue 也强调在 Hue-Chroma-Lightness 空间里生成 optimally distinct colors。(Colorcet)
 
 ---
 
@@ -201,7 +200,7 @@ base color of element X
 偏软件默认色，候选色可以略朴素，不要过分设计感。
 
 **Accessible map**：  
-候选色应该来自色盲友好 palette，数量不够时再扩展。Crystal Toolkit 的 accessible 模式就是类似思路：它支持 `"VESTA"`, `"Jmol"`, `"accessible"`，并且有 `generate_accessible_color_scheme_on_the_fly` 这种按当前结构生成 accessible 元素色的逻辑。([Crystal Toolkit](https://docs.crystaltoolkit.org/source/crystal_toolkit.core.legend.html?utm_source=chatgpt.com))
+候选色应该来自色盲友好 palette，数量不够时再扩展。Crystal Toolkit 的 accessible 模式就是类似思路：它支持 `"VESTA"`, `"Jmol"`, `"accessible"`，并且有 `generate_accessible_color_scheme_on_the_fly` 这种按当前结构生成 accessible 元素色的逻辑。(Crystal Toolkit)
 
 这一层的核心是：**不同 base colormap 的 auto distinguish 结果应该 still look like that colormap。**
 
@@ -538,11 +537,11 @@ Modifier:
 
 **Sources:**
 
-- [Color scheme types](https://colorbrewer2.org/learnmore/schemes_full.html?utm_source=chatgpt.com)
-- [Categorical — colorcet v3.2.1 - HoloViz](https://colorcet.holoviz.org/user_guide/Categorical.html?utm_source=chatgpt.com)
-- [crystal_toolkit.core.legend module - Crystal Toolkit](https://docs.crystaltoolkit.org/source/crystal_toolkit.core.legend.html?utm_source=chatgpt.com)
+- Color scheme types
+- Categorical — colorcet v3.2.1 - HoloViz
+- crystal_toolkit.core.legend module - Crystal Toolkit
 
 
 
 ---
-Powered by [ChatGPT Exporter](https://www.chatgptexporter.com)
+Powered by ChatGPT Exporter

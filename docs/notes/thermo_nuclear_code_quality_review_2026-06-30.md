@@ -6,7 +6,7 @@ Scope: whole-repo maintainability review of the current `pretty-lattice` codebas
 
 ## Short Answer
 
-小狸猫，这个项目现在不是“到处都乱”。相反，后端已经从早期的 catch-all `scene.py` 里拆出来，整体边界比上一轮扫描健康很多。真正的问题集中在前端：最近几轮拆分把一些巨型文件打散了，但没有把复杂度彻底删掉。一部分复杂度只是从旧的 `CommonControlsPanel` / `LatticeScene` 转移到了新的 `StructureSceneObjects`、`OrientationTab`、`exportFigure` 和仍然很重的 `App`。
+这个项目现在不是“到处都乱”。相反，后端已经从早期的 catch-all `scene.py` 里拆出来，整体边界比上一轮扫描健康很多。真正的问题集中在前端：最近几轮拆分把一些巨型文件打散了，但没有把复杂度彻底删掉。一部分复杂度只是从旧的 `CommonControlsPanel` / `LatticeScene` 转移到了新的 `StructureSceneObjects`、`OrientationTab`、`exportFigure` 和仍然很重的 `App`。
 
 我的审批结论很硬：在继续给预览、导出、相机控制和显示选项加功能之前，应该先做一次结构压缩。否则每个新选项都会继续穿过 `App`、控制面板、scene renderer、export renderer 和 App 级测试，形成越来越贵的改动路径。
 

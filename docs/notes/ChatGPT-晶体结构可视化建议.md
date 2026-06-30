@@ -4,8 +4,7 @@
 **Created:** 6/22/2026 13:54:52  
 **Updated:** 6/22/2026 13:57:06  
 **Exported:** 6/22/2026 13:58:52  
-**Link:** [https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952/c/6a38cdfe-1898-83e8-a8af-2b582d5a2ad8](https://chatgpt.com/g/g-p-6a375ccb358c81919a6c68164d494952/c/6a38cdfe-1898-83e8-a8af-2b582d5a2ad8)  
-
+**Link:** [redacted]
 ## Prompt:
 2026/6/22 13:54:50
 
@@ -24,7 +23,7 @@
 2. **drawing boundary 层**：当前想画哪一块空间，默认可以是 fractional range `(0,0,0) → (1,1,1)`。
 3. **visual completion 层**：为了不让键、配位多面体、分子被 cell 边界切断，额外生成一些 periodic images。
 
-这个思路其实和 VESTA 很接近：VESTA 的 drawing boundary 是用 fractional coordinate ranges 定义的；bond 搜索又有独立的 Boundary mode。它可以只搜索 boundary 内原子，也可以在 boundary 外继续找键合原子，从而保证配位多面体或分子不被切断。VESTA 手册还明确说，“Search A2 bonded to A1 / Search atoms bonded to A1” 默认会找 boundary 外与 cell 内 A1 相连的 A2；而 “Search molecules” 默认会递归搜索可见原子的连接，但警告说这对无机晶体/金属可能导致无限连接网络。([JP-Minerals](https://jp-minerals.org/vesta/en/doc/VESTAch10.html))
+这个思路其实和 VESTA 很接近：VESTA 的 drawing boundary 是用 fractional coordinate ranges 定义的；bond 搜索又有独立的 Boundary mode。它可以只搜索 boundary 内原子，也可以在 boundary 外继续找键合原子，从而保证配位多面体或分子不被切断。VESTA 手册还明确说，“Search A2 bonded to A1 / Search atoms bonded to A1” 默认会找 boundary 外与 cell 内 A1 相连的 A2；而 “Search molecules” 默认会递归搜索可见原子的连接，但警告说这对无机晶体/金属可能导致无限连接网络。(JP-Minerals)
 
 ## 我建议 pretty-lattice 的默认策略
 
@@ -53,7 +52,7 @@
 | `supercell` | 明确画 `na × nb × nc` 周期重复 | 展示层状结构、packing、moire-ish 图 |
 | `slice/slab` | 用 plane 或 fractional range 切一块 | 表面、薄片、局部结构 |
 
-这里 `molecule-complete` 不应该是无机材料默认。CrystalMaker 也有类似 “Show Molecular Cell”：它会选择完整分子来构成一个 unit cell 的内容，甚至允许一些原子跨越 unit-cell boundary，同时隐藏另一些 cell 内原子，以保证显示的是“一胞量”的完整分子。这个逻辑对分子晶体很好，但对无限无机网络不自然。([CrystalMaker](https://crystalmaker.com/support/advice/pages/cm-display-intact-molecules.html))
+这里 `molecule-complete` 不应该是无机材料默认。CrystalMaker 也有类似 “Show Molecular Cell”：它会选择完整分子来构成一个 unit cell 的内容，甚至允许一些原子跨越 unit-cell boundary，同时隐藏另一些 cell 内原子，以保证显示的是“一胞量”的完整分子。这个逻辑对分子晶体很好，但对无限无机网络不自然。(CrystalMaker)
 
 ## boundary 上的原子怎么处理
 
@@ -67,7 +66,7 @@
 0 <= f_c < 1
 ```
 
-所以如果读入一个原子在 `f_a = 1.0`，内部 normalize 成 `f_a = 0.0`。这和 ASE 这类库的 wrap 思路一致：ASE 的 `get_scaled_positions(wrap=True)` 会把周期方向上 cell 外原子 wrap 回 cell，使 scaled coordinates 落在 0 到 1 之间。([ASE 文档](https://ase-lib.org/ase/atoms.html))
+所以如果读入一个原子在 `f_a = 1.0`，内部 normalize 成 `f_a = 0.0`。这和 ASE 这类库的 wrap 思路一致：ASE 的 `get_scaled_positions(wrap=True)` 会把周期方向上 cell 外原子 wrap 回 cell，使 scaled coordinates 落在 0 到 1 之间。(ASE 文档)
 
 但**视觉层可以复制边界像**。例如一个原子在 `(0,0,0)`：
 
@@ -92,7 +91,7 @@ atom i in cell (0,0,0)
 bonded to atom j in image (1,0,0)
 ```
 
-这样你永远知道这是一个跨 PBC 的键。OVITO 也是类似思想：它给每条 bond 维护一个 `Periodic Image` triplet，表示这条键是否跨越周期边界；跨边界的键会被可视化成 cell 两侧的 half-bonds。([OVITO](https://www.ovito.org/manual/reference/pipelines/modifiers/create_bonds.html))
+这样你永远知道这是一个跨 PBC 的键。OVITO 也是类似思想：它给每条 bond 维护一个 `Periodic Image` triplet，表示这条键是否跨越周期边界；跨边界的键会被可视化成 cell 两侧的 half-bonds。(OVITO)
 
 对 pretty-lattice 来说，渲染时可以有两种视觉策略：
 
@@ -103,13 +102,13 @@ bonded to atom j in image (1,0,0)
 
 ## 常见软件的做法可以总结成这样
 
-VESTA：核心是 drawing boundary + bond boundary mode。它允许 fractional range 定义绘图范围，并可为了完整配位多面体/分子而搜索 boundary 外原子；但递归分子模式不适合一般无机无限网络。([JP-Minerals](https://jp-minerals.org/vesta/en/doc/VESTAch10.html))
+VESTA：核心是 drawing boundary + bond boundary mode。它允许 fractional range 定义绘图范围，并可为了完整配位多面体/分子而搜索 boundary 外原子；但递归分子模式不适合一般无机无限网络。(JP-Minerals)
 
-Jmol / IUCr figure toolkit：会区分 asymmetric unit、应用对称后的 unit-cell contents、central cell contents、packing nets 等；它还明确说某些 unit-cell contents 选项会显示 basic unit-cell boundary 外的原子，而 central cell 选项只显示边界内原子。([IUCr Journals](https://journals.iucr.org/services/help/jtkt/9.html))
+Jmol / IUCr figure toolkit：会区分 asymmetric unit、应用对称后的 unit-cell contents、central cell contents、packing nets 等；它还明确说某些 unit-cell contents 选项会显示 basic unit-cell boundary 外的原子，而 central cell 选项只显示边界内原子。(IUCr Journals)
 
-CCDC / Mercury 系：packing/slicing 里有 inclusion criterion，比如 `CentroidIncluded`、`AllAtomsIncluded`、`AnyAtomIncluded`、`OnlyAtomsIncluded`；前三者会扩展成完整 molecule，`OnlyAtomsIncluded` 才是只保留 box 内原子。这说明成熟晶体软件也不是只有一种“在 cell 里”的定义。([剑桥大学计算机决策中心下载](https://downloads.ccdc.cam.ac.uk/documentation/API/descriptive_docs/crystal.html))
+CCDC / Mercury 系：packing/slicing 里有 inclusion criterion，比如 `CentroidIncluded`、`AllAtomsIncluded`、`AnyAtomIncluded`、`OnlyAtomsIncluded`；前三者会扩展成完整 molecule，`OnlyAtomsIncluded` 才是只保留 box 内原子。这说明成熟晶体软件也不是只有一种“在 cell 里”的定义。(剑桥大学计算机决策中心下载)
 
-OVITO：更偏 simulation/PBC 数据模型，支持 wrap 到 primary cell、复制 periodic images，并用 per-bond periodic-image shift 处理跨边界键。([OVITO](https://www.ovito.org/docs/current/reference/pipelines/modifiers/wrap_at_periodic_boundaries.html))
+OVITO：更偏 simulation/PBC 数据模型，支持 wrap 到 primary cell、复制 periodic images，并用 per-bond periodic-image shift 处理跨边界键。(OVITO)
 
 ## 我会给 pretty-lattice 定的默认值
 
@@ -143,14 +142,14 @@ molecules:
 
 **Sources:**
 
-- [10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS](https://jp-minerals.org/vesta/en/doc/VESTAch10.html)
-- [Displaying Intact Molecules](https://crystalmaker.com/support/advice/pages/cm-display-intact-molecules.html)
-- [The Atoms object — ASE  documentation](https://ase-lib.org/ase/atoms.html)
-- [Create bonds — OVITO User Manual 3.15.5 documentation](https://www.ovito.org/manual/reference/pipelines/modifiers/create_bonds.html)
-- [(IUCr) Jmol enhanced figure toolkit](https://journals.iucr.org/services/help/jtkt/9.html)
-- [Working with crystals — CSD Python API 3.7.1 documentation](https://downloads.ccdc.cam.ac.uk/documentation/API/descriptive_docs/crystal.html)
+- 10 DEFINING DRAWING BOUNDARIES AND VIEW DIRECTIONS
+- Displaying Intact Molecules
+- The Atoms object — ASE  documentation
+- Create bonds — OVITO User Manual 3.15.5 documentation
+- (IUCr) Jmol enhanced figure toolkit
+- Working with crystals — CSD Python API 3.7.1 documentation
 
 
 
 ---
-Powered by [ChatGPT Exporter](https://www.chatgptexporter.com)
+Powered by ChatGPT Exporter
