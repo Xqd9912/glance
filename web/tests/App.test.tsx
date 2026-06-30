@@ -243,6 +243,7 @@ const {
   htmlResponse,
   jsonResponse,
   openPreviewContextMenu,
+  openSidebarContextMenu,
   queueFetchResponse,
   structureFile,
 } = appHarness;
@@ -486,6 +487,20 @@ describe("App", () => {
     } finally {
       fileInput.click = originalClick;
     }
+  });
+
+  test("opens the preview context menu from the settings sidebar", async () => {
+    const user = userEvent.setup();
+
+    await renderLoadedStructure(user);
+    await user.click(screen.getByRole("button", { name: "Sidebar" }));
+
+    await openSidebarContextMenu();
+
+    expect(await screen.findByRole("menuitem", { name: "Reset view" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Open file" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Export figure" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Reset all" })).toBeTruthy();
   });
 
   test("resets local preview settings from the context menu without reuploading", async () => {
@@ -1806,8 +1821,8 @@ describe("App", () => {
     });
 
     expect(expandButton.getAttribute("aria-expanded")).toBe("false");
-    expect(detailsRegion?.className).toContain("transition-[height]");
-    expect(detailsRegion?.style.height).toBe("0px");
+    expect(detailsRegion?.className).toContain("transition-[grid-template-rows]");
+    expect(detailsRegion?.className).toContain("grid-rows-[0fr]");
 
     await user.click(expandButton);
 
@@ -1815,7 +1830,7 @@ describe("App", () => {
       name: "Collapse details",
     });
     expect(collapseButton.getAttribute("aria-expanded")).toBe("true");
-    expect(detailsRegion?.style.height).not.toBe("0px");
+    expect(detailsRegion?.className).toContain("grid-rows-[1fr]");
 
     await user.click(collapseButton);
 
@@ -1824,7 +1839,7 @@ describe("App", () => {
         .getByRole("button", { name: "Expand details" })
         .getAttribute("aria-expanded"),
     ).toBe("false");
-    expect(detailsRegion?.style.height).toBe("0px");
+    expect(detailsRegion?.className).toContain("grid-rows-[0fr]");
   });
 
   test("keeps manually expanded structure details open when controls overflow the viewport", async () => {

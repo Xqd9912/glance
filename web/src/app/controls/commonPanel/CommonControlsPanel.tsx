@@ -113,10 +113,10 @@ export function CommonControlsPanel({
     style: null,
   });
   const contentRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<CommonPanelTab>(targetActiveTab);
   const [hasMountedCameraTab, setHasMountedCameraTab] = useState(() => cellVectors.length > 0);
   const [tabIndicatorRect, setTabIndicatorRect] = useState<TabIndicatorRect | null>(null);
   const [contentHeight, setContentHeight] = useState<number | null>(null);
+  const activeTab = targetActiveTab;
   const contentStyle = contentHeight === null
     ? undefined
     : ({ height: `${contentHeight}px` } as CSSProperties);
@@ -131,23 +131,6 @@ export function CommonControlsPanel({
       setHasMountedCameraTab(true);
     }
   }, [cellVectors.length]);
-
-  useEffect(() => {
-    if (targetActiveTab === activeTab) {
-      return;
-    }
-
-    const currentHeight = contentRef.current?.getBoundingClientRect().height;
-    if (currentHeight && currentHeight > 0) {
-      setContentHeight(currentHeight);
-    }
-
-    if (targetActiveTab === "camera") {
-      setHasMountedCameraTab(true);
-    }
-
-    setActiveTab(targetActiveTab);
-  }, [activeTab, targetActiveTab]);
 
   useEffect(() => {
     const updateIndicatorRect = () => {
@@ -235,6 +218,10 @@ export function CommonControlsPanel({
 
   function handleTabValueChange(value: string) {
     const nextTab = value as CommonPanelTab;
+    if (nextTab === activeTab) {
+      return;
+    }
+
     const currentHeight = contentRef.current?.getBoundingClientRect().height;
     if (currentHeight && currentHeight > 0) {
       setContentHeight(currentHeight);
@@ -244,7 +231,6 @@ export function CommonControlsPanel({
       setHasMountedCameraTab(true);
     }
 
-    setActiveTab(nextTab);
     onActiveTabChange?.(nextTab);
   }
 

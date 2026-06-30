@@ -1,0 +1,23 @@
+{
+  "$schema": "https://react.doctor/schema/config.json",
+  "ignore": {
+    "overrides": [
+      {
+        "files": [
+          "src/app/controls/commonPanel/MaterialPresetToken3D.tsx",
+          "src/app/controls/commonPanel/orientation/ScreenAxisChooser.tsx",
+          "src/scene/**/*.tsx"
+        ],
+        "rules": ["react-doctor/no-unknown-property"]
+      },
+      {
+        "files": ["package.json"],
+        "rules": ["deslop/unused-dev-dependency"]
+      },
+      {
+        "files": ["tests/setup.ts"],
+        "rules": ["deslop/unused-file"]
+      }
+    ]
+  }
+}

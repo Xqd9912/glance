@@ -84,6 +84,7 @@ export function ViewControlRail({
   const sliderStyle = {
     "--zoom-slider-thumb-top": `${sliderThumbTopPx}px`,
   } as CSSProperties;
+  const visibleLockFeedbackPhase = interactionLocked ? lockFeedbackPhase : null;
 
   useEffect(() => {
     setZoomText(formatZoomPercent(viewScale));
@@ -127,12 +128,6 @@ export function ViewControlRail({
       lockFeedbackTimeoutRef.current = null;
     }, LOCKED_INTERACTION_FEEDBACK_ANIMATION_MS);
   }, [interactionLocked, lockedInteractionFeedbackCount]);
-
-  useEffect(() => {
-    if (!interactionLocked) {
-      setLockFeedbackPhase(null);
-    }
-  }, [interactionLocked]);
 
   function handleResetClick() {
     onResetView();
@@ -258,8 +253,8 @@ export function ViewControlRail({
                   interactionLocked
                     ? TOOL_ICON_BUTTON_ACTIVE_CLASS
                     : "text-muted-foreground",
-                  lockFeedbackPhase === "a" ? TOOL_ICON_BUTTON_LOCK_FEEDBACK_A_CLASS : null,
-                  lockFeedbackPhase === "b" ? TOOL_ICON_BUTTON_LOCK_FEEDBACK_B_CLASS : null,
+                  visibleLockFeedbackPhase === "a" ? TOOL_ICON_BUTTON_LOCK_FEEDBACK_A_CLASS : null,
+                  visibleLockFeedbackPhase === "b" ? TOOL_ICON_BUTTON_LOCK_FEEDBACK_B_CLASS : null,
                 )}
                 onClick={() => onInteractionLockedChange(!interactionLocked)}
               >

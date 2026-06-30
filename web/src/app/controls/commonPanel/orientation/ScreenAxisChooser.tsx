@@ -192,7 +192,7 @@ function ScreenAxisCameraSetup() {
     const cameraUp = new Vector3(0, 1, 0);
 
     cameraUp
-      .sub(viewDirection.clone().multiplyScalar(cameraUp.dot(viewDirection)))
+      .addScaledVector(viewDirection, -cameraUp.dot(viewDirection))
       .normalize()
       .applyAxisAngle(viewDirection, SCREEN_AXIS_CAMERA_ROLL);
     camera.up.copy(cameraUp);

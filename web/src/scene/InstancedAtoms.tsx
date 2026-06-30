@@ -77,11 +77,6 @@ export function InstancedAtoms({
 }) {
   const meshRef = useRef<InstancedMesh | null>(null);
   const invalidate = useThree((state) => state.invalidate);
-  const handledPulseTokenRef = useRef(0);
-  const [activePulse, setActivePulse] = useState<{
-    atomId: string;
-    token: number;
-  } | null>(null);
   const isTransparent = opacity < 1;
   const atomColorInstances = useMemo<AtomColorInstanceSpec[]>(
     () =>
@@ -115,42 +110,15 @@ export function InstancedAtoms({
     atomIndexById,
     inspectedAtomId,
   );
+  const activePulse = pulseAtomId && pulseToken !== 0
+    ? { atomId: pulseAtomId, token: pulseToken }
+    : null;
   const pulseInstance = inspectedInstance || !activePulse
     ? null
     : instanceForAtomId(atomInstances, atomIndexById, activePulse.atomId);
   const activeHighlight = inspectedInstance ?? pulseInstance;
 
-  useEffect(() => {
-    if (pulseToken === 0 || !pulseAtomId) {
-      handledPulseTokenRef.current = 0;
-      setActivePulse(null);
-      return;
-    }
-
-    if (pulseToken === handledPulseTokenRef.current) {
-      return;
-    }
-
-    handledPulseTokenRef.current = pulseToken;
-    setActivePulse({
-      atomId: pulseAtomId,
-      token: pulseToken,
-    });
-  }, [pulseAtomId, pulseToken]);
-
-  useEffect(() => {
-    if (inspectedAtomId) {
-      setActivePulse(null);
-    }
-  }, [inspectedAtomId]);
-
-  const handlePulseComplete = useCallback(() => {
-    setActivePulse((currentPulse) =>
-      currentPulse && currentPulse.token === activePulse?.token
-        ? null
-        : currentPulse,
-    );
-  }, [activePulse?.token]);
+  const handlePulseComplete = useCallback(() => {}, []);
 
   useLayoutEffect(() => {
     const mesh = meshRef.current;
@@ -336,11 +304,11 @@ function InstancedAtomHighlightAnimator({
 }) {
   const invalidate = useThree((state) => state.invalidate);
   const startTimeRef = useRef(performance.now());
-  const [isActive, setIsActive] = useState(true);
+  const isActiveRef = useRef(true);
 
   useEffect(() => {
     startTimeRef.current = performance.now();
-    setIsActive(true);
+    isActiveRef.current = true;
     invalidate();
 
     return () => {
@@ -353,7 +321,7 @@ function InstancedAtomHighlightAnimator({
   }, [baseColor, index, inspected, invalidate, meshRef]);
 
   useFrame(() => {
-    if (!isActive) {
+    if (!isActiveRef.current) {
       return;
     }
 
@@ -377,7 +345,7 @@ function InstancedAtomHighlightAnimator({
         setAtomInstanceColor(mesh, index, baseColor);
         onComplete();
       }
-      setIsActive(false);
+      isActiveRef.current = false;
       return;
     }
 

@@ -1,7 +1,6 @@
 import {
   type RefObject,
   useCallback,
-  useEffect,
   useState,
 } from "react";
 import type { Quaternion } from "three";
@@ -105,13 +104,7 @@ export function useFigureExportController({
     return nextExportSettings;
   }, [exportSettings, refreshExportProjectedSize]);
 
-  useEffect(() => {
-    if (visibleScene) {
-      return;
-    }
-
-    setExportProjectedSize(null);
-  }, [visibleScene]);
+  const visibleExportProjectedSize = visibleScene ? exportProjectedSize : null;
 
   const syncProjectedSizeForExportTab = useCallback(() => {
     const projectedSize = refreshExportProjectedSize();
@@ -180,7 +173,7 @@ export function useFigureExportController({
 
   return {
     exportError,
-    exportProjectedSize,
+    exportProjectedSize: visibleExportProjectedSize,
     exportSettings,
     handleExportFigure,
     handleExportSettingsChange,

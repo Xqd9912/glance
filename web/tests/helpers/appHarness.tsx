@@ -53,6 +53,11 @@ export function createAppTestHarness(App: ComponentType) {
     await screen.findByRole("menu");
   }
 
+  async function openSidebarContextMenu() {
+    fireEvent.contextMenu(screen.getByRole("complementary", { name: "Sidebar" }));
+    await screen.findByRole("menu");
+  }
+
   return {
     errorResponse,
     fetchCalls,
@@ -60,6 +65,7 @@ export function createAppTestHarness(App: ComponentType) {
     htmlResponse,
     jsonResponse,
     openPreviewContextMenu,
+    openSidebarContextMenu,
     queueFetchResponse,
     renderLoadedStructure,
     resetFetchMock,

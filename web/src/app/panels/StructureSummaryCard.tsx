@@ -1,5 +1,5 @@
 import { AlertTriangleIcon, ChevronDown, ChevronUp, FolderOpen } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useId, useMemo, useState } from "react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,62 +39,19 @@ export function StructureSummaryCard({
 }) {
   const summary = useMemo(() => summarizeScene(scene), [scene]);
   const expandableContentId = useId();
-  const expandableContentRef = useRef<HTMLDivElement>(null);
-  const [expandableContentHeight, setExpandableContentHeight] = useState<number | null>(null);
-  const [dismissedWarningCodes, setDismissedWarningCodes] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const [dismissedWarnings, setDismissedWarnings] = useState<{
+    codes: Set<string>;
+    scene: SceneSpec | null;
+  }>(() => ({ codes: new Set(), scene: null }));
   const hasExpandableContent = Boolean(scene);
+  const dismissedWarningCodes =
+    dismissedWarnings.scene === scene ? dismissedWarnings.codes : new Set<string>();
   const visibleWarnings = useMemo(
     () =>
       scene?.warnings?.filter((warning) => !dismissedWarningCodes.has(warning.code)) ?? [],
     [dismissedWarningCodes, scene?.warnings],
   );
   const toggleDetailsLabel = isCollapsed ? "Expand details" : "Collapse details";
-  const expandableContentStyle = {
-    height: hasExpandableContent && !isCollapsed
-      ? (expandableContentHeight === null ? "auto" : `${expandableContentHeight}px`)
-      : "0px",
-  } as CSSProperties;
-
-  useEffect(() => {
-    setDismissedWarningCodes(new Set());
-  }, [scene]);
-
-  useEffect(() => {
-    const expandableContentElement = expandableContentRef.current;
-    if (!expandableContentElement) {
-      return;
-    }
-
-    const measuredContentElement = expandableContentElement;
-
-    function updateExpandableContentHeight() {
-      const nextHeight = measuredContentElement.scrollHeight;
-      setExpandableContentHeight(nextHeight > 0 ? nextHeight : null);
-    }
-
-    updateExpandableContentHeight();
-    const animationFrame = window.requestAnimationFrame(updateExpandableContentHeight);
-
-    if (typeof ResizeObserver === "undefined") {
-      window.addEventListener("resize", updateExpandableContentHeight);
-      return () => {
-        window.cancelAnimationFrame(animationFrame);
-        window.removeEventListener("resize", updateExpandableContentHeight);
-      };
-    }
-
-    const resizeObserver = new ResizeObserver(updateExpandableContentHeight);
-    resizeObserver.observe(expandableContentElement);
-    window.addEventListener("resize", updateExpandableContentHeight);
-
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      resizeObserver.disconnect();
-      window.removeEventListener("resize", updateExpandableContentHeight);
-    };
-  }, [hasExpandableContent, scene]);
 
   return (
     <aside
@@ -178,10 +135,14 @@ export function StructureSummaryCard({
               key={warning.code}
               className="rounded-md px-2.5 py-2"
               onDismiss={() => {
-                setDismissedWarningCodes(
-                  (currentWarningCodes) =>
-                    new Set(currentWarningCodes).add(warning.code),
-                );
+                setDismissedWarnings((currentWarnings) => {
+                  const currentCodes =
+                    currentWarnings.scene === scene ? currentWarnings.codes : new Set<string>();
+                  return {
+                    codes: new Set(currentCodes).add(warning.code),
+                    scene,
+                  };
+                });
               }}
             >
               <AlertTriangleIcon aria-hidden="true" />
@@ -197,13 +158,14 @@ export function StructureSummaryCard({
         <div
           id={expandableContentId}
           data-slot="structure-summary-details"
-          className="overflow-hidden transition-[height] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none"
-          style={expandableContentStyle}
+          className={cn(
+            "grid overflow-hidden transition-[grid-template-rows] duration-[320ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+            isCollapsed ? "grid-rows-[0fr]" : "grid-rows-[1fr]",
+          )}
         >
           <div
-            ref={expandableContentRef}
             aria-hidden={isCollapsed ? "true" : undefined}
-            className="pt-2.5"
+            className="min-h-0 pt-2.5"
           >
             {scene ? (
               <div className="flex flex-col gap-2.5 max-[760px]:hidden">

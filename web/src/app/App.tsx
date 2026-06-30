@@ -335,6 +335,48 @@ export function App() {
     () => orientationGizmoSizeForViewport(viewportSize, effectivePreviewSafeArea),
     [effectivePreviewSafeArea, viewportSize],
   );
+  const renderPreviewContextMenuContent = () => (
+    <ContextMenuContent className="w-36">
+      <ContextMenuGroup>
+        <ContextMenuItem
+          disabled={!scene || previewStatus === "loading"}
+          onSelect={handleResetView}
+        >
+          <RotateCcw aria-hidden="true" />
+          Reset view
+        </ContextMenuItem>
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuGroup>
+        <ContextMenuItem onSelect={() => fileInputRef.current?.click()}>
+          <FolderOpen aria-hidden="true" />
+          Open file
+        </ContextMenuItem>
+        <ContextMenuItem
+          disabled={!scene || isExporting || previewStatus === "loading"}
+          onSelect={() => {
+            void handleExportFigure();
+          }}
+        >
+          <ImageDown aria-hidden="true" />
+          Export figure
+        </ContextMenuItem>
+      </ContextMenuGroup>
+      <ContextMenuSeparator />
+      <ContextMenuGroup>
+        <ContextMenuItem
+          disabled={!scene || previewStatus === "loading"}
+          onSelect={() => {
+            void handleResetAllSettings();
+          }}
+        >
+          <RefreshCw aria-hidden="true" />
+          Reset all
+        </ContextMenuItem>
+      </ContextMenuGroup>
+    </ContextMenuContent>
+  );
+
   useEffect(() => {
     if (!inspectedAtomId) {
       return;
@@ -438,45 +480,7 @@ export function App() {
             )}
           </section>
         </ContextMenuTrigger>
-        <ContextMenuContent className="w-36">
-          <ContextMenuGroup>
-            <ContextMenuItem
-              disabled={!scene || previewStatus === "loading"}
-              onSelect={handleResetView}
-            >
-              <RotateCcw aria-hidden="true" />
-              Reset view
-            </ContextMenuItem>
-          </ContextMenuGroup>
-          <ContextMenuSeparator />
-          <ContextMenuGroup>
-            <ContextMenuItem onSelect={() => fileInputRef.current?.click()}>
-              <FolderOpen aria-hidden="true" />
-              Open file
-            </ContextMenuItem>
-            <ContextMenuItem
-              disabled={!scene || isExporting || previewStatus === "loading"}
-              onSelect={() => {
-                void handleExportFigure();
-              }}
-            >
-              <ImageDown aria-hidden="true" />
-              Export figure
-            </ContextMenuItem>
-          </ContextMenuGroup>
-          <ContextMenuSeparator />
-          <ContextMenuGroup>
-            <ContextMenuItem
-              disabled={!scene || previewStatus === "loading"}
-              onSelect={() => {
-                void handleResetAllSettings();
-              }}
-            >
-              <RefreshCw aria-hidden="true" />
-              Reset all
-            </ContextMenuItem>
-          </ContextMenuGroup>
-        </ContextMenuContent>
+        {renderPreviewContextMenuContent()}
       </ContextMenu>
 
       {visibleScene ? (
@@ -592,32 +596,39 @@ export function App() {
             onOpenChange={setIsInspectorOpen}
           />
 
-          <InspectorSidebar
-            bondAlgorithm={bondAlgorithm}
-            dragSensitivity={viewState.dragSensitivity}
-            interactionMode={viewState.interactionMode}
-            lightStrength={viewState.lightStrength}
-            isOpen={isInspectorOpen}
-            isSceneLoading={previewStatus === "loading"}
-            previewMeshQuality={previewMeshQuality}
-            fogAffectsUnitCell={style.fogAffectsUnitCell}
-            distinguishSimilarColors={style.distinguishSimilarColors}
-            showFpsOverlay={viewState.showFpsOverlay}
-            showCrystalAxisLabels={showCrystalAxisLabels}
-            unitCellLineStyle={unitCellLineStyle}
-            onBondAlgorithmChange={(nextBondAlgorithm) => {
-              void handleBondAlgorithmChange(nextBondAlgorithm);
-            }}
-            onDragSensitivityChange={handleDragSensitivityChange}
-            onInteractionModeChange={handleInteractionModeChange}
-            onLightStrengthChange={handleLightStrengthChange}
-            onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
-            onFogAffectsUnitCellChange={handleFogAffectsUnitCellChange}
-            onDistinguishSimilarColorsChange={handleDistinguishSimilarColorsChange}
-            onShowFpsOverlayChange={handleShowFpsOverlayChange}
-            onShowCrystalAxisLabelsChange={setShowCrystalAxisLabels}
-            onUnitCellLineStyleChange={setUnitCellLineStyle}
-          />
+          <ContextMenu>
+            <ContextMenuTrigger asChild>
+              <div className="contents">
+                <InspectorSidebar
+                  bondAlgorithm={bondAlgorithm}
+                  dragSensitivity={viewState.dragSensitivity}
+                  interactionMode={viewState.interactionMode}
+                  lightStrength={viewState.lightStrength}
+                  isOpen={isInspectorOpen}
+                  isSceneLoading={previewStatus === "loading"}
+                  previewMeshQuality={previewMeshQuality}
+                  fogAffectsUnitCell={style.fogAffectsUnitCell}
+                  distinguishSimilarColors={style.distinguishSimilarColors}
+                  showFpsOverlay={viewState.showFpsOverlay}
+                  showCrystalAxisLabels={showCrystalAxisLabels}
+                  unitCellLineStyle={unitCellLineStyle}
+                  onBondAlgorithmChange={(nextBondAlgorithm) => {
+                    void handleBondAlgorithmChange(nextBondAlgorithm);
+                  }}
+                  onDragSensitivityChange={handleDragSensitivityChange}
+                  onInteractionModeChange={handleInteractionModeChange}
+                  onLightStrengthChange={handleLightStrengthChange}
+                  onPreviewMeshQualityChange={handlePreviewMeshQualityChange}
+                  onFogAffectsUnitCellChange={handleFogAffectsUnitCellChange}
+                  onDistinguishSimilarColorsChange={handleDistinguishSimilarColorsChange}
+                  onShowFpsOverlayChange={handleShowFpsOverlayChange}
+                  onShowCrystalAxisLabelsChange={setShowCrystalAxisLabels}
+                  onUnitCellLineStyleChange={setUnitCellLineStyle}
+                />
+              </div>
+            </ContextMenuTrigger>
+            {renderPreviewContextMenuContent()}
+          </ContextMenu>
         </>
       ) : null}
     </main>
