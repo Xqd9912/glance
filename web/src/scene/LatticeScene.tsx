@@ -17,7 +17,10 @@ import type { PreviewFpsStore } from "../model/previewFpsStore";
 import type { InteractionMode } from "../model/viewState";
 import { computeCrystalCameraPose, type CrystalCameraState } from "./crystalCamera";
 import { MaterialPresetLights } from "./MaterialPresetLights";
-import { resolveStructureMaterialFamilyForStyle } from "./materialPresetResolver";
+import {
+  resolveStructureMaterialFamiliesForStyle,
+  resolveStructureMaterialFamilyForStyle,
+} from "./materialPresetResolver";
 import { PreviewCameraController } from "./PreviewCameraController";
 import {
   EXPORT_SCENE_MESH_DETAIL_PRESETS,
@@ -181,6 +184,10 @@ export function LatticeScene({
     () => resolveStructureMaterialFamilyForStyle(style),
     [style.materialPreset],
   );
+  const materialFamilies = useMemo(
+    () => resolveStructureMaterialFamiliesForStyle(style),
+    [style.materialPreset],
+  );
 
   return (
     <Canvas
@@ -212,7 +219,7 @@ export function LatticeScene({
       <PreviewSceneContent
         componentOpacity={componentOpacity}
         layout={layout}
-        materialFamily={materialFamily}
+        materialFamilies={materialFamilies}
         meshDetail={EXPORT_SCENE_MESH_DETAIL_PRESETS[previewMeshQuality]}
         scene={scene}
         inspectedAtomId={inspectedAtomId}

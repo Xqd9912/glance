@@ -803,7 +803,7 @@ The frontend SHALL expose a material preset control in the `Style` tab after a s
 
 ### Requirement: Material presets use frontend-owned JSON data
 
-The frontend SHALL load bundled material preset values from frontend JSON data under `web/src/data/material-presets/`. TypeScript code SHALL validate and adapt that data before rendering, but preset numeric values such as roughness, metalness, camera-light intensity, and camera-light offset SHALL be editable without changing TypeScript source code.
+The frontend SHALL load bundled material preset values from frontend JSON data under `web/src/data/material-presets/`. TypeScript code SHALL validate and adapt that data before rendering, but preset numeric values such as roughness, metalness, per-target material overrides, camera-light intensity, and camera-light offset SHALL be editable without changing TypeScript source code.
 
 #### Scenario: Load valid preset data
 
@@ -823,7 +823,7 @@ The frontend SHALL load bundled material preset values from frontend JSON data u
 
 ### Requirement: Material presets apply one shading family to structure objects
 
-The selected material preset SHALL define one shading family that is applied consistently to atom spheres, bond cylinders, and polyhedron surfaces. Object-specific rendering needs, such as bond color mode and polyhedron edge overlays, MAY remain object-specific as long as they do not break the selected shading family.
+The selected material preset SHALL define one base shading family that is applied consistently to atom spheres, bond cylinders, and polyhedron surfaces. Preset JSON MAY define per-target material overrides for `atom`, `bond`, or `polyhedron`; these overrides SHALL adjust the target material while preserving preset-level lighting. Object-specific rendering needs, such as bond color mode and polyhedron edge overlays, MAY remain object-specific as long as they do not break the selected shading family.
 
 #### Scenario: Apply preset across structure objects
 
@@ -832,6 +832,13 @@ The selected material preset SHALL define one shading family that is applied con
 - **AND** bond cylinders use that preset's shading family
 - **AND** polyhedron surfaces use that preset's shading family
 - **AND** polyhedron edge outlines remain available when polyhedra are rendered
+
+#### Scenario: Apply a polyhedron material override
+
+- **WHEN** the selected material preset defines an override for `polyhedron`
+- **THEN** polyhedron surfaces use the override material merged with the preset's base material props
+- **AND** atom spheres and bond cylinders continue to use the preset base material unless they define their own overrides
+- **AND** preset lighting remains shared across atoms, bonds, and polyhedra
 
 #### Scenario: Apply flat 2D without preset outlines
 

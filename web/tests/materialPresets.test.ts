@@ -39,6 +39,19 @@ describe("material presets", () => {
       ]).toContain(preset.material.type);
       expect(preset.material.props).toEqual(expect.any(Object));
       expect(Array.isArray(preset.lighting)).toBe(true);
+      if (preset.id === "2d") {
+        expect(preset.overrides).toBeUndefined();
+      } else {
+        expect(preset.overrides?.polyhedron?.material?.type).toBe(
+          "MeshStandardMaterial",
+        );
+        expect(preset.overrides?.polyhedron?.material?.props).toEqual(
+          expect.any(Object),
+        );
+        expect(preset.overrides?.polyhedron?.material?.props).not.toHaveProperty(
+          "fog",
+        );
+      }
 
       for (const light of preset.lighting) {
         expect(["AmbientLight", "HemisphereLight", "cameraDirectional"]).toContain(
@@ -95,11 +108,12 @@ describe("material presets", () => {
       catalogWithPreset({
         material: {
           props: {
-            clearcoat: 0.8,
-            clearcoatRoughness: 0.2,
+            emissive: "#ffffff",
+            emissiveIntensity: 0.08,
+            metalness: 0.12,
             customFutureProp: [1, "two", false],
           },
-          type: "MeshPhysicalMaterial",
+          type: "MeshStandardMaterial",
         },
       }),
     );
@@ -107,10 +121,54 @@ describe("material presets", () => {
     const [preset] = catalog.presets;
     expect(preset).toBeDefined();
     expect(preset!.material.props).toMatchObject({
-      clearcoat: 0.8,
-      clearcoatRoughness: 0.2,
+      emissive: "#ffffff",
+      emissiveIntensity: 0.08,
+      metalness: 0.12,
       customFutureProp: [1, "two", false],
     });
+  });
+
+  test("accepts per-target material overrides", () => {
+    const catalog = validateMaterialPresetData(
+      catalogWithPreset({
+        overrides: {
+          polyhedron: {
+            material: {
+              props: {
+                metalness: 0.08,
+                roughness: 0.25,
+              },
+              type: "MeshStandardMaterial",
+            },
+          },
+        },
+      }),
+    );
+
+    expect(catalog.presets[0]?.overrides?.polyhedron?.material).toEqual({
+      props: {
+        metalness: 0.08,
+        roughness: 0.25,
+      },
+      type: "MeshStandardMaterial",
+    });
+  });
+
+  test("rejects unsupported material override targets", () => {
+    expect(() =>
+      validateMaterialPresetData(
+        catalogWithPreset({
+          overrides: {
+            label: {
+              material: {
+                props: {},
+                type: "MeshBasicMaterial",
+              },
+            },
+          },
+        }),
+      ),
+    ).toThrow("material presets.presets[0].overrides.label is not supported.");
   });
 
   test("rejects non-json prop values", () => {

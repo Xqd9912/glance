@@ -5,9 +5,21 @@
   "material": {
     "type": "MeshStandardMaterial",
     "props": {
-      "metalness": 0.10,
+      "metalness": 0.1,
       "roughness": 0.6,
       "flatShading": false
+    }
+  },
+  "overrides": {
+    "polyhedron": {
+      "material": {
+        "type": "MeshStandardMaterial",
+        "props": {
+          "metalness": 0.05,
+          "roughness": 0.4,
+          "flatShading": false
+        }
+      }
     }
   },
   "lighting": [

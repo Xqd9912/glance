@@ -10,7 +10,7 @@ import type {
 } from "../model";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import { applyCameraPoseSnapshot } from "./cameraPose";
-import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
+import type { ResolvedStructureMaterialFamilies } from "./materialPresetResolver";
 import type { SceneLayout } from "./sceneLayout";
 import type { SceneMeshDetail } from "./StructureSceneObjects";
 import { MemoizedStructureSceneObjects, SceneFog } from "./StructureSceneObjects";
@@ -21,7 +21,7 @@ export function ExportSceneContent({
   componentOpacity,
   exportFramePlan,
   layout,
-  materialFamily,
+  materialFamilies,
   meshDetail,
   polyhedronEdgeLineWidthScale = 1,
   scene,
@@ -36,7 +36,7 @@ export function ExportSceneContent({
   componentOpacity: ComponentOpacityState;
   exportFramePlan: StructureExportFramePlan;
   layout: SceneLayout;
-  materialFamily: ResolvedStructureMaterialFamily;
+  materialFamilies: ResolvedStructureMaterialFamilies;
   meshDetail: SceneMeshDetail;
   polyhedronEdgeLineWidthScale?: number;
   scene: SceneSpec;
@@ -65,7 +65,7 @@ export function ExportSceneContent({
       <MemoizedStructureSceneObjects
         componentOpacity={componentOpacity}
         groupPosition={layout.groupPosition}
-        materialFamily={materialFamily}
+        materialFamilies={materialFamilies}
         meshDetail={meshDetail}
         polyhedronEdgeLineWidthScale={polyhedronEdgeLineWidthScale}
         scene={scene}

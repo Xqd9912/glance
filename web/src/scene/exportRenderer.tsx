@@ -19,7 +19,10 @@ import { CameraHeadlight } from "./CameraHeadlight";
 import { MaterialPresetLights } from "./MaterialPresetLights";
 import { computeSceneLayout } from "./sceneLayout";
 import { computeStructureExportFramePlan, type StructureExportFramePlan } from "./exportFrame";
-import { resolveStructureMaterialFamilyForStyle } from "./materialPresetResolver";
+import {
+  resolveStructureMaterialFamiliesForStyle,
+  resolveStructureMaterialFamilyForStyle,
+} from "./materialPresetResolver";
 import { DEFAULT_RENDERER_PARAMETERS } from "./rendererParameters";
 import {
   ORIENTATION_GIZMO_CAMERA_POSITION,
@@ -132,6 +135,7 @@ export async function renderStructureRasterImage({
 
   const layout = computeSceneLayout(scene, style.atomRadiusModel);
   const materialFamily = resolveStructureMaterialFamilyForStyle(style);
+  const materialFamilies = resolveStructureMaterialFamiliesForStyle(style);
   const exportFramePlan = computeStructureExportFramePlan({
     cameraPose,
     componentOpacity,
@@ -187,7 +191,7 @@ export async function renderStructureRasterImage({
           componentOpacity={componentOpacity}
           exportFramePlan={exportFramePlan}
           layout={layout}
-          materialFamily={materialFamily}
+          materialFamilies={materialFamilies}
           meshDetail={meshDetail}
           polyhedronEdgeLineWidthScale={lineWidthScale}
           scene={scene}

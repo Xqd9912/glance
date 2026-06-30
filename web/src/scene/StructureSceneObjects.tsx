@@ -13,7 +13,7 @@ import type {
   UnitCellLineStyle,
 } from "../model";
 import { DEFAULT_BOND_COLOR } from "../model";
-import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
+import type { ResolvedStructureMaterialFamilies } from "./materialPresetResolver";
 import type { SceneLayout } from "./sceneLayout";
 import type { VectorTuple } from "./viewMath";
 import { InstancedAtoms } from "./InstancedAtoms";
@@ -66,7 +66,7 @@ export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMe
 export function PreviewSceneContent({
   componentOpacity,
   layout,
-  materialFamily,
+  materialFamilies,
   meshDetail,
   scene,
   inspectedAtomId,
@@ -85,7 +85,7 @@ export function PreviewSceneContent({
 }: {
   componentOpacity: ComponentOpacityState;
   layout: SceneLayout;
-  materialFamily: ResolvedStructureMaterialFamily;
+  materialFamilies: ResolvedStructureMaterialFamilies;
   meshDetail: SceneMeshDetail;
   scene: SceneSpec;
   inspectedAtomId: string | null;
@@ -108,7 +108,7 @@ export function PreviewSceneContent({
       <MemoizedStructureSceneObjects
         componentOpacity={componentOpacity}
         groupPosition={layout.groupPosition}
-        materialFamily={materialFamily}
+        materialFamilies={materialFamilies}
         meshDetail={meshDetail}
         scene={scene}
         inspectedAtomId={inspectedAtomId}
@@ -228,7 +228,7 @@ export function StructureSceneObjects({
   componentOpacity,
   groupPosition,
   interactionLocked = false,
-  materialFamily,
+  materialFamilies,
   meshDetail,
   scene,
   inspectedAtomId = null,
@@ -248,7 +248,7 @@ export function StructureSceneObjects({
   componentOpacity: ComponentOpacityState;
   groupPosition: VectorTuple;
   interactionLocked?: boolean;
-  materialFamily: ResolvedStructureMaterialFamily;
+  materialFamilies: ResolvedStructureMaterialFamilies;
   meshDetail: SceneMeshDetail;
   scene: SceneSpec;
   inspectedAtomId?: string | null;
@@ -318,7 +318,7 @@ export function StructureSceneObjects({
           atoms={scene.atoms}
           colorScheme={style.colorScheme}
           colorOverrides={colorOverrides}
-          materialFamily={materialFamily}
+          materialFamily={materialFamilies.polyhedron}
           opacity={componentOpacity.polyhedra / 100}
           polyhedra={scene.polyhedra}
           lineWidthScale={polyhedronEdgeLineWidthScale}
@@ -326,7 +326,7 @@ export function StructureSceneObjects({
         <BatchedBonds
           bondRenderItems={bondRenderItems}
           colorMode={style.bondColorMode}
-          materialFamily={materialFamily}
+          materialFamily={materialFamilies.bond}
           meshDetail={meshDetail}
           thicknessScale={style.bondThickness / 100}
           opacity={componentOpacity.bonds / 100}
@@ -338,7 +338,7 @@ export function StructureSceneObjects({
             colorOverrides={colorOverrides}
             inspectedAtomId={inspectedAtomId}
             interactionLocked={interactionLocked}
-            materialFamily={materialFamily}
+            materialFamily={materialFamilies.atom}
             meshDetail={meshDetail}
             onInspect={onAtomInspect}
             onPulse={onAtomPulse}

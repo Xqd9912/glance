@@ -10,6 +10,18 @@
       "flatShading": false
     }
   },
+  "overrides": {
+    "polyhedron": {
+      "material": {
+        "type": "MeshStandardMaterial",
+        "props": {
+          "metalness": 0.1,
+          "roughness": 0.5,
+          "flatShading": false
+        }
+      }
+    }
+  },
   "lighting": [
     {
       "type": "HemisphereLight",

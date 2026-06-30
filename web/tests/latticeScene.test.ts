@@ -279,7 +279,7 @@ describe("computeSceneLayout", () => {
     );
   });
 
-  test("resolves one selected material family across structure objects", () => {
+  test("resolves selected material family with per-target overrides", () => {
     const style = {
       ...createDefaultStyle(),
       materialPreset: "glossy",
@@ -295,13 +295,33 @@ describe("computeSceneLayout", () => {
     expect(atomFamily.id).toBe("glossy");
     expect(atomFamily.material.type).toBe("MeshStandardMaterial");
     expect(bondFamily).toEqual(atomFamily);
-    expect(polyhedronFamily).toEqual(atomFamily);
+    expect(polyhedronFamily.id).toBe(atomFamily.id);
+    expect(polyhedronFamily.lighting).toEqual(atomFamily.lighting);
+    expect(polyhedronFamily.material.type).toBe("MeshStandardMaterial");
+    expect(polyhedronFamily.material.props).not.toEqual(atomFamily.material.props);
     expect(
       resolveStructureMaterialFamilyForStyle({
         ...style,
         materialPreset: "2d",
       }).material.type,
     ).toBe("MeshBasicMaterial");
+    expect(
+      resolveStructureMaterialFamilyForTarget(
+        {
+          ...style,
+          materialPreset: "2d",
+        },
+        "polyhedron",
+      ),
+    ).toEqual(
+      resolveStructureMaterialFamilyForTarget(
+        {
+          ...style,
+          materialPreset: "2d",
+        },
+        "atom",
+      ),
+    );
   });
 
   test("keeps preview mesh detail aligned with the medium quality preset", () => {

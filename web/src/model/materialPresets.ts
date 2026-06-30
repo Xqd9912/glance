@@ -31,6 +31,7 @@ interface MaterialPresetBase {
   label: string;
   lighting: MaterialPresetLight[];
   material: MaterialPresetMaterial;
+  overrides?: MaterialPresetOverrides;
 }
 
 export interface MaterialPresetCatalog {
@@ -56,6 +57,18 @@ export interface MaterialPresetLight {
 }
 
 export type MaterialPreset = MaterialPresetBase;
+
+export type MaterialPresetOverrideTarget = "atom" | "bond" | "polyhedron";
+
+export interface MaterialPresetOverrides {
+  atom?: MaterialPresetTargetOverride;
+  bond?: MaterialPresetTargetOverride;
+  polyhedron?: MaterialPresetTargetOverride;
+}
+
+export interface MaterialPresetTargetOverride {
+  material?: MaterialPresetMaterial;
+}
 
 export interface MaterialPresetOption {
   label: string;
@@ -258,6 +271,7 @@ function parseMaterialPreset(data: unknown, path: string): MaterialPreset {
     "label",
     "lighting",
     "material",
+    "overrides",
   ]);
 
   const id = expectPresetId(rawPreset.id, `${path}.id`);
@@ -273,6 +287,52 @@ function parseMaterialPreset(data: unknown, path: string): MaterialPreset {
     label,
     lighting: parseLighting(rawPreset.lighting, `${path}.lighting`),
     material: parseMaterial(rawPreset.material, `${path}.material`),
+    ...(rawPreset.overrides === undefined
+      ? {}
+      : { overrides: parseOverrides(rawPreset.overrides, `${path}.overrides`) }),
+  };
+}
+
+function parseOverrides(data: unknown, path: string): MaterialPresetOverrides {
+  const overrides = expectRecord(data, path);
+  assertKnownKeys(overrides, path, ["atom", "bond", "polyhedron"]);
+
+  return {
+    ...parseOptionalTargetOverride(overrides.atom, `${path}.atom`, "atom"),
+    ...parseOptionalTargetOverride(overrides.bond, `${path}.bond`, "bond"),
+    ...parseOptionalTargetOverride(
+      overrides.polyhedron,
+      `${path}.polyhedron`,
+      "polyhedron",
+    ),
+  };
+}
+
+function parseOptionalTargetOverride(
+  data: unknown,
+  path: string,
+  target: MaterialPresetOverrideTarget,
+): MaterialPresetOverrides {
+  if (data === undefined) {
+    return {};
+  }
+
+  return {
+    [target]: parseTargetOverride(data, path),
+  };
+}
+
+function parseTargetOverride(
+  data: unknown,
+  path: string,
+): MaterialPresetTargetOverride {
+  const override = expectRecord(data, path);
+  assertKnownKeys(override, path, ["material"]);
+
+  return {
+    ...(override.material === undefined
+      ? {}
+      : { material: parseMaterial(override.material, `${path}.material`) }),
   };
 }
 

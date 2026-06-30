@@ -7,38 +7,20 @@
   // - MeshBasicMaterial
   // - MeshLambertMaterial
   // - MeshStandardMaterial
-  // - MeshPhysicalMaterial
   //
   // Props are passed through to the matching Three.js material. Use official
   // Three.js property names where possible. JSON can express numbers, booleans,
   // strings, arrays, and plain objects; runtime objects such as Texture, Color
-  // instances, and Vector classes are not loaded from this template yet.
+  // instances, and Vector classes are not loaded from this template yet. Depth
+  // cueing/fog is controlled globally by the scene and should not be set here.
   "material": {
-    "type": "MeshPhysicalMaterial",
+    "type": "MeshStandardMaterial",
     "props": {
       "flatShading": false,
       "wireframe": false,
-      "fog": true,
 
       "metalness": 0.0,
       "roughness": 0.45,
-
-      "clearcoat": 0.0,
-      "clearcoatRoughness": 0.0,
-      "ior": 1.5,
-      "reflectivity": 0.5,
-      "sheen": 0.0,
-      "sheenRoughness": 1.0,
-      "sheenColor": "#ffffff",
-      "specularIntensity": 1.0,
-      "specularColor": "#ffffff",
-      "transmission": 0.0,
-      "thickness": 0.0,
-      "attenuationColor": "#ffffff",
-      "attenuationDistance": 0.0,
-      "iridescence": 0.0,
-      "iridescenceIOR": 1.3,
-      "iridescenceThicknessRange": [100, 400],
 
       // These are supported by Three.js materials, but Pretty Lattice scene
       // objects currently override color, opacity, transparent, depthWrite,
@@ -47,6 +29,29 @@
       "emissiveIntensity": 0.0,
       "alphaTest": 0.0,
       "depthTest": true
+    }
+  },
+
+  // Optional per-object material overrides. The selected preset still defines
+  // one visual family; overrides are for local material tuning when an object
+  // type has a different rendering role. Supported targets:
+  // - atom
+  // - bond
+  // - polyhedron
+  //
+  // Override material props are shallow-merged over the top-level material
+  // props. Lighting stays preset-level and is not overridden per target.
+  "overrides": {
+    "polyhedron": {
+      "material": {
+        "type": "MeshStandardMaterial",
+        "props": {
+          "metalness": 0.06,
+          "roughness": 0.32,
+          "emissive": "#ffffff",
+          "emissiveIntensity": 0.035
+        }
+      }
     }
   },
 
