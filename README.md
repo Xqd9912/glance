@@ -10,6 +10,9 @@
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
 </p>
 
+<p align="center">
+  English | <a href="README_zh_CN.md">简体中文</a>
+</p>
 
 - **Pretty**: tasteful defaults for colors, materials, lighting, and depth
 - **Simple**: an intuitive browser GUI for loading, viewing, and exporting structures
