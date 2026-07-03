@@ -83,6 +83,7 @@ interface TestAtom {
 
 function sceneWithAtoms(atoms: TestAtom[]): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: atoms.map(({ element, isPeriodicImage = false }, index) => ({
       element,
       id: `${element}-${index}`,

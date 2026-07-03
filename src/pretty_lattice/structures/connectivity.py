@@ -66,8 +66,9 @@ def build_connectivity(
     boundary_source_keys: list[AtomKey],
     sites: list[SceneSite],
     structure: Structure,
+    bond_cutoffs: dict[tuple[str, str], float] | None = None,
 ) -> ConnectivityResult:
-    neighbor_analyzer = _neighbor_analyzer_for_bond_algorithm(bond_algorithm)
+    neighbor_analyzer = _neighbor_analyzer_for_bond_algorithm(bond_algorithm, bond_cutoffs)
     neighbor_info_by_site = _neighbor_info_by_site_for_connectivity(
         bond_algorithm=bond_algorithm,
         neighbor_analyzer=neighbor_analyzer,
@@ -188,19 +189,24 @@ def _neighbor_info_by_site_for_connectivity(
     neighbor_analyzer: object,
     structure: Structure,
 ) -> list[list[dict]] | None:
-    if bond_algorithm == "cut-off-dict":
+    if bond_algorithm in ("cut-off-dict", "custom-cutoff"):
         return neighbor_analyzer.get_all_nn_info(structure)  # type: ignore[attr-defined]
 
     return None
 
 
-def _neighbor_analyzer_for_bond_algorithm(bond_algorithm: BondAlgorithm):
+def _neighbor_analyzer_for_bond_algorithm(
+    bond_algorithm: BondAlgorithm,
+    bond_cutoffs: dict[tuple[str, str], float] | None = None,
+):
     if bond_algorithm == "crystal-nn":
         return CrystalNN()
     if bond_algorithm == "minimum-distance":
         return MinimumDistanceNN()
     if bond_algorithm == "cut-off-dict":
         return _PresetCutOffDictNN.from_preset("vesta_2019")
+    if bond_algorithm == "custom-cutoff":
+        return _PresetCutOffDictNN(cut_off_dict=dict(bond_cutoffs or {}))
 
     raise UnsupportedBondAlgorithmError(f"Unsupported bond algorithm '{bond_algorithm}'.")
 

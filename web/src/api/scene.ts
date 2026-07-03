@@ -9,10 +9,20 @@ export interface SceneSpec {
   bonds: BondSpec[];
   polyhedra: PolyhedronSpec[];
   summary: StructureSummary;
+  bondCutoffs: BondCutoffSpec[];
   warnings?: AnalysisWarningSpec[];
 }
 
-export type BondAlgorithm = "crystal-nn" | "minimum-distance" | "cut-off-dict";
+export interface BondCutoffSpec {
+  elements: [string, string];
+  distance: number;
+}
+
+export type BondAlgorithm =
+  | "crystal-nn"
+  | "minimum-distance"
+  | "cut-off-dict"
+  | "custom-cutoff";
 export type AtomRadiusModel = "uniform" | "atomic" | "vdw" | "ionic";
 
 export const DEFAULT_BOND_ALGORITHM: BondAlgorithm =
@@ -154,9 +164,14 @@ export async function loadStaticScenePreview(): Promise<SceneSpec | null> {
   return (await response.json()) as SceneSpec;
 }
 
+export interface StructurePreviewOptions {
+  bondAlgorithm?: BondAlgorithm;
+  cutoffs?: BondCutoffSpec[];
+}
+
 export async function uploadStructurePreview(
   file: File,
-  options: { bondAlgorithm?: BondAlgorithm } = {},
+  options: StructurePreviewOptions = {},
 ): Promise<SceneSpec> {
   if (hasStaticScenePreview()) {
     throw new StructurePreviewError(BACKEND_UNAVAILABLE_MESSAGE, "backend-unavailable");
@@ -191,10 +206,13 @@ export async function uploadStructurePreview(
   return (await response.json()) as SceneSpec;
 }
 
-function previewEndpointForOptions(options: { bondAlgorithm?: BondAlgorithm }): string {
+function previewEndpointForOptions(options: StructurePreviewOptions): string {
   const params = new URLSearchParams();
   if (options.bondAlgorithm) {
     params.set("bondAlgorithm", options.bondAlgorithm);
+  }
+  if (options.bondAlgorithm === "custom-cutoff" && options.cutoffs && options.cutoffs.length > 0) {
+    params.set("cutoffs", JSON.stringify(options.cutoffs));
   }
 
   const query = params.toString();

@@ -52,6 +52,7 @@ describe("atom inspector formatting", () => {
 
 function sceneWithImageAtom(): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: [
       atom({
         id: "Al-1",

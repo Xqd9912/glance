@@ -10,9 +10,13 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
+    "ase>=3.26.0",
     "fastapi>=0.115.0",
+    "fastatomstruct>=1.5.0",
+    "numba>=0.61.0",
     "numpy>=2.0.0",
     "pymatgen-core>=2026.5.18",
+    "scipy>=1.11.0",
     "typer>=0.16.0",
     "uvicorn[standard]>=0.30.0",
 ]
@@ -35,6 +39,8 @@ pythonpath = ["src"]
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# Reference notebooks and trajectory sample data live here; not project source.
+extend-exclude = ["structure_analysis_module"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]

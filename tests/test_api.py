@@ -1,4 +1,6 @@
+import json
 from pathlib import Path
+from urllib.parse import quote
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -124,13 +126,58 @@ async def test_structure_preview_upload_endpoint_rejects_unsupported_bond_algori
         transport=ASGITransport(app=create_app()), base_url="http://testserver"
     ) as client:
         response = await client.post(
-            "/api/structure-preview?bondAlgorithm=custom-cutoff",
+            "/api/structure-preview?bondAlgorithm=voronoi-nn",
             content=payload,
             headers={"x-pretty-lattice-filename": "SrTiO3.cif"},
         )
 
     assert response.status_code == 400
     assert "Unsupported bond algorithm" in response.json()["detail"]["message"]
+
+
+@pytest.mark.anyio
+async def test_structure_preview_upload_endpoint_accepts_custom_cutoffs() -> None:
+    payload = (FIXTURE_DIR / "SrTiO3.cif").read_bytes()
+    cutoffs = json.dumps([{"elements": ["O", "Ti"], "distance": 2.2}])
+
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            f"/api/structure-preview?bondAlgorithm=custom-cutoff&cutoffs={quote(cutoffs)}",
+            content=payload,
+            headers={"x-pretty-lattice-filename": "SrTiO3.cif"},
+        )
+
+    body = response.json()
+    atoms = body["atoms"]
+
+    assert response.status_code == 200
+    assert body["bonds"]
+    assert body["bondCutoffs"]
+    for bond in body["bonds"]:
+        pair = {
+            atoms[bond["startAtomIndex"]]["element"],
+            atoms[bond["endAtomIndex"]]["element"],
+        }
+        assert pair == {"O", "Ti"}
+
+
+@pytest.mark.anyio
+async def test_structure_preview_upload_endpoint_rejects_invalid_cutoffs() -> None:
+    payload = (FIXTURE_DIR / "SrTiO3.cif").read_bytes()
+
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://testserver"
+    ) as client:
+        response = await client.post(
+            "/api/structure-preview?bondAlgorithm=custom-cutoff&cutoffs=not-json",
+            content=payload,
+            headers={"x-pretty-lattice-filename": "SrTiO3.cif"},
+        )
+
+    assert response.status_code == 400
+    assert "JSON" in response.json()["detail"]["message"]
 
 
 @pytest.mark.anyio

@@ -122,15 +122,16 @@ def test_invalid_structure_bytes_raise_project_error() -> None:
         read_structure_bytes(b"not a structure", filename="invalid.cif")
 
 
-def test_project_runtime_dependencies_are_pymatgen_core_level() -> None:
+def test_project_uses_pymatgen_core_not_full_pymatgen() -> None:
     dependencies = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text())["project"][
         "dependencies"
     ]
     dependency_names = {_dependency_name(dependency) for dependency in dependencies}
 
+    # The structure backend stays on pymatgen-core; ase is allowed only as the
+    # analysis dependency (fastatomstruct dynamics), not as a structure backend.
     assert "pymatgen-core" in dependency_names
     assert "pymatgen" not in dependency_names
-    assert "ase" not in dependency_names
     assert "spglib" not in dependency_names
 
 
@@ -138,6 +139,8 @@ def test_project_runtime_dependencies_are_pymatgen_core_level() -> None:
 def test_backend_structure_modules_avoid_direct_ase_and_spglib_imports(
     module_path: Path,
 ) -> None:
+    # The structure backend (parsing, scene building, trajectory reading) must
+    # stay pymatgen-only. ase is confined to the analysis package.
     imported_roots = _imported_roots(module_path.read_text())
 
     assert "ase" not in imported_roots
@@ -215,7 +218,7 @@ def test_scene_response_shape_excludes_renderer_visual_data() -> None:
             "latticeSystem": "cubic",
         },
     }
-    assert scene.keys() == {"cell", "atoms", "bonds", "polyhedra", "summary"}
+    assert scene.keys() == {"cell", "atoms", "bonds", "polyhedra", "summary", "bondCutoffs"}
 
 
 @pytest.mark.parametrize(
@@ -389,6 +392,77 @@ def test_cutoff_dict_bonding_keeps_boundary_bonds_local_after_canonicalizing_sit
     assert all(length < 3.0 for length in bond_lengths)
 
 
+def test_scene_response_includes_default_bond_cutoffs_from_covalent_radii() -> None:
+    structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
+
+    scene = build_scene_response(structure)
+    cutoffs = scene["bondCutoffs"]
+    pairs = {tuple(entry["elements"]) for entry in cutoffs}
+    ti_o = next(entry for entry in cutoffs if tuple(entry["elements"]) == ("O", "Ti"))
+
+    # Unordered element pairs present, including same-element pairs, sorted.
+    assert pairs == {
+        ("O", "O"),
+        ("O", "Sr"),
+        ("O", "Ti"),
+        ("Sr", "Sr"),
+        ("Sr", "Ti"),
+        ("Ti", "Ti"),
+    }
+    assert all(entry["distance"] > 0 for entry in cutoffs)
+    # Ti (1.60) + O (0.66) covalent radii, scaled by the tolerance factor.
+    assert ti_o["distance"] == round((1.60 + 0.66) * 1.15, 2)
+
+
+def test_custom_cutoff_bonding_respects_provided_cutoffs() -> None:
+    structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
+
+    scene = build_scene_response(
+        structure,
+        bond_algorithm="custom-cutoff",
+        bond_cutoffs=[{"elements": ["O", "Ti"], "distance": 2.2}],
+    )
+    atoms = scene["atoms"]
+
+    assert scene["bonds"]
+    for bond in scene["bonds"]:
+        pair = {
+            atoms[bond["startAtomIndex"]]["element"],
+            atoms[bond["endAtomIndex"]]["element"],
+        }
+        assert pair == {"O", "Ti"}
+        assert (
+            dist(
+                atoms[bond["startAtomIndex"]]["position"],
+                atoms[bond["endAtomIndex"]]["position"],
+            )
+            < 2.2
+        )
+
+
+def test_custom_cutoff_without_cutoffs_falls_back_to_covalent_defaults() -> None:
+    structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
+
+    scene = build_scene_response(structure, bond_algorithm="custom-cutoff")
+
+    assert scene["bonds"]
+    assert "warnings" not in scene
+
+
+def test_custom_cutoff_with_no_positive_cutoffs_removes_all_bonds() -> None:
+    structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
+
+    scene = build_scene_response(
+        structure,
+        bond_algorithm="custom-cutoff",
+        bond_cutoffs=[{"elements": ["O", "Ti"], "distance": 0.0}],
+    )
+
+    assert scene["bonds"] == []
+    assert scene["polyhedra"] == []
+    assert "warnings" not in scene
+
+
 def test_scene_response_generates_polyhedra_for_complete_coordination_environment() -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
 
@@ -491,10 +565,10 @@ def test_scene_response_rejects_unsupported_bond_algorithm() -> None:
     structure = read_structure(FIXTURE_DIR / "SrTiO3.cif")
 
     with pytest.raises(UnsupportedBondAlgorithmError, match="Unsupported bond algorithm"):
-        build_scene_response(structure, bond_algorithm="custom-cutoff")
+        build_scene_response(structure, bond_algorithm="voronoi-nn")
 
     with pytest.raises(UnsupportedBondAlgorithmError, match="Unsupported bond algorithm"):
-        build_scene_response(structure, bond_algorithm="voronoi-nn")
+        build_scene_response(structure, bond_algorithm="jmol-nn")
 
 
 def test_scene_response_marks_one_hop_bonded_images_without_recursive_expansion() -> None:

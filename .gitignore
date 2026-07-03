@@ -48,3 +48,10 @@ tmp/visual-renders/
 .vscode/
 *.swp
 *.swo
+
+# Local scratch, notes, and large sample/reference data (not part of the package)
+notes.md
+CHGCAR
+low_electron_density.f
+/structure_analysis_module/
+/test_stru/

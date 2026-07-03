@@ -53,8 +53,10 @@ import {
 } from "../viewState";
 import { useAutoBlurSlider } from "../controls/commonPanel/sharedControls";
 import {
+  clampBondCutoff,
   MESH_QUALITY_LABELS,
   MESH_QUALITY_OPTIONS,
+  type BondCutoffPair,
   type MeshQuality,
   type UnitCellLineStyle,
 } from "../../model";
@@ -105,6 +107,7 @@ export function InspectorToggle({
 
 export function InspectorSidebar({
   bondAlgorithm,
+  bondCutoffs,
   distinguishSimilarColors,
   dragSensitivity,
   isCustomColorScheme,
@@ -118,6 +121,7 @@ export function InspectorSidebar({
   showCrystalAxisLabels,
   unitCellLineStyle,
   onBondAlgorithmChange,
+  onBondCutoffChange,
   onDistinguishSimilarColorsChange,
   onDragSensitivityChange,
   onInteractionModeChange,
@@ -129,6 +133,7 @@ export function InspectorSidebar({
   onUnitCellLineStyleChange,
 }: {
   bondAlgorithm: BondAlgorithm;
+  bondCutoffs: BondCutoffPair[];
   distinguishSimilarColors: boolean;
   dragSensitivity: number;
   isCustomColorScheme: boolean;
@@ -142,6 +147,7 @@ export function InspectorSidebar({
   showCrystalAxisLabels: boolean;
   unitCellLineStyle: UnitCellLineStyle;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onBondCutoffChange: (key: string, distance: number) => void;
   onDistinguishSimilarColorsChange: (distinguishSimilarColors: boolean) => void;
   onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
@@ -189,6 +195,7 @@ export function InspectorSidebar({
           <TabsContent value="settings" className="m-0">
             <SettingsPanel
               bondAlgorithm={bondAlgorithm}
+              bondCutoffs={bondCutoffs}
               distinguishSimilarColors={distinguishSimilarColors}
               dragSensitivity={dragSensitivity}
               isCustomColorScheme={isCustomColorScheme}
@@ -201,6 +208,7 @@ export function InspectorSidebar({
               showCrystalAxisLabels={showCrystalAxisLabels}
               unitCellLineStyle={unitCellLineStyle}
               onBondAlgorithmChange={onBondAlgorithmChange}
+              onBondCutoffChange={onBondCutoffChange}
               onDistinguishSimilarColorsChange={onDistinguishSimilarColorsChange}
               onDragSensitivityChange={onDragSensitivityChange}
               onInteractionModeChange={onInteractionModeChange}
@@ -220,6 +228,7 @@ export function InspectorSidebar({
 
 function SettingsPanel({
   bondAlgorithm,
+  bondCutoffs,
   distinguishSimilarColors,
   dragSensitivity,
   isCustomColorScheme,
@@ -232,6 +241,7 @@ function SettingsPanel({
   showCrystalAxisLabels,
   unitCellLineStyle,
   onBondAlgorithmChange,
+  onBondCutoffChange,
   onDistinguishSimilarColorsChange,
   onDragSensitivityChange,
   onInteractionModeChange,
@@ -243,6 +253,7 @@ function SettingsPanel({
   onUnitCellLineStyleChange,
 }: {
   bondAlgorithm: BondAlgorithm;
+  bondCutoffs: BondCutoffPair[];
   distinguishSimilarColors: boolean;
   dragSensitivity: number;
   isCustomColorScheme: boolean;
@@ -255,6 +266,7 @@ function SettingsPanel({
   showCrystalAxisLabels: boolean;
   unitCellLineStyle: UnitCellLineStyle;
   onBondAlgorithmChange: (bondAlgorithm: BondAlgorithm) => void;
+  onBondCutoffChange: (key: string, distance: number) => void;
   onDistinguishSimilarColorsChange: (distinguishSimilarColors: boolean) => void;
   onDragSensitivityChange: (dragSensitivity: number) => void;
   onInteractionModeChange: (interactionMode: InteractionMode) => void;
@@ -442,9 +454,131 @@ function SettingsPanel({
             </SelectContent>
           </Select>
         </InspectorSelectRow>
+
+        {bondAlgorithm === "custom-cutoff" ? (
+          <BondCutoffEditor
+            pairs={bondCutoffs}
+            disabled={isSceneLoading}
+            onChange={onBondCutoffChange}
+          />
+        ) : null}
       </InspectorSettingsSection>
     </div>
   );
+}
+
+function BondCutoffEditor({
+  disabled,
+  onChange,
+  pairs,
+}: {
+  disabled: boolean;
+  onChange: (key: string, distance: number) => void;
+  pairs: BondCutoffPair[];
+}) {
+  if (pairs.length === 0) {
+    return (
+      <p className="text-[13px] leading-snug text-muted-foreground">
+        Load a structure to edit per-pair bond cutoffs.
+      </p>
+    );
+  }
+
+  return (
+    <div className={cn("flex flex-col gap-1", disabled ? "opacity-55" : null)}>
+      <p className="text-[13px] leading-snug text-muted-foreground">
+        Two atoms bond when they are closer than the cutoff for their element pair (Å).
+        Set a cutoff to 0 to disable that pair.
+      </p>
+      {pairs.map((pair) => (
+        <InspectorCutoffRow
+          key={pair.key}
+          pair={pair}
+          disabled={disabled}
+          onChange={onChange}
+        />
+      ))}
+    </div>
+  );
+}
+
+function InspectorCutoffRow({
+  disabled,
+  onChange,
+  pair,
+}: {
+  disabled: boolean;
+  onChange: (key: string, distance: number) => void;
+  pair: BondCutoffPair;
+}) {
+  const [valueText, setValueText] = useState(formatBondCutoff(pair.distance));
+
+  useEffect(() => {
+    setValueText(formatBondCutoff(pair.distance));
+  }, [pair.distance]);
+
+  function commitValueText() {
+    const parsed = Number.parseFloat(valueText);
+    if (Number.isNaN(parsed)) {
+      setValueText(formatBondCutoff(pair.distance));
+      return;
+    }
+
+    const clamped = clampBondCutoff(parsed);
+    setValueText(formatBondCutoff(clamped));
+    if (clamped !== pair.distance) {
+      onChange(pair.key, clamped);
+    }
+  }
+
+  function handleValueKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setValueText(formatBondCutoff(pair.distance));
+      event.currentTarget.blur();
+    }
+  }
+
+  const label = `${pair.elements[0]}–${pair.elements[1]}`;
+
+  return (
+    <label
+      className={cn(
+        "grid min-h-8 grid-cols-[minmax(0,1fr)_5rem] items-center gap-2",
+        INSPECTOR_BODY_TEXT_CLASS,
+      )}
+    >
+      <span className="min-w-0 truncate leading-tight text-foreground">{label}</span>
+      <span className="opacity-value-control group flex h-[22px] items-baseline justify-center gap-1 rounded-md border px-1 transition-[background-color,border-color,box-shadow] duration-150">
+        <span className="sr-only">{label} cutoff distance in angstrom</span>
+        <input
+          type="text"
+          inputMode="decimal"
+          value={valueText}
+          disabled={disabled}
+          aria-label={`${label} cutoff distance`}
+          className="opacity-value-input h-full w-[2.6rem] border-0 bg-transparent px-0 text-center font-mono text-[0.68rem] leading-none tabular-nums outline-none"
+          onBlur={commitValueText}
+          onChange={(event) => setValueText(event.target.value)}
+          onKeyDown={handleValueKeyDown}
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none font-mono text-[0.68rem] font-normal leading-none text-muted-foreground"
+        >
+          Å
+        </span>
+      </span>
+    </label>
+  );
+}
+
+function formatBondCutoff(distance: number): string {
+  return distance.toFixed(2);
 }
 
 function InspectorSettingsSection({

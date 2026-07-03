@@ -747,6 +747,7 @@ function firstTriangleNormalDotVertexNormal(
 
 function sceneWithOffCenterAtoms(): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: [
       atom("Si-0", [0.1, 0.1, 0.1]),
       atom("Si-1", [0.3, 0.1, 0.1]),
@@ -788,6 +789,7 @@ function sceneWithOffCenterAtoms(): SceneSpec {
 
 function sceneWithExportVisibilityAtoms(): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: [
       atom("Na-0", [0, 0, 0]),
       {

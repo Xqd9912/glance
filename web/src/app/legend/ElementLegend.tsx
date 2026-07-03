@@ -12,11 +12,13 @@ export function ElementLegend({
   offsetX = 0,
   onElementColorChange,
   safeArea,
+  bottomPx = 28,
 }: {
   entries: ElementLegendEntry[];
   offsetX?: number;
   onElementColorChange?: (element: string, color: string) => void;
   safeArea: PreviewSafeArea;
+  bottomPx?: number;
 }) {
   const [activeColorPickerElement, setActiveColorPickerElement] = useState<string | null>(null);
 
@@ -24,10 +26,10 @@ export function ElementLegend({
     <nav
       aria-label="Element legend"
       className={cn(
-        "pointer-events-none absolute bottom-7 -translate-x-1/2 rounded-full border px-4 py-2 shadow-lg shadow-foreground/10 transition-[left,max-width] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
+        "pointer-events-none absolute z-20 -translate-x-1/2 rounded-full border px-4 py-2 shadow-lg shadow-foreground/10 transition-[left,bottom,max-width] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
         GLASS_SURFACE_CLASS,
       )}
-      style={legendContainerStyle(safeArea, offsetX)}
+      style={legendContainerStyle(safeArea, offsetX, bottomPx)}
     >
       <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
         {entries.map((entry) => (
@@ -141,8 +143,13 @@ function ElementLegendColorControl({
   );
 }
 
-function legendContainerStyle(safeArea: PreviewSafeArea, offsetX: number): CSSProperties {
+function legendContainerStyle(
+  safeArea: PreviewSafeArea,
+  offsetX: number,
+  bottomPx: number,
+): CSSProperties {
   return {
+    bottom: `${bottomPx}px`,
     left: `calc(50% + ${(safeArea.left - safeArea.right) / 2 + offsetX}px)`,
     maxWidth: `min(calc(100vw - ${safeArea.left + safeArea.right + 32}px), 760px)`,
   };

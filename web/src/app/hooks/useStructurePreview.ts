@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -19,11 +20,18 @@ import {
   type BondAlgorithm,
   type SceneSpec,
 } from "../../api/scene";
+import {
+  bondCutoffPairsFromScene,
+  bondCutoffsToSpecs,
+  updateBondCutoff,
+  type BondCutoffPair,
+} from "../../model/bondCutoffs";
 import type { PreviewStatus } from "../previewState";
 
 const MAX_STRUCTURE_UPLOAD_BYTES = 1 * 1024 * 1024;
 const STRUCTURE_FILE_TOO_LARGE_MESSAGE = "File is too large to preview.";
 const STRUCTURE_PARSE_ERROR_MESSAGE = "pymatgen could not parse this file.";
+const CUTOFF_REFETCH_DEBOUNCE_MS = 300;
 
 interface ResetLoadedPreviewOptions {
   preserveActiveCommonPanelTab?: boolean;
@@ -54,6 +62,28 @@ export function useStructurePreview({
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [bondAlgorithm, setBondAlgorithm] =
     useState<BondAlgorithm>(DEFAULT_BOND_ALGORITHM);
+  const [bondCutoffs, setBondCutoffs] = useState<BondCutoffPair[]>([]);
+  const currentFileRef = useRef<File | null>(null);
+  const bondAlgorithmRef = useRef<BondAlgorithm>(DEFAULT_BOND_ALGORITHM);
+  const cutoffRefetchTimerRef = useRef<number | null>(null);
+  const cutoffRequestIdRef = useRef(0);
+
+  useEffect(() => {
+    currentFileRef.current = currentFile;
+  }, [currentFile]);
+
+  useEffect(() => {
+    bondAlgorithmRef.current = bondAlgorithm;
+  }, [bondAlgorithm]);
+
+  useEffect(
+    () => () => {
+      if (cutoffRefetchTimerRef.current !== null) {
+        window.clearTimeout(cutoffRefetchTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!isStaticScenePreview) {
@@ -72,6 +102,7 @@ export function useStructurePreview({
         setScene(nextScene);
         setSelectedFileName(STATIC_SCENE_PREVIEW_NAME);
         setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
+        setBondCutoffs(bondCutoffPairsFromScene(nextScene));
         resetLoadedPreviewState(nextScene);
         setPreviewStatus("ready");
       } catch {
@@ -94,14 +125,8 @@ export function useStructurePreview({
     };
   }, [isStaticScenePreview, onPreviewCleared, resetLoadedPreviewState]);
 
-  const handleFileChange = useCallback(
-    async (event: ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      event.target.value = "";
-      if (!file) {
-        return;
-      }
-
+  const loadStructureFile = useCallback(
+    async (file: File) => {
       if (isStaticScenePreview) {
         setErrorMessage(BACKEND_UNAVAILABLE_MESSAGE);
         return;
@@ -129,6 +154,7 @@ export function useStructurePreview({
         const nextScene = await uploadStructurePreview(file);
         setScene(nextScene);
         setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
+        setBondCutoffs(bondCutoffPairsFromScene(nextScene));
         resetLoadedPreviewState(nextScene);
         setPreviewStatus("ready");
       } catch (error) {
@@ -147,6 +173,18 @@ export function useStructurePreview({
     [isStaticScenePreview, onPreviewCleared, resetLoadedPreviewState],
   );
 
+  const handleFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      await loadStructureFile(file);
+    },
+    [loadStructureFile],
+  );
+
   const handleBondAlgorithmChange = useCallback(
     async (nextBondAlgorithm: BondAlgorithm) => {
       if (!currentFile) {
@@ -162,6 +200,10 @@ export function useStructurePreview({
       try {
         const nextScene = await uploadStructurePreview(currentFile, {
           bondAlgorithm: nextBondAlgorithm,
+          cutoffs:
+            nextBondAlgorithm === "custom-cutoff"
+              ? bondCutoffsToSpecs(bondCutoffs)
+              : undefined,
         });
         setBondAlgorithm(nextBondAlgorithm);
         setScene(nextScene);
@@ -182,7 +224,62 @@ export function useStructurePreview({
         setErrorMessage(STRUCTURE_PARSE_ERROR_MESSAGE);
       }
     },
-    [currentFile, onBondAlgorithmSceneLoaded, onPreviewCleared, scene],
+    [bondCutoffs, currentFile, onBondAlgorithmSceneLoaded, onPreviewCleared, scene],
+  );
+
+  const runCutoffPreview = useCallback(
+    async (nextPairs: BondCutoffPair[]) => {
+      const file = currentFileRef.current;
+      if (!file || bondAlgorithmRef.current !== "custom-cutoff") {
+        return;
+      }
+
+      const requestId = (cutoffRequestIdRef.current += 1);
+      setPreviewStatus("loading");
+      setErrorMessage(null);
+
+      try {
+        const nextScene = await uploadStructurePreview(file, {
+          bondAlgorithm: "custom-cutoff",
+          cutoffs: bondCutoffsToSpecs(nextPairs),
+        });
+        if (requestId !== cutoffRequestIdRef.current) {
+          return;
+        }
+        setScene(nextScene);
+        onBondAlgorithmSceneLoaded(nextScene);
+        setPreviewStatus("ready");
+      } catch (error) {
+        if (requestId !== cutoffRequestIdRef.current) {
+          return;
+        }
+        // Keep the current scene on a failed cutoff tweak; only surface the message.
+        setPreviewStatus("ready");
+        setErrorMessage(
+          isBackendUnavailablePreviewError(error)
+            ? error.message
+            : STRUCTURE_PARSE_ERROR_MESSAGE,
+        );
+      }
+    },
+    [onBondAlgorithmSceneLoaded],
+  );
+
+  const handleBondCutoffChange = useCallback(
+    (key: string, distance: number) => {
+      setBondCutoffs((previousPairs) => {
+        const nextPairs = updateBondCutoff(previousPairs, key, distance);
+        if (cutoffRefetchTimerRef.current !== null) {
+          window.clearTimeout(cutoffRefetchTimerRef.current);
+        }
+        cutoffRefetchTimerRef.current = window.setTimeout(() => {
+          cutoffRefetchTimerRef.current = null;
+          void runCutoffPreview(nextPairs);
+        }, CUTOFF_REFETCH_DEBOUNCE_MS);
+        return nextPairs;
+      });
+    },
+    [runCutoffPreview],
   );
 
   const handleResetAllSettings = useCallback(async () => {
@@ -192,8 +289,14 @@ export function useStructurePreview({
 
     const defaultBondAlgorithm = defaultBondAlgorithmForScene(scene);
 
+    if (cutoffRefetchTimerRef.current !== null) {
+      window.clearTimeout(cutoffRefetchTimerRef.current);
+      cutoffRefetchTimerRef.current = null;
+    }
+
     if (bondAlgorithm === defaultBondAlgorithm || !currentFile) {
       setBondAlgorithm(defaultBondAlgorithm);
+      setBondCutoffs(bondCutoffPairsFromScene(scene));
       setPreviewStatus("ready");
       resetLoadedPreviewState(scene, {
         preserveActiveCommonPanelTab: true,
@@ -208,6 +311,7 @@ export function useStructurePreview({
     try {
       const nextScene = await uploadStructurePreview(currentFile);
       setBondAlgorithm(defaultBondAlgorithmForScene(nextScene));
+      setBondCutoffs(bondCutoffPairsFromScene(nextScene));
       setScene(nextScene);
       resetLoadedPreviewState(nextScene, {
         preserveActiveCommonPanelTab: true,
@@ -234,15 +338,20 @@ export function useStructurePreview({
 
   return {
     bondAlgorithm,
+    bondCutoffs,
     errorMessage,
     errorTitle,
     handleBondAlgorithmChange,
+    handleBondCutoffChange,
     handleFileChange,
     handleResetAllSettings,
     isStaticScenePreview,
+    loadStructureFile,
     previewStatus,
     scene,
     selectedFileName,
+    setBondAlgorithm,
+    setBondCutoffs,
     setErrorMessage,
   };
 }

@@ -659,6 +659,7 @@ describe("LatticeScene camera commands", () => {
 
 function orthogonalScene(): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: [
       {
         element: "Si",

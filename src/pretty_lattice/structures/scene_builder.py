@@ -4,6 +4,10 @@ from pymatgen.core import Structure
 
 import pretty_lattice.structures.connectivity as connectivity_module
 import pretty_lattice.structures.polyhedra as polyhedra_module
+from pretty_lattice.structures.bond_cutoffs import (
+    cutoff_lookup_from_specs,
+    default_bond_cutoffs_for_structure,
+)
 from pretty_lattice.structures.periodic_images import (
     atom_record_to_spec,
     build_atom_records,
@@ -11,6 +15,7 @@ from pretty_lattice.structures.periodic_images import (
 )
 from pretty_lattice.structures.schema import (
     BondAlgorithm,
+    BondCutoffSpec,
     SceneSpec,
     bond_algorithm_label,
     default_bond_algorithm_for_atom_count,
@@ -26,14 +31,20 @@ def build_scene_response(
     structure: Structure,
     *,
     bond_algorithm: str | None = None,
+    bond_cutoffs: list[BondCutoffSpec] | None = None,
 ) -> SceneSpec:
-    return build_scene_spec(structure, bond_algorithm=bond_algorithm)
+    return build_scene_spec(
+        structure,
+        bond_algorithm=bond_algorithm,
+        bond_cutoffs=bond_cutoffs,
+    )
 
 
 def build_scene_spec(
     structure: Structure,
     *,
     bond_algorithm: str | None = None,
+    bond_cutoffs: list[BondCutoffSpec] | None = None,
 ) -> SceneSpec:
     normalized_bond_algorithm = normalize_bond_algorithm(bond_algorithm)
     selected_bond_algorithm = normalized_bond_algorithm or default_bond_algorithm_for_atom_count(
@@ -41,6 +52,12 @@ def build_scene_spec(
     )
     cell_vectors = [vector3(vector) for vector in structure.lattice.matrix]
     can_generate_periodic_images = has_valid_3d_periodic_cell(structure)
+    bond_cutoff_defaults = default_bond_cutoffs_for_structure(structure)
+    cutoff_lookup = _cutoff_lookup_for_algorithm(
+        selected_bond_algorithm,
+        bond_cutoffs=bond_cutoffs,
+        bond_cutoff_defaults=bond_cutoff_defaults,
+    )
     atom_data = build_atom_records(
         structure,
         can_generate_periodic_images=can_generate_periodic_images,
@@ -63,6 +80,7 @@ def build_scene_spec(
                 boundary_source_keys=boundary_source_keys,
                 sites=atom_data.sites,
                 structure=structure,
+                bond_cutoffs=cutoff_lookup,
             )
         except Exception as exc:
             warnings.append(
@@ -118,11 +136,25 @@ def build_scene_spec(
         "bonds": bonds,
         "polyhedra": polyhedra,
         "summary": build_structure_summary(structure),
+        "bondCutoffs": bond_cutoff_defaults,
     }
     if warnings:
         scene["warnings"] = warnings
 
     return scene
+
+
+def _cutoff_lookup_for_algorithm(
+    bond_algorithm: BondAlgorithm,
+    *,
+    bond_cutoffs: list[BondCutoffSpec] | None,
+    bond_cutoff_defaults: list[BondCutoffSpec],
+) -> dict[tuple[str, str], float] | None:
+    if bond_algorithm != "custom-cutoff":
+        return None
+
+    specs = bond_cutoffs if bond_cutoffs is not None else bond_cutoff_defaults
+    return cutoff_lookup_from_specs(specs)
 
 
 def _analysis_warning(

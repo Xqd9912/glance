@@ -18,6 +18,11 @@
       "value": "cut-off-dict",
       "pythonLabel": "CutOffDictNN",
       "uiLabel": "CutOffDictNN"
+    },
+    {
+      "value": "custom-cutoff",
+      "pythonLabel": "CustomCutoff",
+      "uiLabel": "Custom cutoffs"
     }
   ],
   "bondAlgorithmAliases": {

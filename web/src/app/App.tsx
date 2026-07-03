@@ -1,5 +1,6 @@
 import { AlertTriangleIcon, FolderOpen, ImageDown, RefreshCw, RotateCcw } from "lucide-react";
 import {
+  type ChangeEvent,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -40,6 +41,11 @@ import { useFigureExportController } from "./hooks/useFigureExportController";
 import { useLockedInteractionFeedback } from "./hooks/useLockedInteractionFeedback";
 import { usePreviewCameraCommands } from "./hooks/usePreviewCameraCommands";
 import { useStructurePreview } from "./hooks/useStructurePreview";
+import { useTrajectory } from "./hooks/useTrajectory";
+import { isTrajectoryFileName } from "../api/trajectory";
+import { bondCutoffPairsFromScene, updateBondCutoff } from "../model/bondCutoffs";
+import { TrajectoryPlayer } from "./trajectory/TrajectoryPlayer";
+import { AnalysisPanel } from "./analysis/AnalysisPanel";
 import { ElementLegend } from "./legend/ElementLegend";
 import {
   orientationGizmoContainerStyle,
@@ -127,20 +133,111 @@ export function App() {
   }, []);
   const {
     bondAlgorithm,
-    errorMessage,
-    errorTitle,
+    bondCutoffs,
+    errorMessage: structureErrorMessage,
+    errorTitle: structureErrorTitle,
     handleBondAlgorithmChange,
-    handleFileChange,
+    handleBondCutoffChange,
     handleResetAllSettings,
-    previewStatus,
-    scene,
+    loadStructureFile,
+    previewStatus: structurePreviewStatus,
+    scene: structureScene,
     selectedFileName,
+    setBondAlgorithm,
+    setBondCutoffs,
     setErrorMessage,
   } = useStructurePreview({
     onBondAlgorithmSceneLoaded: handleBondAlgorithmSceneLoaded,
     onPreviewCleared: handlePreviewCleared,
     resetLoadedPreviewState: resetLoadedPreviewStateForPreview,
   });
+
+  const [trajectoryFileName, setTrajectoryFileName] = useState<string | null>(null);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const handleFrameSceneLoaded = useCallback(() => {}, []);
+  const handleTrajectoryLoaded = useCallback(
+    (nextScene: SceneSpec) => {
+      resetLoadedPreviewStateForPreview(nextScene);
+      // Seed the per-pair cutoff editor from the covalent-radii defaults the
+      // first frame reports. Bonding is already on "custom-cutoff" (set before
+      // loading) because it rebuilds ~60x faster per frame than CrystalNN, so
+      // playback keeps up, and matches the "one cutoff for all frames" workflow.
+      setBondCutoffs(bondCutoffPairsFromScene(nextScene));
+    },
+    [resetLoadedPreviewStateForPreview, setBondCutoffs],
+  );
+  const handleElementsRemapped = useCallback(
+    (nextScene: SceneSpec) => {
+      // Atom types were remapped to new elements; re-seed the per-pair cutoffs
+      // (and thus the legend/editor) from the new frame's covalent defaults.
+      setBondCutoffs(bondCutoffPairsFromScene(nextScene));
+    },
+    [setBondCutoffs],
+  );
+  const trajectory = useTrajectory({
+    bondAlgorithm,
+    bondCutoffs,
+    onFrameSceneLoaded: handleFrameSceneLoaded,
+    onTrajectoryLoaded: handleTrajectoryLoaded,
+    onElementsRemapped: handleElementsRemapped,
+  });
+
+  const trajectoryActive = trajectory.isActive;
+  const scene = trajectoryActive ? trajectory.frameScene : structureScene;
+  const previewStatus = trajectoryActive ? trajectory.status : structurePreviewStatus;
+  const errorMessage = trajectoryActive
+    ? trajectory.error
+    : structureErrorMessage;
+  const errorTitle =
+    trajectoryActive && trajectory.error ? "Unsupported file" : structureErrorTitle;
+  const displayFileName = trajectoryActive ? trajectoryFileName : selectedFileName;
+
+  const handleFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (!file) {
+        return;
+      }
+      if (isTrajectoryFileName(file.name)) {
+        setTrajectoryFileName(file.name);
+        // Switch to fast cutoff bonding before loading so frame 0 (and every
+        // frame) is built with the ~60x faster custom-cutoff path rather than
+        // CrystalNN; cutoffs are seeded from the first frame's defaults.
+        setBondAlgorithm("custom-cutoff");
+        setBondCutoffs([]);
+        await trajectory.loadTrajectory(file);
+      } else {
+        trajectory.clearTrajectory();
+        setTrajectoryFileName(null);
+        await loadStructureFile(file);
+      }
+    },
+    [loadStructureFile, setBondAlgorithm, setBondCutoffs, trajectory],
+  );
+
+  const handleUnifiedBondAlgorithmChange = useCallback(
+    (nextBondAlgorithm: typeof bondAlgorithm) => {
+      if (trajectoryActive) {
+        setBondAlgorithm(nextBondAlgorithm);
+      } else {
+        void handleBondAlgorithmChange(nextBondAlgorithm);
+      }
+    },
+    [handleBondAlgorithmChange, setBondAlgorithm, trajectoryActive],
+  );
+
+  const handleUnifiedBondCutoffChange = useCallback(
+    (key: string, distance: number) => {
+      if (trajectoryActive) {
+        setBondCutoffs((previous) => updateBondCutoff(previous, key, distance));
+      } else {
+        handleBondCutoffChange(key, distance);
+      }
+    },
+    [handleBondCutoffChange, setBondCutoffs, trajectoryActive],
+  );
+
   const visibleScene = useMemo(
     () => visibleSceneForComponents(scene, componentVisibility),
     [componentVisibility, scene],
@@ -201,7 +298,7 @@ export function App() {
     componentVisibility,
     lightStrength: viewState.lightStrength,
     scene,
-    selectedFileName,
+    selectedFileName: displayFileName,
     showCrystalAxisLabels,
     style,
     unitCellLineStyle,
@@ -517,12 +614,36 @@ export function App() {
         />
       ) : null}
 
+      {trajectory.meta ? (
+        <TrajectoryPlayer
+          disabled={previewStatus === "loading" && !trajectory.frameScene}
+          frameIndex={trajectory.frameIndex}
+          isPlaying={trajectory.isPlaying}
+          meta={trajectory.meta}
+          onApplyTypeMap={(typeMap) => void trajectory.applyTypeMap(typeMap)}
+          onFpsChange={trajectory.setPlaybackFps}
+          onFrameChange={trajectory.goToFrame}
+          onOpenAnalysis={() => setIsAnalysisOpen(true)}
+          onTogglePlay={trajectory.togglePlay}
+          playbackFps={trajectory.playbackFps}
+        />
+      ) : null}
+
+      <AnalysisPanel
+        isOpen={isAnalysisOpen && trajectoryActive}
+        onClose={() => setIsAnalysisOpen(false)}
+        trajectoryId={trajectory.meta?.trajectoryId ?? null}
+        symbols={trajectory.meta?.elements ?? []}
+        frameCount={trajectory.meta?.frameCount ?? 0}
+      />
+
       {legendEntries.length > 0 ? (
         <ElementLegend
           entries={legendEntries}
           offsetX={sceneOffsetX}
           onElementColorChange={handleLegendElementColorChange}
           safeArea={previewSafeArea}
+          bottomPx={trajectory.meta ? 124 : 28}
         />
       ) : null}
 
@@ -548,7 +669,7 @@ export function App() {
           onOpenStructure={() => fileInputRef.current?.click()}
           previewStatus={previewStatus}
           scene={scene}
-          selectedFileName={selectedFileName}
+          selectedFileName={displayFileName}
         />
 
         {scene ? (
@@ -623,6 +744,7 @@ export function App() {
               <div className="contents">
                 <InspectorSidebar
                   bondAlgorithm={bondAlgorithm}
+                  bondCutoffs={bondCutoffs}
                   dragSensitivity={viewState.dragSensitivity}
                   interactionMode={viewState.interactionMode}
                   lightStrength={viewState.lightStrength}
@@ -635,9 +757,8 @@ export function App() {
                   showFpsOverlay={viewState.showFpsOverlay}
                   showCrystalAxisLabels={showCrystalAxisLabels}
                   unitCellLineStyle={unitCellLineStyle}
-                  onBondAlgorithmChange={(nextBondAlgorithm) => {
-                    void handleBondAlgorithmChange(nextBondAlgorithm);
-                  }}
+                  onBondAlgorithmChange={handleUnifiedBondAlgorithmChange}
+                  onBondCutoffChange={handleUnifiedBondCutoffChange}
                   onDragSensitivityChange={handleDragSensitivityChange}
                   onInteractionModeChange={handleInteractionModeChange}
                   onLightStrengthChange={handleLightStrengthChange}

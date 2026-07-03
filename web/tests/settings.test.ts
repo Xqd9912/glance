@@ -461,6 +461,7 @@ describe("settings", () => {
 
 function sceneWithPeriodicImages(): SceneSpec {
   return {
+    bondCutoffs: [],
     atoms: [
       atom("Na-0", "Na", [0, 0, 0], [], []),
       atom("Na-0-image-1-0-0", "Na", [1, 0, 0], ["boundary"], [["boundaryAtoms"]]),

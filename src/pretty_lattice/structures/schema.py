@@ -4,7 +4,7 @@ import json
 from importlib.resources import files
 from typing import Literal, NotRequired, TypedDict, cast
 
-BondAlgorithm = Literal["crystal-nn", "minimum-distance", "cut-off-dict"]
+BondAlgorithm = Literal["crystal-nn", "minimum-distance", "cut-off-dict", "custom-cutoff"]
 ImageReason = Literal["boundary", "bonded"]
 VisibilityDependency = Literal["boundaryAtoms", "oneHopBondedAtoms"]
 
@@ -95,12 +95,18 @@ class AnalysisWarningSpec(TypedDict):
     message: str
 
 
+class BondCutoffSpec(TypedDict):
+    elements: list[str]
+    distance: float
+
+
 class SceneSpec(TypedDict):
     cell: CellSpec
     atoms: list[AtomSpec]
     bonds: list[BondSpec]
     polyhedra: list[PolyhedronSpec]
     summary: StructureSummarySpec
+    bondCutoffs: list[BondCutoffSpec]
     warnings: NotRequired[list[AnalysisWarningSpec]]
 
 
