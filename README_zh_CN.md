@@ -15,6 +15,10 @@
   <a href="README.md">English</a> | 简体中文
 </p>
 
+> 本项目是原项目 [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+> (作者 [@songfeitong](https://github.com/songfeitong))的扩展 fork。晶体**可视化**核心来自上游项目;
+> 本 fork 增加了**轨迹可视化**与**结构分析**。详见[致谢](#致谢)。
+
 - **美观**：内置更现代美观的颜色、材质、光照和景深效果
 - **易用**：在浏览器里加载、预览和导出结构，直观易用的用户界面
 - **可靠**：结构文件读取和分析基于成熟的 [pymatgen](https://github.com/materialsproject/pymatgen)
@@ -89,6 +93,18 @@ prl gui -p 0          # 自动选择可用端口
   <img src="assets/Ba2Ca2Cu3HgO8-color-schemes.png" alt="Ba2Ca2Cu3HgO8 color scheme examples" width="90%">
 </p>
 
+## 致谢
+
+本项目的晶体**可视化**基础——Three.js/React 渲染、材质、配色、相机与取向控制、元素图例、图像导出——
+来自原项目 [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+(作者 [@songfeitong](https://github.com/songfeitong),MIT License 发布),这部分工作的功劳归原作者。
+
+本 fork 在其基础上增加了:
+
+- **轨迹可视化**——读取 VASP `XDATCAR`、LAMMPS `.dump`、`.xyz` 轨迹并逐帧播放,复用相同的渲染与统一成键设置。
+- **结构分析**——对分布函数 g(r)、配位数、键角分布、序参数、MSD、ALTBC,并提供交互式图表。
+- **自定义元素对成键 cutoff**,以及周期性边界跨 cell 成键的修复。
+
 ## 许可证
 
-Pretty Lattice 使用 [MIT License](LICENSE) 发布。
+Pretty Lattice 使用 [MIT License](LICENSE) 发布(继承自上游项目)。

@@ -14,6 +14,11 @@
   English | <a href="README_zh_CN.md">简体中文</a>
 </p>
 
+> This is an extended fork of the original [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+> by [@songfeitong](https://github.com/songfeitong). The crystal **visualization** core is from the
+> upstream project; this fork adds **trajectory visualization** and **structure analysis**.
+> See [Acknowledgements](#acknowledgements).
+
 - **Pretty**: tasteful defaults for colors, materials, lighting, and depth
 - **Simple**: an intuitive browser GUI for loading, viewing, and exporting structures
 - **Reliable**: structure parsing and analysis powered by the mature [pymatgen](https://github.com/materialsproject/pymatgen) package
@@ -88,6 +93,22 @@ prl gui -p 0          # choose any available port automatically
   <img src="assets/Ba2Ca2Cu3HgO8-color-schemes.png" alt="Ba2Ca2Cu3HgO8 color scheme examples" width="90%">
 </p>
 
+## Acknowledgements
+
+The crystal **visualization** foundation of this project — the Three.js/React renderer,
+materials, color schemes, camera and orientation controls, element legend, and figure
+export — comes from the original [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+by [@songfeitong](https://github.com/songfeitong), released under the MIT License. All credit for
+that work goes to the original author.
+
+This fork extends it with:
+
+- **Trajectory visualization** — load VASP `XDATCAR`, LAMMPS `.dump`, and `.xyz` trajectories
+  and play through frames, reusing the same rendering and unified bond settings.
+- **Structure analysis** — pair distribution g(r), coordination number, angular distribution,
+  order parameters, MSD, and ALTBC, with interactive charts.
+- **Custom per-element-pair bond cutoffs** and a fix for periodic bonds across the cell boundary.
+
 ## License
 
-Pretty Lattice is released under the [MIT License](LICENSE).
+Pretty Lattice is released under the [MIT License](LICENSE), inherited from the upstream project.
