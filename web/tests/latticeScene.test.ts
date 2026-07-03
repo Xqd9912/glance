@@ -18,6 +18,7 @@ import {
   EXPORT_SCENE_MESH_DETAIL_PRESETS,
   PREVIEW_SCENE_MESH_DETAIL,
   SCENE_FOG_COLOR,
+  STRUCTURE_RENDER_ORDER,
   cellFrameLinePositions,
   computeSceneLayout,
   createSceneFog,
@@ -213,6 +214,24 @@ describe("computeSceneLayout", () => {
     expect(positions).toHaveLength(72);
     expect(positions.slice(0, 6)).toEqual([0, 0, 0, 4, 0, 0]);
     expect(positions.slice(-6)).toEqual([1, 3, 2, 5, 3, 2]);
+  });
+
+  test("draws transparent structure objects before polyhedron shells and overlays", () => {
+    expect(STRUCTURE_RENDER_ORDER.atomMesh).toBeLessThan(
+      STRUCTURE_RENDER_ORDER.bondMesh,
+    );
+    expect(STRUCTURE_RENDER_ORDER.bondMesh).toBeLessThan(
+      STRUCTURE_RENDER_ORDER.unitCellFrame,
+    );
+    expect(STRUCTURE_RENDER_ORDER.unitCellFrame).toBeLessThan(
+      STRUCTURE_RENDER_ORDER.polyhedronSurface,
+    );
+    expect(STRUCTURE_RENDER_ORDER.polyhedronSurface).toBeLessThan(
+      STRUCTURE_RENDER_ORDER.polyhedronEdge,
+    );
+    expect(STRUCTURE_RENDER_ORDER.polyhedronEdge).toBeLessThan(
+      STRUCTURE_RENDER_ORDER.atomSelectionRing,
+    );
   });
 
   test("fits the preview layout from unit-cell bounds only", () => {

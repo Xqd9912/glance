@@ -38,6 +38,9 @@ Traditional crystallographic tools such as VESTA are powerful, but their visual 
 
 Pretty Lattice is my attempt to fill that gap. Built on [Three.js](https://github.com/mrdoob/three.js), it stays (relatively) lightweight without compromising visual quality. It offers a modern, intuitive interface with familiar controls researchers expect, and produces clean, aesthetically pleasing figures out of the box.
 
+> [!NOTE]
+> By design, Pretty Lattice focuses on **visualization**. It is not intended to replace mature materials-analysis tools such as VESTA and Materials Studio, and it does not try to provide complex structure editing or analysis workflows. Input files are treated as read-only. The intended workflow is to prepare and analyze structures with more specialized tools, then bring the final structure into Pretty Lattice for viewing, styling, and export.
+
 ## Install
 
 ```shell
