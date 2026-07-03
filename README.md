@@ -96,6 +96,32 @@ prl gui -p 0          # choose any available port automatically
   <img src="assets/Ba2Ca2Cu3HgO8-color-schemes.png" alt="Ba2Ca2Cu3HgO8 color scheme examples" width="90%">
 </p>
 
+### Trajectory visualization
+
+Load a VASP `XDATCAR`, LAMMPS `.dump`, or `.xyz` trajectory and step through the frames
+with the built-in player. Dump files that only carry atom types can be mapped to real
+elements on the fly, and every frame reuses the same rendering and bond settings.
+
+<p align="center">
+  <img src="assets/Traj_visualization.png" alt="Ge-Sb-Te trajectory frames with the frame player" width="90%">
+</p>
+
+### Structure analysis
+
+Compute structural and dynamical descriptors over a frame range and explore them with
+interactive charts: pair distribution g(r), coordination number, angular distribution,
+order parameter, mean squared displacement (total and per element), and ALTBC. Bond
+cutoffs are seeded from the first minimum of each g(r) and can be edited before computing
+coordination-based quantities.
+
+<p align="center">
+  <img src="assets/Analysis_1.png" alt="Structure analysis: g(r) and coordination number" width="90%">
+</p>
+
+<p align="center">
+  <img src="assets/analysis_2.png" alt="Structure analysis: order parameter, MSD, and ALTBC" width="90%">
+</p>
+
 ## Acknowledgements
 
 The crystal **visualization** foundation of this project — the Three.js/React renderer,

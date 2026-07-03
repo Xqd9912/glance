@@ -96,6 +96,29 @@ prl gui -p 0          # 自动选择可用端口
   <img src="assets/Ba2Ca2Cu3HgO8-color-schemes.png" alt="Ba2Ca2Cu3HgO8 color scheme examples" width="90%">
 </p>
 
+### 轨迹可视化
+
+读取 VASP `XDATCAR`、LAMMPS `.dump` 或 `.xyz` 轨迹，用内置播放器逐帧查看。对于只带原子类型
+的 dump 文件，可以随时把类型映射到真实元素，每一帧都复用相同的渲染与成键设置。
+
+<p align="center">
+  <img src="assets/Traj_visualization.png" alt="Ge-Sb-Te 轨迹逐帧播放" width="90%">
+</p>
+
+### 结构分析
+
+在指定帧范围上计算结构与动力学描述符，并用交互式图表查看：对分布函数 g(r)、配位数、键角分布、
+序参数、均方位移（总体与分元素）以及 ALTBC。成键 cutoff 会自动取每条 g(r) 的第一个极小值作为
+初值，可在计算配位数相关量之前手动调整。
+
+<p align="center">
+  <img src="assets/Analysis_1.png" alt="结构分析：g(r) 与配位数" width="90%">
+</p>
+
+<p align="center">
+  <img src="assets/analysis_2.png" alt="结构分析：序参数、MSD 与 ALTBC" width="90%">
+</p>
+
 ## 致谢
 
 本项目的晶体**可视化**基础——Three.js/React 渲染、材质、配色、相机与取向控制、元素图例、图像导出——
