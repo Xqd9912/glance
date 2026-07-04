@@ -21,17 +21,56 @@ export interface DensitySlice {
   matrix: number[][];
 }
 
+export interface GridAtom {
+  index: number;
+  label: string;
+  element: string;
+}
+
+export interface ValueHistogram {
+  binWidth: number;
+  value: number[];
+  percent: number[];
+  min: number;
+  max: number;
+  mean: number;
+}
+
+export interface LineProfile {
+  atomI: number;
+  atomJ: number;
+  labelI: string;
+  labelJ: string;
+  bondLength: number;
+  radius: number;
+  valueLabel: string;
+  voxelCount: number;
+  r: number[];
+  value: number[];
+  count: number[];
+}
+
 export interface ChgcarResponse {
   chgcarId: string;
+  gridId: string;
+  kind: "chgcar" | "elfcar";
+  valueLabel: string;
   symbols: string[];
   counts: number[];
   atomCount: number;
+  atoms: GridAtom[];
   grid: { nx: number; ny: number; nz: number };
   totalElectrons: number;
   distribution: LedDistribution;
   slice: DensitySlice;
   scene: SceneSpec;
   densityRange: { min: number; max: number };
+}
+
+/** ELFCAR upload: same shape as CHGCAR but the distribution is a value
+ * histogram (ELF is bounded in [0, 1]) rather than the LED curve. */
+export interface ElfcarResponse extends Omit<ChgcarResponse, "distribution"> {
+  distribution: ValueHistogram;
 }
 
 export interface IsosurfaceMesh {
@@ -160,4 +199,97 @@ export function uploadDos(file: File): Promise<DosResponse> {
 
 export function uploadIpr(file: File): Promise<IprResponse> {
   return uploadFile<IprResponse>("/api/electronic/ipr", file);
+}
+
+export function uploadElfcar(file: File): Promise<ElfcarResponse> {
+  return uploadFile<ElfcarResponse>("/api/electronic/elfcar", file);
+}
+
+async function fetchJson<T>(url: string): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw new StructurePreviewError(BACKEND_UNAVAILABLE_MESSAGE, "backend-unavailable");
+  }
+  if (!response.ok) {
+    throw new StructurePreviewError(await readError(response));
+  }
+  return (await response.json()) as T;
+}
+
+export function fetchGridHistogram(gridId: string): Promise<ValueHistogram> {
+  return fetchJson<ValueHistogram>(`/api/electronic/grid/${gridId}/histogram`);
+}
+
+export interface NeighborEntry {
+  index: number;
+  label: string;
+  distance: number;
+}
+
+export interface NeighborList {
+  atomI: number;
+  labelI: string;
+  rCut: number;
+  neighbors: NeighborEntry[];
+}
+
+/** Neighbors of atom `i` within `rCut` (Angstrom), sorted nearest first. */
+export function fetchNeighbors(
+  gridId: string,
+  i: number,
+  rCut: number,
+): Promise<NeighborList> {
+  const params = new URLSearchParams({ i: String(i), rcut: String(rCut) });
+  return fetchJson<NeighborList>(`/api/electronic/grid/${gridId}/neighbors?${params}`);
+}
+
+/** Value averaged over a cylinder along the line joining atoms `i` and `j`. */
+export function fetchLineProfile(
+  gridId: string,
+  i: number,
+  j: number,
+  radius: number,
+): Promise<LineProfile> {
+  const params = new URLSearchParams({ i: String(i), j: String(j), radius: String(radius) });
+  return fetchJson<LineProfile>(`/api/electronic/grid/${gridId}/line-profile?${params}`);
+}
+
+// ── LOBSTER bonding analysis ────────────────────────────────────────────────
+
+export interface BwdfResponse {
+  r: number[];
+  value: number[];
+  min: number;
+  max: number;
+}
+
+export interface PairRecord {
+  index: number;
+  atomA: string;
+  atomB: string;
+  pair: string;
+  distance: number;
+  value: number;
+}
+
+export interface PairListResponse {
+  kind: "icohp" | "icoop";
+  records: PairRecord[];
+  pairs: string[];
+  count: number;
+  valueRange: { min: number; max: number };
+  distanceRange: { min: number; max: number };
+}
+
+export function uploadBwdf(file: File): Promise<BwdfResponse> {
+  return uploadFile<BwdfResponse>("/api/electronic/lobster/bwdf", file);
+}
+
+export function uploadPairList(
+  file: File,
+  kind: "icohp" | "icoop",
+): Promise<PairListResponse> {
+  return uploadFile<PairListResponse>(`/api/electronic/lobster/${kind}`, file);
 }

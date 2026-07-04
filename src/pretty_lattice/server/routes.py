@@ -8,12 +8,20 @@ from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pretty_lattice.analysis import pipeline as analysis_pipeline
 from pretty_lattice.electronic.chgcar import (
     ChgcarReadError,
+    atom_neighbors,
     isosurface,
     led_distribution,
+    line_profile,
     slice_plane,
+    value_histogram,
 )
 from pretty_lattice.electronic.dos import DosReadError, parse_tdos
 from pretty_lattice.electronic.ipr import IprReadError, compute_ipr
+from pretty_lattice.electronic.lobster import (
+    LobsterReadError,
+    parse_bwdf,
+    parse_pair_list,
+)
 from pretty_lattice.server.electronic_store import ElectronicStore, chgcar_metadata
 from pretty_lattice.server.trajectory_store import (
     TrajectoryEntry,
@@ -473,6 +481,101 @@ def get_chgcar_led(
         raise HTTPException(status_code=404, detail={"message": "CHGCAR grid not found."})
     led_threshold = _float_query(threshold, 0.22)
     return led_distribution(data, threshold=led_threshold)
+
+
+@router.post("/electronic/elfcar")
+async def create_elfcar(request: Request) -> dict[str, object]:
+    payload = await _uploaded_payload(
+        request,
+        max_bytes=MAX_CHGCAR_UPLOAD_BYTES,
+        too_large_message=CHGCAR_FILE_TOO_LARGE_MESSAGE,
+    )
+    try:
+        elfcar_id, data = _electronic_store.create(payload, kind="elfcar")
+        distribution = value_histogram(data)
+        nz = data.grid[2]
+        initial_slice = slice_plane(data, "c", nz // 2)
+        scene = build_scene_response(data.structure)
+    except ChgcarReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+    except StructureReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+    return {
+        **chgcar_metadata(elfcar_id, data),
+        "distribution": distribution,
+        "slice": initial_slice,
+        "scene": scene,
+        "densityRange": {"min": float(data.density.min()), "max": float(data.density.max())},
+    }
+
+
+def _require_grid(grid_id: str):
+    data = _electronic_store.get(grid_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail={"message": "Volumetric grid not found."})
+    return data
+
+
+@router.get("/electronic/grid/{grid_id}/histogram")
+def get_grid_histogram(grid_id: str) -> dict[str, object]:
+    return value_histogram(_require_grid(grid_id))
+
+
+@router.get("/electronic/grid/{grid_id}/neighbors")
+def get_grid_neighbors(
+    grid_id: str,
+    i: int = Query(...),
+    rcut: str | None = Query(default=None),
+) -> dict[str, object]:
+    data = _require_grid(grid_id)
+    cutoff = _float_query(rcut, 3.5)
+    try:
+        return atom_neighbors(data, i, r_cut=cutoff)
+    except ChgcarReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.get("/electronic/grid/{grid_id}/line-profile")
+def get_grid_line_profile(
+    grid_id: str,
+    i: int = Query(...),
+    j: int = Query(...),
+    radius: str | None = Query(default=None),
+) -> dict[str, object]:
+    data = _require_grid(grid_id)
+    cylinder_radius = _float_query(radius, 0.5)
+    try:
+        return line_profile(data, i, j, radius=cylinder_radius)
+    except ChgcarReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/electronic/lobster/bwdf")
+async def create_lobster_bwdf(request: Request) -> dict[str, object]:
+    payload = await _uploaded_payload(
+        request, max_bytes=MAX_DOS_UPLOAD_BYTES, too_large_message=DOS_FILE_TOO_LARGE_MESSAGE
+    )
+    try:
+        return parse_bwdf(payload)
+    except LobsterReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+
+@router.post("/electronic/lobster/{kind}")
+async def create_lobster_pair_list(kind: str, request: Request) -> dict[str, object]:
+    normalized = kind.lower()
+    if normalized not in {"icohp", "icoop"}:
+        raise HTTPException(
+            status_code=404, detail={"message": "Unknown LOBSTER list kind."}
+        )
+    payload = await _uploaded_payload(
+        request, max_bytes=MAX_DOS_UPLOAD_BYTES, too_large_message=DOS_FILE_TOO_LARGE_MESSAGE
+    )
+    try:
+        return parse_pair_list(payload, kind=normalized)
+    except LobsterReadError as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
 
 
 @router.post("/electronic/dos")

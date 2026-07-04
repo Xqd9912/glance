@@ -131,6 +131,18 @@ Analyze and visualize electronic-structure output from VASP:
   isolevel, color, and opacity. Also view orthogonal density slices and the
   low-electron-density (LED) distribution with its fraction (0.22 is the empirical
   phase-change threshold).
+- **Electron localization (`ELFCAR`)** — the same volumetric pipeline as `CHGCAR`
+  (isosurface, slices) applied to the ELF, kept in its raw `[0, 1]` range, plus a
+  statistical distribution curve of ELF values across the grid.
+- **Bonding-path profile (`CHGCAR`/`ELFCAR`)** — pick a first atom, then a second from its
+  neighbors within a cutoff radius (listed nearest-first with bond lengths), to plot the ELF
+  or charge averaged inside a thin cylinder along the line joining them, versus distance from
+  the first atom. The cylinder radius is adjustable (default 0.5 Å) so the average stays
+  inside the bond channel and clear of neighboring atoms.
+- **LOBSTER bonding analysis** — scatter plots of the bond-weighted distribution function
+  (`BWDF.lobster`) and the integrated crystal-orbital Hamilton/overlap populations
+  (`ICOHPLIST.lobster`, `ICOOPLIST.lobster`) against bond length, with adjustable marker
+  size/color and per-element-pair (e.g. Ge–Ge, Ge–Se, Se–Se) toggles.
 - **Density of states (`TDOS.dat`)** — plot the total DOS as an energy–DOS line chart.
 - **Inverse participation ratio (`vasprun.xml`)** — compute the IPR of every electronic
   state and draw it as thin bars sharing the energy axis with the DOS (dual y-axis).
@@ -157,9 +169,10 @@ This fork extends it with:
   and play through frames, reusing the same rendering and unified bond settings.
 - **Structure analysis** — pair distribution g(r), coordination number, angular distribution,
   order parameters, MSD, and ALTBC, with interactive charts.
-- **Electronic-property analysis** — CHGCAR charge density as a 3D isosurface plus density
-  slices and the LED distribution, TDOS.dat density of states, and the inverse participation
-  ratio (IPR) from vasprun.xml on a shared energy axis with the DOS.
+- **Electronic-property analysis** — CHGCAR charge density and ELFCAR electron localization
+  as 3D isosurfaces plus slices and distributions, bonding-path profiles along an atom pair,
+  LOBSTER BWDF/ICOHP/ICOOP bonding scatters, TDOS.dat density of states, and the inverse
+  participation ratio (IPR) from vasprun.xml on a shared energy axis with the DOS.
 - **Custom per-element-pair bond cutoffs** and a fix for periodic bonds across the cell boundary.
 
 ## License
