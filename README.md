@@ -16,8 +16,8 @@
 
 > This is an extended fork of the original [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
 > by [@songfeitong](https://github.com/songfeitong). The crystal **visualization** core is from the
-> upstream project; this fork adds **trajectory visualization** and **structure analysis**.
-> See [Acknowledgements](#acknowledgements).
+> upstream project; this fork adds **trajectory visualization**, **structure analysis**, and
+> **electronic-property analysis**. See [Acknowledgements](#acknowledgements).
 
 - **Pretty**: tasteful defaults for colors, materials, lighting, and depth
 - **Simple**: an intuitive browser GUI for loading, viewing, and exporting structures
@@ -122,6 +122,27 @@ coordination-based quantities.
   <img src="assets/analysis_2.png" alt="Structure analysis: order parameter, MSD, and ALTBC" width="90%">
 </p>
 
+### Electronic properties
+
+Analyze and visualize electronic-structure output from VASP:
+
+- **Charge density (`CHGCAR`)** — render the electron density as a true 3D isosurface
+  overlaid on the atoms and bonds (reusing the structure renderer), with adjustable
+  isolevel, color, and opacity. Also view orthogonal density slices and the
+  low-electron-density (LED) distribution with its fraction (0.22 is the empirical
+  phase-change threshold).
+- **Density of states (`TDOS.dat`)** — plot the total DOS as an energy–DOS line chart.
+- **Inverse participation ratio (`vasprun.xml`)** — compute the IPR of every electronic
+  state and draw it as thin bars sharing the energy axis with the DOS (dual y-axis).
+
+<p align="center">
+  <img src="assets/electronic_density.png" alt="Charge density: 3D electron-cloud isosurface, density slice, and LED distribution" width="90%">
+</p>
+
+<p align="center">
+  <img src="assets/electronic_dos_ipr.png" alt="Density of states and DOS + IPR dual-axis chart" width="90%">
+</p>
+
 ## Acknowledgements
 
 The crystal **visualization** foundation of this project — the Three.js/React renderer,
@@ -136,6 +157,9 @@ This fork extends it with:
   and play through frames, reusing the same rendering and unified bond settings.
 - **Structure analysis** — pair distribution g(r), coordination number, angular distribution,
   order parameters, MSD, and ALTBC, with interactive charts.
+- **Electronic-property analysis** — CHGCAR charge density as a 3D isosurface plus density
+  slices and the LED distribution, TDOS.dat density of states, and the inverse participation
+  ratio (IPR) from vasprun.xml on a shared energy axis with the DOS.
 - **Custom per-element-pair bond cutoffs** and a fix for periodic bonds across the cell boundary.
 
 ## License

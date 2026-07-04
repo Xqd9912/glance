@@ -17,7 +17,7 @@
 
 > 本项目是原项目 [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
 > (作者 [@songfeitong](https://github.com/songfeitong))的扩展 fork。晶体**可视化**核心来自上游项目;
-> 本 fork 增加了**轨迹可视化**与**结构分析**。详见[致谢](#致谢)。
+> 本 fork 增加了**轨迹可视化**、**结构分析**与**电子性质分析**。详见[致谢](#致谢)。
 
 - **美观**：内置更现代美观的颜色、材质、光照和景深效果
 - **易用**：在浏览器里加载、预览和导出结构，直观易用的用户界面
@@ -119,6 +119,25 @@ prl gui -p 0          # 自动选择可用端口
   <img src="assets/analysis_2.png" alt="结构分析：序参数、MSD 与 ALTBC" width="90%">
 </p>
 
+### 电子性质
+
+分析并可视化 VASP 的电子结构输出：
+
+- **电荷密度（`CHGCAR`）**——将电子密度渲染成真正的 3D 等值面，叠加在原子与化学键上
+  （复用结构渲染器），等值面 level、颜色、透明度均可调；还可以查看正交密度切片，以及
+  低电子密度（LED）分布及其分数（0.22 是相变材料的经验阈值）。
+- **态密度（`TDOS.dat`）**——绘制总态密度的能量–DOS 折线图。
+- **逆参与比（`vasprun.xml`）**——计算每个电子态的 IPR，用细柱状图与 DOS 共用能量轴绘制
+  （双 Y 轴）。
+
+<p align="center">
+  <img src="assets/electronic_density.png" alt="电荷密度：3D 电子云等值面、密度切片与 LED 分布" width="90%">
+</p>
+
+<p align="center">
+  <img src="assets/electronic_dos_ipr.png" alt="态密度与 DOS + IPR 双轴图" width="90%">
+</p>
+
 ## 致谢
 
 本项目的晶体**可视化**基础——Three.js/React 渲染、材质、配色、相机与取向控制、元素图例、图像导出——
@@ -129,6 +148,8 @@ prl gui -p 0          # 自动选择可用端口
 
 - **轨迹可视化**——读取 VASP `XDATCAR`、LAMMPS `.dump`、`.xyz` 轨迹并逐帧播放,复用相同的渲染与统一成键设置。
 - **结构分析**——对分布函数 g(r)、配位数、键角分布、序参数、MSD、ALTBC,并提供交互式图表。
+- **电子性质分析**——CHGCAR 电荷密度的 3D 等值面、密度切片与 LED 分布,TDOS.dat 态密度,
+  以及 vasprun.xml 的逆参与比（IPR）与 DOS 共用能量轴。
 - **自定义元素对成键 cutoff**,以及周期性边界跨 cell 成键的修复。
 
 ## 许可证
