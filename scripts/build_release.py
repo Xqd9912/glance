@@ -30,7 +30,11 @@ def main() -> None:
     run(["uv", "build", "--out-dir", str(dist_dir), "--clear"], cwd=PROJECT_ROOT)
     wheel_path = newest_wheel(dist_dir)
     verify_wheel_static_assets(wheel_path)
-    if not args.keep_web_static:
+    # web_static is committed to the repo, so a plain clone ships the frontend and
+    # `pip install .` / `pip install git+...` work without a build step. Keep the
+    # freshly built assets by default; pass --clean-web-static only when you
+    # intentionally want to empty the directory.
+    if args.clean_web_static:
         clean_web_static()
 
     print()
@@ -59,9 +63,12 @@ def parse_args() -> argparse.Namespace:
         help="Skip `bun install --frozen-lockfile` before building the frontend.",
     )
     parser.add_argument(
-        "--keep-web-static",
+        "--clean-web-static",
         action="store_true",
-        help="Keep generated files in src/pretty_lattice/web_static after a successful build.",
+        help=(
+            "Empty src/pretty_lattice/web_static after a successful build. By default the "
+            "freshly built (and committed) frontend assets are kept in place."
+        ),
     )
     return parser.parse_args()
 

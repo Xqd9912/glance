@@ -43,15 +43,26 @@ Pretty Lattice is my attempt to fill that gap. Built on [Three.js](https://githu
 
 ## Install
 
+> [!IMPORTANT]
+> This fork's extra modules (trajectory, structure analysis, electronic properties) are **not
+> published to PyPI**. `pip install pretty-lattice` installs the upstream release, which does not
+> include them. To get this version, install from this repository as shown below.
+
+Install the latest from this repository (the bundled frontend ships with the package, so no
+Node/bun build step is needed):
+
 ```shell
-pip install pretty-lattice
+pip install git+https://github.com/Xqd9912/pretty-lattice.git
 ```
 
-Or install as an isolated tool with [uv](https://github.com/astral-sh/uv):
+Or with [uv](https://github.com/astral-sh/uv) as an isolated tool:
 
 ```shell
-uv tool install pretty-lattice
+uv tool install git+https://github.com/Xqd9912/pretty-lattice.git
 ```
+
+The upstream release on PyPI (visualization core only) can still be installed with
+`pip install pretty-lattice` / `uv tool install pretty-lattice`.
 
 Requirements:
 
@@ -72,7 +83,7 @@ Pretty Lattice starts a local server and opens your browser automatically.
 Run once without installing:
 
 ```shell
-uvx --from pretty-lattice prl gui
+uvx --from git+https://github.com/Xqd9912/pretty-lattice.git prl gui
 ```
 
 Useful launch options:
