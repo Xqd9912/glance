@@ -22,7 +22,7 @@
       "metalness": 0.0,
       "roughness": 0.45,
 
-      // These are supported by Three.js materials, but Pretty Lattice scene
+      // These are supported by Three.js materials, but Glance scene
       // objects currently override color, opacity, transparent, depthWrite,
       // side, and vertexColors so atoms/bonds/polyhedra keep their own state.
       "emissive": "#000000",
@@ -58,7 +58,7 @@
   // Supported light types:
   // - AmbientLight: official Three.js ambient light props such as color/intensity
   // - HemisphereLight: skyColor, groundColor, intensity
-  // - cameraDirectional: Pretty Lattice camera-relative directional light
+  // - cameraDirectional: Glance camera-relative directional light
   "lighting": [
     {
       "type": "AmbientLight",

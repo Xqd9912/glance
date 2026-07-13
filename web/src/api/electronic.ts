@@ -116,7 +116,7 @@ async function uploadFile<T>(endpoint: string, file: File): Promise<T> {
       method: "POST",
       headers: {
         "content-type": file.type || "application/octet-stream",
-        "x-pretty-lattice-filename": encodeURIComponent(file.name),
+        "x-glance-filename": encodeURIComponent(file.name),
       },
       body: file,
     });

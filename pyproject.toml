@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pretty-lattice"
+name = "glance"
 version = "0.2.0"
 description = "Local web GUI for rendering crystal structures as publication-ready figures."
 readme = "README.md"
@@ -23,7 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-prl = "pretty_lattice.cli:app"
+glance = "glance.cli:app"
 
 [dependency-groups]
 dev = [

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 
-const apiTarget = process.env.PRETTY_LATTICE_API_URL ?? "http://127.0.0.1:8765";
+const apiTarget = process.env.GLANCE_API_URL ?? "http://127.0.0.1:8765";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

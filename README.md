@@ -1,11 +1,11 @@
-<h1 align="center">Pretty Lattice</h1>
+<h1 align="center">Glance</h1>
 
 <p align="center">
-  Pretty Lattice is a crystal visualization tool for creating beautiful, publication-ready figures.
+  Glance is a crystal visualization tool for creating beautiful, publication-ready figures.
 </p>
 <p align="center">
-  <a href="https://github.com/songfeitong/pretty-lattice/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/pretty-lattice/ci.yml?branch=main&label=CI&style=flat-square"></a>
-  <a href="https://pypi.org/project/pretty-lattice/"><img alt="PyPI" src="https://img.shields.io/pypi/v/pretty-lattice?style=flat-square"></a>
+  <a href="https://github.com/songfeitong/glance/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/glance/ci.yml?branch=main&label=CI&style=flat-square"></a>
+  <a href="https://pypi.org/project/glance/"><img alt="PyPI" src="https://img.shields.io/pypi/v/glance?style=flat-square"></a>
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-3776ab?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
 </p>
@@ -14,7 +14,7 @@
   English | <a href="README_zh_CN.md">简体中文</a>
 </p>
 
-> This is an extended fork of the original [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+> This is an extended fork of the original [glance](https://github.com/songfeitong/glance)
 > by [@songfeitong](https://github.com/songfeitong). The crystal **visualization** core is from the
 > upstream project; this fork adds **trajectory visualization**, **structure analysis**, and
 > **electronic-property analysis**. See [Acknowledgements](#acknowledgements).
@@ -26,7 +26,7 @@
 - **Customizable**: tune colors, radii, materials, opacity, orientation, and export settings
 
 <p align="center">
-  <img src="assets/demo.png" alt="Pretty Lattice interface preview" width="90%">
+  <img src="assets/demo.png" alt="Glance interface preview" width="90%">
 </p>
 
 
@@ -36,33 +36,33 @@ I always find it harder than it should be to make a good-looking crystal figure.
 
 Traditional crystallographic tools such as VESTA are powerful, but their visual defaults often feel outdated: harsh color palettes, low-quality 3D shading, and a lot of manual tweaking before the result looks acceptable. You could import the structure into professional 3D software such as Cinema 4D or Blender, but that feels like overkill and comes with a much steeper learning curve.
 
-Pretty Lattice is my attempt to fill that gap. Built on [Three.js](https://github.com/mrdoob/three.js), it stays (relatively) lightweight without compromising visual quality. It offers a modern, intuitive interface with familiar controls researchers expect, and produces clean, aesthetically pleasing figures out of the box.
+Glance is my attempt to fill that gap. Built on [Three.js](https://github.com/mrdoob/three.js), it stays (relatively) lightweight without compromising visual quality. It offers a modern, intuitive interface with familiar controls researchers expect, and produces clean, aesthetically pleasing figures out of the box.
 
 > [!NOTE]
-> By design, Pretty Lattice focuses on **visualization**. It is not intended to replace mature materials-analysis tools such as VESTA and Materials Studio, and it does not try to provide complex structure editing or analysis workflows. Input files are treated as read-only. The intended workflow is to prepare and analyze structures with more specialized tools, then bring the final structure into Pretty Lattice for viewing, styling, and export.
+> By design, Glance focuses on **visualization**. It is not intended to replace mature materials-analysis tools such as VESTA and Materials Studio, and it does not try to provide complex structure editing or analysis workflows. Input files are treated as read-only. The intended workflow is to prepare and analyze structures with more specialized tools, then bring the final structure into Glance for viewing, styling, and export.
 
 ## Install
 
 > [!IMPORTANT]
 > This fork's extra modules (trajectory, structure analysis, electronic properties) are **not
-> published to PyPI**. `pip install pretty-lattice` installs the upstream release, which does not
+> published to PyPI**. `pip install glance` installs the upstream release, which does not
 > include them. To get this version, install from this repository as shown below.
 
 Install the latest from this repository (the bundled frontend ships with the package, so no
 Node/bun build step is needed):
 
 ```shell
-pip install git+https://github.com/Xqd9912/pretty-lattice.git
+pip install git+https://github.com/Xqd9912/glance.git
 ```
 
 Or with [uv](https://github.com/astral-sh/uv) as an isolated tool:
 
 ```shell
-uv tool install git+https://github.com/Xqd9912/pretty-lattice.git
+uv tool install git+https://github.com/Xqd9912/glance.git
 ```
 
 The upstream release on PyPI (visualization core only) can still be installed with
-`pip install pretty-lattice` / `uv tool install pretty-lattice`.
+`pip install glance` / `uv tool install glance`.
 
 Requirements:
 
@@ -75,22 +75,22 @@ Requirements:
 After installation, start the local GUI:
 
 ```shell
-prl gui
+glance gui
 ```
 
-Pretty Lattice starts a local server and opens your browser automatically.
+Glance starts a local server and opens your browser automatically.
 
 Run once without installing:
 
 ```shell
-uvx --from git+https://github.com/Xqd9912/pretty-lattice.git prl gui
+uvx --from git+https://github.com/Xqd9912/glance.git glance gui
 ```
 
 Useful launch options:
 
 ```shell
-prl gui --no-open     # start the server without opening a browser
-prl gui -p 0          # choose any available port automatically
+glance gui --no-open     # start the server without opening a browser
+glance gui -p 0          # choose any available port automatically
 ```
 
 ## Examples
@@ -178,7 +178,7 @@ Analyze and visualize electronic-structure output from VASP:
 
 The crystal **visualization** foundation of this project — the Three.js/React renderer,
 materials, color schemes, camera and orientation controls, element legend, and figure
-export — comes from the original [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+export — comes from the original [glance](https://github.com/songfeitong/glance)
 by [@songfeitong](https://github.com/songfeitong), released under the MIT License. All credit for
 that work goes to the original author.
 
@@ -196,4 +196,4 @@ This fork extends it with:
 
 ## License
 
-Pretty Lattice is released under the [MIT License](LICENSE), inherited from the upstream project.
+Glance is released under the [MIT License](LICENSE), inherited from the upstream project.

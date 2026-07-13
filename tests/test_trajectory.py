@@ -6,8 +6,8 @@ from urllib.parse import quote
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from pretty_lattice.server.app import create_app
-from pretty_lattice.structures.trajectory import (
+from glance.server.app import create_app
+from glance.structures.trajectory import (
     TrajectoryReadError,
     detect_trajectory_format,
     read_trajectory_bytes,
@@ -130,7 +130,7 @@ async def test_trajectory_upload_and_frame_endpoints() -> None:
         upload = await client.post(
             "/api/trajectory",
             content=XDATCAR_BYTES,
-            headers={"x-pretty-lattice-filename": "XDATCAR"},
+            headers={"x-glance-filename": "XDATCAR"},
         )
         meta = upload.json()
 
@@ -156,7 +156,7 @@ async def test_trajectory_dump_type_map_update() -> None:
         upload = await client.post(
             "/api/trajectory",
             content=DUMP_BYTES,
-            headers={"x-pretty-lattice-filename": "run.dump"},
+            headers={"x-glance-filename": "run.dump"},
         )
         meta = upload.json()
 
@@ -180,7 +180,7 @@ async def test_trajectory_frame_out_of_range_and_missing_trajectory() -> None:
         upload = await client.post(
             "/api/trajectory",
             content=XDATCAR_BYTES,
-            headers={"x-pretty-lattice-filename": "XDATCAR"},
+            headers={"x-glance-filename": "XDATCAR"},
         )
         trajectory_id = upload.json()["trajectoryId"]
 
@@ -199,7 +199,7 @@ async def test_trajectory_rejects_invalid_type_map() -> None:
         response = await client.post(
             "/api/trajectory?typeMap=not-json",
             content=DUMP_BYTES,
-            headers={"x-pretty-lattice-filename": "run.dump"},
+            headers={"x-glance-filename": "run.dump"},
         )
 
         assert response.status_code == 400

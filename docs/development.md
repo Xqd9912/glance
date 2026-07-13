@@ -5,15 +5,15 @@
 Run the local GUI server:
 
 ```bash
-uv run prl gui
+uv run glance gui
 ```
 
 Useful development options:
 
 ```bash
-uv run prl gui --no-open
-uv run prl gui --reload
-uv run prl gui -p 0
+uv run glance gui --no-open
+uv run glance gui --reload
+uv run glance gui -p 0
 ```
 
 Run checks:
@@ -51,9 +51,9 @@ bun run build
 For now, run the Python server and Vite server separately:
 
 ```bash
-uv run prl gui --no-open
+uv run glance gui --no-open
 cd web && bun run dev
 ```
 
 Open the Vite URL in the browser. The production packaging path will later build `web/dist`
-and copy it into `src/pretty_lattice/web_static/` so normal users only need the Python package.
+and copy it into `src/glance/web_static/` so normal users only need the Python package.

@@ -5,8 +5,8 @@ from math import dist
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from pretty_lattice.structures.periodic_images import canonicalize_fractional_position
-from pretty_lattice.structures.scene import build_scene_response
+from glance.structures.periodic_images import canonicalize_fractional_position
+from glance.structures.scene import build_scene_response
 
 
 def test_canonicalize_records_wrap_offset_for_sites_outside_unit_cell() -> None:

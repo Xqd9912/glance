@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from pretty_lattice.electronic.chgcar import (
+from glance.electronic.chgcar import (
     ChgcarReadError,
     atom_neighbors,
     isosurface,
@@ -17,13 +17,13 @@ from pretty_lattice.electronic.chgcar import (
     slice_plane,
     value_histogram,
 )
-from pretty_lattice.electronic.dos import parse_tdos
-from pretty_lattice.electronic.lobster import (
+from glance.electronic.dos import parse_tdos
+from glance.electronic.lobster import (
     LobsterReadError,
     parse_bwdf,
     parse_pair_list,
 )
-from pretty_lattice.server.app import create_app
+from glance.server.app import create_app
 
 TEST_STRU = Path(__file__).resolve().parent.parent / "test_stru"
 TEST_DATA = Path(__file__).resolve().parent.parent / "test_data"

@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from pymatgen.core import Lattice, Structure
 
-from pretty_lattice.analysis import kernels as K
+from glance.analysis import kernels as K
 
 
 def test_grouped_frame_arrays_reorders_interleaved_elements() -> None:

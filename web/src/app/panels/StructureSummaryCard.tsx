@@ -67,7 +67,7 @@ export function StructureSummaryCard({
             className="size-7 shrink-0"
           />
           <div className="flex min-w-0 items-center gap-1">
-            <h1 className="truncate text-[0.95rem] font-semibold leading-tight">Pretty Lattice</h1>
+            <h1 className="truncate text-[0.95rem] font-semibold leading-tight">Glance</h1>
             {hasExpandableContent ? (
               <TooltipProvider delayDuration={500}>
                 <Tooltip>

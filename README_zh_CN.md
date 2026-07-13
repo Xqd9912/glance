@@ -1,11 +1,11 @@
-<h1 align="center">Pretty Lattice</h1>
+<h1 align="center">Glance</h1>
 
 <p align="center">
-  Pretty Lattice 是一个晶体结构可视化工具，用来快速做出美观、适合发表的结构图。
+  Glance 是一个晶体结构可视化工具，用来快速做出美观、适合发表的结构图。
 </p>
 <p align="center">
-  <a href="https://github.com/songfeitong/pretty-lattice/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/pretty-lattice/ci.yml?branch=main&label=CI&style=flat-square"></a>
-  <a href="https://pypi.org/project/pretty-lattice/"><img alt="PyPI" src="https://img.shields.io/pypi/v/pretty-lattice?style=flat-square"></a>
+  <a href="https://github.com/songfeitong/glance/actions/workflows/ci.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/songfeitong/glance/ci.yml?branch=main&label=CI&style=flat-square"></a>
+  <a href="https://pypi.org/project/glance/"><img alt="PyPI" src="https://img.shields.io/pypi/v/glance?style=flat-square"></a>
   <img alt="Python 3.12+" src="https://img.shields.io/badge/python-3.12+-3776ab?style=flat-square">
   <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-green?style=flat-square">
 </p>
@@ -15,7 +15,7 @@
   <a href="README.md">English</a> | 简体中文
 </p>
 
-> 本项目是原项目 [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+> 本项目是原项目 [glance](https://github.com/songfeitong/glance)
 > (作者 [@songfeitong](https://github.com/songfeitong))的扩展 fork。晶体**可视化**核心来自上游项目;
 > 本 fork 增加了**轨迹可视化**、**结构分析**与**电子性质分析**。详见[致谢](#致谢)。
 
@@ -26,41 +26,41 @@
 - **灵活**：颜色、半径、材质、透明度、视角和导出参数都可以按需要修改
 
 <p align="center">
-  <img src="assets/demo.png" alt="Pretty Lattice interface preview" width="90%">
+  <img src="assets/demo.png" alt="Glance interface preview" width="90%">
 </p>
 
 
-## 为什么做 Pretty Lattice
+## 为什么做 Glance
 
 我一直觉得想画出一张好看的晶体结构图很难。
 
 传统的晶体学工具（比如 VESTA）功能确实强大，但默认的视觉效果总让人觉得过时。辣眼睛的配色、粗糙的3D效果，往往得花大量时间手动调整，画面才算勉强能看。当然，另一种选择是把结构导入像 Cinema 4D 或 Blender 这类专业 3D 软件里渲染，可那样又显得大炮打蚊子，而且学习曲线要陡峭得多。
 
-Pretty Lattice 就是我为弥补二者之间的空白空缺所做的尝试。它基于 Three.js 构建，在相对轻量的同时保证高质量的画面。它提供了一个现代直观的用户界面，以及研究者熟悉的操作方式，开箱即用，直出干净又美观的晶体图。
+Glance 就是我为弥补二者之间的空白空缺所做的尝试。它基于 Three.js 构建，在相对轻量的同时保证高质量的画面。它提供了一个现代直观的用户界面，以及研究者熟悉的操作方式，开箱即用，直出干净又美观的晶体图。
 
 > [!NOTE]
-> 从设计的初衷开始，Pretty Lattice 就专注于**可视化**。它并不打算取代 VESTA、Materials Studio 这类成熟的材料分析工具，也不打算提供复杂的结构编辑或分析流程。打开的结构文件会被当作只读文件来处理。更推荐的工作方式是先用更专业的工具准备和分析结构，再把最终结构导入 Pretty Lattice 里查看、调整样式并导出图片。
+> 从设计的初衷开始，Glance 就专注于**可视化**。它并不打算取代 VESTA、Materials Studio 这类成熟的材料分析工具，也不打算提供复杂的结构编辑或分析流程。打开的结构文件会被当作只读文件来处理。更推荐的工作方式是先用更专业的工具准备和分析结构，再把最终结构导入 Glance 里查看、调整样式并导出图片。
 
 ## 安装
 
 > [!IMPORTANT]
-> 本 fork 新增的模块（轨迹、结构分析、电子性质）**没有发布到 PyPI**。`pip install pretty-lattice`
+> 本 fork 新增的模块（轨迹、结构分析、电子性质）**没有发布到 PyPI**。`pip install glance`
 > 装的是上游发布版，不含这些功能。要获取此版本，请按下面的方式从本仓库安装。
 
 从本仓库安装最新版（打包时已内置构建好的前端，无需 Node/bun 构建步骤）：
 
 ```shell
-pip install git+https://github.com/Xqd9912/pretty-lattice.git
+pip install git+https://github.com/Xqd9912/glance.git
 ```
 
 或用 [uv](https://github.com/astral-sh/uv) 作为独立工具安装：
 
 ```shell
-uv tool install git+https://github.com/Xqd9912/pretty-lattice.git
+uv tool install git+https://github.com/Xqd9912/glance.git
 ```
 
-上游的 PyPI 发布版（仅含可视化核心）仍可用 `pip install pretty-lattice` /
-`uv tool install pretty-lattice` 安装。
+上游的 PyPI 发布版（仅含可视化核心）仍可用 `pip install glance` /
+`uv tool install glance` 安装。
 
 运行环境：
 
@@ -73,22 +73,22 @@ uv tool install git+https://github.com/Xqd9912/pretty-lattice.git
 安装后，启动本地图形界面：
 
 ```shell
-prl gui
+glance gui
 ```
 
-Pretty Lattice 会启动一个本地服务，并自动打开浏览器。
+Glance 会启动一个本地服务，并自动打开浏览器。
 
 也可以不安装，临时运行：
 
 ```shell
-uvx --from git+https://github.com/Xqd9912/pretty-lattice.git prl gui
+uvx --from git+https://github.com/Xqd9912/glance.git glance gui
 ```
 
 常用启动选项：
 
 ```shell
-prl gui --no-open     # 只启动服务，不自动打开浏览器
-prl gui -p 0          # 自动选择可用端口
+glance gui --no-open     # 只启动服务，不自动打开浏览器
+glance gui -p 0          # 自动选择可用端口
 ```
 
 ## 示例
@@ -166,7 +166,7 @@ prl gui -p 0          # 自动选择可用端口
 ## 致谢
 
 本项目的晶体**可视化**基础——Three.js/React 渲染、材质、配色、相机与取向控制、元素图例、图像导出——
-来自原项目 [pretty-lattice](https://github.com/songfeitong/pretty-lattice)
+来自原项目 [glance](https://github.com/songfeitong/glance)
 (作者 [@songfeitong](https://github.com/songfeitong),MIT License 发布),这部分工作的功劳归原作者。
 
 本 fork 在其基础上增加了:
@@ -180,4 +180,4 @@ prl gui -p 0          # 自动选择可用端口
 
 ## 许可证
 
-Pretty Lattice 使用 [MIT License](LICENSE) 发布(继承自上游项目)。
+Glance 使用 [MIT License](LICENSE) 发布(继承自上游项目)。

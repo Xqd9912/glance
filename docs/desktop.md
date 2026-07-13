@@ -1,7 +1,7 @@
 # Desktop App
 
-Pretty Lattice also ships as a native desktop app, built with [Tauri](https://tauri.app).
-It is the same product as `prl gui`, packaged so that users do not need Python at all.
+Glance also ships as a native desktop app, built with [Tauri](https://tauri.app).
+It is the same product as `glance gui`, packaged so that users do not need Python at all.
 
 ## How it fits together
 
@@ -11,17 +11,17 @@ server and runs it as a child process, called a *sidecar*:
 
 ```mermaid
 flowchart LR
-    A[Tauri shell<br/>Rust] -->|1. spawn| B[prl-server<br/>frozen Python + FastAPI]
+    A[Tauri shell<br/>Rust] -->|1. spawn| B[glance-server<br/>frozen Python + FastAPI]
     B -->|2. handshake:<br/>port + token| A
     A -->|3. inject address + token| C[Webview<br/>React + Three.js]
     C -->|4. HTTP| B
 ```
 
 1. The shell spawns the server. The server binds a free port, mints a one-off API token, and
-   prints both on one stdout line prefixed with `PRETTY_LATTICE_READY`.
+   prints both on one stdout line prefixed with `GLANCE_READY`.
 2. The shell waits until that port accepts connections. A splash window covers the wait,
    which is a few seconds, mostly spent importing pymatgen.
-3. The shell creates the main window, injecting `window.__PRETTY_LATTICE_API__` before any
+3. The shell creates the main window, injecting `window.__GLANCE_API__` before any
    application code runs.
 4. The page talks to the server over plain HTTP on localhost.
 
@@ -33,7 +33,7 @@ Two consequences worth knowing:
   which is a no-op in the browser and prefixes the real address in the desktop app.
 - **The API requires a token in the desktop app.** A local HTTP server is reachable by every
   other process on the machine; the per-launch token means only the app's own window can
-  drive it. `prl gui` passes no token, because there the page and the API share an origin.
+  drive it. `glance gui` passes no token, because there the page and the API share an origin.
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ bun run desktop:dev
 ```
 
 In a debug build the shell does **not** use the frozen server. It runs
-`uv run python -m pretty_lattice.desktop` straight from the working tree, so changes to
+`uv run python -m glance.desktop` straight from the working tree, so changes to
 Python code take effect on the next launch without re-freezing anything. You still need to
 have built the sidecar once, because the bundle configuration expects the directory to
 exist.
@@ -97,7 +97,7 @@ machine that did not build it; the user has to right-click and choose Open, or c
 quarantine attribute:
 
 ```bash
-xattr -cr "/Applications/Pretty Lattice.app"
+xattr -cr "/Applications/Glance.app"
 ```
 
 Shipping this to other people properly means an Apple Developer ID and notarization on

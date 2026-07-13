@@ -30,7 +30,7 @@ future manifest if exact upstream records need to be tracked.
   remote structure data.
 - Do not add duplicate POSCAR files just to compare parser behavior across
   formats. Cross-format equivalence belongs to the upstream parser, not to
-  Pretty Lattice's fixture suite.
+  Glance's fixture suite.
 - Treat the CIF file headers as source data, not as the expected symmetry
   oracle. Current tests validate the symmetry summary produced by the backend
   analysis path.

@@ -1,6 +1,6 @@
-//! Desktop shell for Pretty Lattice.
+//! Desktop shell for Glance.
 //!
-//! The analysis backend is the same Python/FastAPI server that `prl gui` runs. It cannot
+//! The analysis backend is the same Python/FastAPI server that `glance gui` runs. It cannot
 //! move into Rust or into the webview, because it is built on pymatgen, numpy and numba.
 //! So the shell runs it as a child process ("sidecar") and brokers the connection:
 //!
@@ -23,7 +23,7 @@ use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
 /// The server prints exactly one line with this prefix once it knows its own address.
-const HANDSHAKE_PREFIX: &str = "PRETTY_LATTICE_READY ";
+const HANDSHAKE_PREFIX: &str = "GLANCE_READY ";
 const HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(90);
 const LISTEN_TIMEOUT: Duration = Duration::from_secs(30);
 
@@ -59,7 +59,7 @@ pub fn run() {
             Ok(())
         })
         .build(tauri::generate_context!())
-        .expect("failed to build the Pretty Lattice desktop app");
+        .expect("failed to build the Glance desktop app");
 
     app.run(|app, event| {
         // Without this the Python process outlives the window and keeps holding its port.
@@ -102,7 +102,7 @@ fn spawn_server(
         app.shell()
             .command("uv")
             .current_dir(repo_root)
-            .args(["run", "python", "-m", "pretty_lattice.desktop"])
+            .args(["run", "python", "-m", "glance.desktop"])
     };
 
     // The frozen server is a directory (executable plus its libraries), so it ships as an
@@ -113,11 +113,11 @@ fn spawn_server(
             .path()
             .resource_dir()
             .map_err(|error| format!("Could not locate the app resources: {error}"))?
-            .join("binaries/prl-server")
+            .join("binaries/glance-server")
             .join(if cfg!(windows) {
-                "prl-server.exe"
+                "glance-server.exe"
             } else {
-                "prl-server"
+                "glance-server"
             });
 
         if !executable.is_file() {
@@ -161,7 +161,7 @@ async fn read_handshake(
             }
             // uvicorn logs to stderr; forward it so that a failed launch is diagnosable.
             CommandEvent::Stderr(line) => {
-                eprint!("[prl-server] {}", String::from_utf8_lossy(&line));
+                eprint!("[glance-server] {}", String::from_utf8_lossy(&line));
             }
             CommandEvent::Terminated(status) => {
                 return Err(format!(
@@ -211,11 +211,11 @@ fn open_main_window(app: &AppHandle, handshake: &Handshake) -> Result<(), String
     });
 
     WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
-        .title("Pretty Lattice")
+        .title("Glance")
         .inner_size(1440.0, 900.0)
         .min_inner_size(960.0, 640.0)
         .center()
-        .initialization_script(&format!("window.__PRETTY_LATTICE_API__ = {config};"))
+        .initialization_script(&format!("window.__GLANCE_API__ = {config};"))
         .build()
         .map_err(|error| format!("Could not open the main window: {error}"))?;
 
@@ -224,7 +224,7 @@ fn open_main_window(app: &AppHandle, handshake: &Handshake) -> Result<(), String
 
 /// Turn the splash into an error card rather than leaving it spinning forever.
 fn report_failure(app: &AppHandle, message: &str) {
-    eprintln!("[pretty-lattice] startup failed: {message}");
+    eprintln!("[glance] startup failed: {message}");
 
     let Some(splash) = app.get_webview_window("splash") else {
         return;

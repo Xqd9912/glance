@@ -1,13 +1,13 @@
 /**
  * Where the API lives, and how we are allowed to talk to it.
  *
- * In the browser (`prl gui`, or `bun run dev` behind the Vite proxy) the page and the API
+ * In the browser (`glance gui`, or `bun run dev` behind the Vite proxy) the page and the API
  * share an origin, so a relative "/api/..." path already points at the right place and no
  * token is involved.
  *
  * In the desktop app the page is loaded from the app itself, not from the server, so the
  * same relative path would resolve back to the webview. The Tauri shell therefore injects
- * the server's real address and a per-launch token into `window.__PRETTY_LATTICE_API__`
+ * the server's real address and a per-launch token into `window.__GLANCE_API__`
  * before any of our code runs, and we route every request through that.
  */
 
@@ -18,17 +18,17 @@ export interface DesktopApiConfig {
 
 declare global {
   interface Window {
-    __PRETTY_LATTICE_API__?: DesktopApiConfig;
+    __GLANCE_API__?: DesktopApiConfig;
   }
 }
 
-export const API_TOKEN_HEADER = "x-pretty-lattice-token";
+export const API_TOKEN_HEADER = "x-glance-token";
 
 function desktopConfig(): DesktopApiConfig | undefined {
   if (typeof window === "undefined") {
     return undefined;
   }
-  return window.__PRETTY_LATTICE_API__;
+  return window.__GLANCE_API__;
 }
 
 export function isDesktopRuntime(): boolean {

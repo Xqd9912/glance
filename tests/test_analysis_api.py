@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from pretty_lattice.server.app import create_app
+from glance.server.app import create_app
 
 
 def _xdatcar_bytes(n_frames: int = 3) -> bytes:
@@ -39,7 +39,7 @@ async def _upload(client: AsyncClient) -> str:
     response = await client.post(
         "/api/trajectory",
         content=_xdatcar_bytes(),
-        headers={"x-pretty-lattice-filename": "XDATCAR"},
+        headers={"x-glance-filename": "XDATCAR"},
     )
     return response.json()["trajectoryId"]
 

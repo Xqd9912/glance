@@ -1,11 +1,11 @@
-"""Freeze the Pretty Lattice API server for the desktop app.
+"""Freeze the Glance API server for the desktop app.
 
 The desktop shell spawns the server as a child process. Users of the desktop app have no
 Python install, so the server is frozen with PyInstaller and shipped inside the app bundle.
 
     uv run --group desktop python scripts/build_sidecar.py
 
-The result lands in web/src-tauri/binaries/prl-server/, which is where tauri.conf.json
+The result lands in web/src-tauri/binaries/glance-server/, which is where tauri.conf.json
 picks it up as an app resource. PyInstaller cannot cross-compile, so this has to run on
 each platform you intend to ship.
 """
@@ -19,26 +19,27 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-SPEC_FILE = PROJECT_ROOT / "packaging" / "prl_server.spec"
+SPEC_FILE = PROJECT_ROOT / "packaging" / "glance_server.spec"
 BUILD_ROOT = PROJECT_ROOT / "build" / "sidecar"
 DIST_ROOT = BUILD_ROOT / "dist"
-TARGET_DIR = PROJECT_ROOT / "web" / "src-tauri" / "binaries" / "prl-server"
+TARGET_DIR = PROJECT_ROOT / "web" / "src-tauri" / "binaries" / "glance-server"
 
-EXECUTABLE_NAME = "prl-server.exe" if sys.platform == "win32" else "prl-server"
+EXECUTABLE_NAME = "glance-server.exe" if sys.platform == "win32" else "glance-server"
 
 
 def main() -> None:
     args = parse_args()
 
     run_pyinstaller(clean=args.clean)
-    frozen = DIST_ROOT / "prl-server"
+    frozen = DIST_ROOT / "glance-server"
     verify_frozen(frozen)
     install(frozen)
 
     if not args.skip_smoke_test:
         smoke_test(TARGET_DIR / EXECUTABLE_NAME)
 
-    print(f"\nSidecar ready at {TARGET_DIR.relative_to(PROJECT_ROOT)} ({directory_size(TARGET_DIR)})")
+    rel = TARGET_DIR.relative_to(PROJECT_ROOT)
+    print(f"\nSidecar ready at {rel} ({directory_size(TARGET_DIR)})")
 
 
 def parse_args() -> argparse.Namespace:
@@ -96,7 +97,7 @@ def smoke_test(executable: Path) -> None:
     because PyInstaller missed a lazily imported module. Reaching the handshake means the
     whole import graph loaded inside the frozen environment.
     """
-    from pretty_lattice.desktop import HANDSHAKE_PREFIX
+    from glance.desktop import HANDSHAKE_PREFIX
 
     print("Smoke-testing the frozen server...", flush=True)
     process = subprocess.Popen(

@@ -1,4 +1,4 @@
-# Pretty Lattice Docs
+# Glance Docs
 
 Project context lives in this directory. 
 

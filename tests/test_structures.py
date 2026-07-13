@@ -6,22 +6,22 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Lattice, Structure
 
-import pretty_lattice.structures.connectivity as connectivity_module
-import pretty_lattice.structures.polyhedra as polyhedra_module
-import pretty_lattice.structures.summary as summary_module
-from pretty_lattice.structures.readers import (
+import glance.structures.connectivity as connectivity_module
+import glance.structures.polyhedra as polyhedra_module
+import glance.structures.summary as summary_module
+from glance.structures.readers import (
     StructureReadError,
     read_structure,
     read_structure_bytes,
 )
-from pretty_lattice.structures.scene import (
+from glance.structures.scene import (
     build_scene_response,
 )
-from pretty_lattice.structures.schema import (
+from glance.structures.schema import (
     STRUCTURE_ATOM_COUNT_THRESHOLD,
     UnsupportedBondAlgorithmError,
 )
-from pretty_lattice.structures.symmetry import (
+from glance.structures.symmetry import (
     POINT_GROUP_SCHOENFLIES,
     point_group_schoenflies_symbol,
 )
@@ -29,7 +29,7 @@ from pretty_lattice.structures.symmetry import (
 PROJECT_ROOT = Path(__file__).parents[1]
 FIXTURE_DIR = Path(__file__).parent / "fixtures" / "structures"
 BACKEND_STRUCTURE_MODULES = sorted(
-    (PROJECT_ROOT / "src" / "pretty_lattice" / "structures").glob("*.py")
+    (PROJECT_ROOT / "src" / "glance" / "structures").glob("*.py")
 )
 
 CIF_FIXTURES = [

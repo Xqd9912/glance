@@ -10,7 +10,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = PROJECT_ROOT / "web"
 WEB_DIST = WEB_ROOT / "dist"
-STATIC_ROOT = PROJECT_ROOT / "src" / "pretty_lattice" / "web_static"
+STATIC_ROOT = PROJECT_ROOT / "src" / "glance" / "web_static"
 DEFAULT_DIST_DIR = PROJECT_ROOT / "dist"
 
 
@@ -47,7 +47,7 @@ def main() -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Build the Pretty Lattice frontend, bundle it into the Python package, "
+            "Build the Glance frontend, bundle it into the Python package, "
             "and create verified release artifacts."
         )
     )
@@ -66,7 +66,7 @@ def parse_args() -> argparse.Namespace:
         "--clean-web-static",
         action="store_true",
         help=(
-            "Empty src/pretty_lattice/web_static after a successful build. By default the "
+            "Empty src/glance/web_static after a successful build. By default the "
             "freshly built (and committed) frontend assets are kept in place."
         ),
     )
@@ -126,13 +126,13 @@ def verify_wheel_static_assets(wheel_path: Path) -> None:
     with zipfile.ZipFile(wheel_path) as wheel:
         names = set(wheel.namelist())
 
-    index_name = "pretty_lattice/web_static/index.html"
-    has_assets = any(name.startswith("pretty_lattice/web_static/assets/") for name in names)
+    index_name = "glance/web_static/index.html"
+    has_assets = any(name.startswith("glance/web_static/assets/") for name in names)
     missing: list[str] = []
     if index_name not in names:
         missing.append(index_name)
     if not has_assets:
-        missing.append("pretty_lattice/web_static/assets/")
+        missing.append("glance/web_static/assets/")
 
     if missing:
         lines = "\n".join(f"  - {name}" for name in missing)

@@ -369,7 +369,7 @@
           <button class="icon-btn" id="theme" title="Toggle theme" aria-label="Toggle theme">☾</button>
           <a
             class="icon-btn"
-            href="https://github.com/Xqd9912/pretty-lattice"
+            href="https://github.com/Xqd9912/glance"
             title="GitHub"
             style="width: auto; padding: 0 12px"
             >GitHub</a
@@ -440,9 +440,9 @@
               Glance is a Python package with the frontend bundled in. Install from the
               repository:
             </p>
-<pre><code><span class="c">pip install</span> git+https://github.com/Xqd9912/pretty-lattice.git</code></pre>
+<pre><code><span class="c">pip install</span> git+https://github.com/Xqd9912/glance.git</code></pre>
             <p data-en="Or with uv as an isolated tool:" data-zh="或使用 uv 作为独立工具安装：">Or with uv as an isolated tool:</p>
-<pre><code><span class="c">uv tool install</span> git+https://github.com/Xqd9912/pretty-lattice.git</code></pre>
+<pre><code><span class="c">uv tool install</span> git+https://github.com/Xqd9912/glance.git</code></pre>
             <h3 data-en="Requirements" data-zh="环境要求">Requirements</h3>
             <ul>
               <li data-en="Python 3.12 or newer" data-zh="Python 3.12 或更新版本">Python 3.12 or newer</li>
@@ -461,7 +461,7 @@
           <section id="quickstart">
             <h2 data-en="Quick start" data-zh="快速开始">Quick start</h2>
             <p data-en="After installation, start the local GUI:" data-zh="安装完成后，启动本地 GUI：">After installation, start the local GUI:</p>
-<pre><code><span class="c">prl</span> gui</code></pre>
+<pre><code><span class="c">glance</span> gui</code></pre>
             <p
               data-en="Glance starts a local server and opens your browser automatically. Drop in a CIF or POSCAR, style it, and export a figure."
               data-zh="Glance 会启动本地服务并自动打开浏览器。拖入 CIF 或 POSCAR，配色后即可导出图。"
@@ -469,10 +469,10 @@
               Glance starts a local server and opens your browser automatically.
             </p>
             <h3 data-en="Run once without installing" data-zh="免安装运行一次">Run once without installing</h3>
-<pre><code><span class="c">uvx</span> --from git+https://github.com/Xqd9912/pretty-lattice.git prl gui</code></pre>
+<pre><code><span class="c">uvx</span> --from git+https://github.com/Xqd9912/glance.git glance gui</code></pre>
             <h3 data-en="Useful launch options" data-zh="常用启动选项">Useful launch options</h3>
-<pre><code><span class="c">prl</span> gui --no-open     <span class="c"># start the server without opening a browser</span>
-<span class="c">prl</span> gui -p 0          <span class="c"># choose any available port automatically</span></code></pre>
+<pre><code><span class="c">glance</span> gui --no-open     <span class="c"># start the server without opening a browser</span>
+<span class="c">glance</span> gui -p 0          <span class="c"># choose any available port automatically</span></code></pre>
           </section>
 
           <section id="presets">
@@ -485,7 +485,7 @@
             </p>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/SrTiO3-material-presets.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/SrTiO3-material-presets.png"
                 alt="SrTiO3 material preset examples"
                 loading="lazy"
               />
@@ -495,7 +495,7 @@
             </figure>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/Ba2Ca2Cu3HgO8-color-schemes.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/Ba2Ca2Cu3HgO8-color-schemes.png"
                 alt="Color scheme presets"
                 loading="lazy"
               />
@@ -516,7 +516,7 @@
             </p>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/Traj_visualization.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/Traj_visualization.png"
                 alt="Trajectory frames with the frame player"
                 loading="lazy"
               />
@@ -551,7 +551,7 @@
             </p>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/Analysis_1.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/Analysis_1.png"
                 alt="g(r) and coordination number"
                 loading="lazy"
               />
@@ -561,7 +561,7 @@
             </figure>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/analysis_2.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/analysis_2.png"
                 alt="Order parameter, MSD, and ALTBC"
                 loading="lazy"
               />
@@ -634,7 +634,7 @@
             </ul>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/electronic_density.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/electronic_density.png"
                 alt="Charge density isosurface, slice, and LED distribution"
                 loading="lazy"
               />
@@ -644,7 +644,7 @@
             </figure>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/electronic_lobster.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/electronic_lobster.png"
                 alt="LOBSTER bonding analysis"
                 loading="lazy"
               />
@@ -654,7 +654,7 @@
             </figure>
             <figure>
               <img
-                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/electronic_dos_ipr.png"
+                src="https://raw.githubusercontent.com/Xqd9912/glance/main/assets/electronic_dos_ipr.png"
                 alt="Density of states and DOS + IPR dual-axis chart"
                 loading="lazy"
               />
@@ -665,7 +665,7 @@
             <div style="margin-top: 26px">
               <a
                 class="backlink"
-                href="https://github.com/Xqd9912/pretty-lattice#readme"
+                href="https://github.com/Xqd9912/glance#readme"
                 data-en="Full README on GitHub →"
                 data-zh="GitHub 上的完整 README →"
                 >Full README on GitHub →</a
@@ -693,12 +693,12 @@
         </a>
         <div style="display: flex; gap: 18px; flex-wrap: wrap">
           <a href="index.html" data-en="Home" data-zh="首页">Home</a>
-          <a href="https://github.com/Xqd9912/pretty-lattice">GitHub</a>
-          <a href="https://github.com/Xqd9912/pretty-lattice/releases" data-en="Releases" data-zh="发布">Releases</a>
+          <a href="https://github.com/Xqd9912/glance">GitHub</a>
+          <a href="https://github.com/Xqd9912/glance/releases" data-en="Releases" data-zh="发布">Releases</a>
         </div>
         <div>
           <span data-en="MIT License · A fork of" data-zh="MIT 许可证 · 派生自">MIT License · A fork of</span>
-          <a href="https://github.com/songfeitong/pretty-lattice" style="color: var(--accent)">@songfeitong</a>
+          <a href="https://github.com/songfeitong/glance" style="color: var(--accent)">@songfeitong</a>
         </div>
       </div>
     </footer>

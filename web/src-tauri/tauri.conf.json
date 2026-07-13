@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Pretty Lattice",
+  "productName": "Glance",
   "version": "0.2.0",
-  "identifier": "io.prettylattice.desktop",
+  "identifier": "io.glance.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://127.0.0.1:5173",
@@ -15,7 +15,7 @@
       {
         "label": "splash",
         "url": "splash.html",
-        "title": "Pretty Lattice",
+        "title": "Glance",
         "width": 420,
         "height": 220,
         "resizable": false,
@@ -38,9 +38,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": ["binaries/prl-server/**/*"],
+    "resources": ["binaries/glance-server/**/*"],
     "shortDescription": "Publication-ready crystal structure figures.",
-    "longDescription": "Pretty Lattice renders crystal structures as publication-ready figures, with trajectory, structure, and electronic-property analysis.",
+    "longDescription": "Glance renders crystal structures as publication-ready figures, with trajectory, structure, and electronic-property analysis.",
     "macOS": {
       "minimumSystemVersion": "10.15"
     }
