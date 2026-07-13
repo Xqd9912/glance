@@ -1,0 +1,959 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pretty Lattice — publication-ready crystal figures</title>
+    <meta
+      name="description"
+      content="A local web GUI for rendering crystal structures as beautiful, publication-ready figures, with trajectory, structure, and electronic-property analysis."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5' fill='none' stroke='%236366f1' stroke-width='2.5' stroke-linejoin='round'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%2306b6d4'/%3E%3C/svg%3E"
+    />
+    <style>
+      :root {
+        --bg: #ffffff;
+        --bg-soft: #fafafa;
+        --bg-elev: #ffffff;
+        --fg: #0a0a0a;
+        --fg-muted: #5b6470;
+        --border: #ebecef;
+        --border-strong: #dcdee3;
+        --accent: #6366f1;
+        --accent-2: #06b6d4;
+        --accent-fg: #ffffff;
+        --shadow: 0 1px 2px rgb(10 10 10 / 0.04), 0 12px 32px rgb(10 10 10 / 0.06);
+        --radius: 14px;
+        --maxw: 1120px;
+        --font:
+          "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+      }
+      :root[data-theme="dark"] {
+        --bg: #0a0a0b;
+        --bg-soft: #111113;
+        --bg-elev: #141417;
+        --fg: #f5f6f7;
+        --fg-muted: #9aa2ad;
+        --border: #22242a;
+        --border-strong: #2c2f37;
+        --accent: #818cf8;
+        --accent-2: #22d3ee;
+        --shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 40px rgb(0 0 0 / 0.45);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: var(--font);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      h1,
+      h2,
+      h3 {
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+      }
+      .wrap {
+        width: 100%;
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      .muted {
+        color: var(--fg-muted);
+      }
+
+      /* Navigation */
+      header.nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: saturate(1.4) blur(12px);
+        background: color-mix(in srgb, var(--bg) 82%, transparent);
+        border-bottom: 1px solid var(--border);
+      }
+      .nav-inner {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 60px;
+      }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+        font-size: 15px;
+      }
+      .brand svg {
+        display: block;
+      }
+      .nav-links {
+        display: flex;
+        gap: 4px;
+        margin-left: 8px;
+      }
+      .nav-links a {
+        padding: 7px 12px;
+        border-radius: 8px;
+        font-size: 14px;
+        color: var(--fg-muted);
+        transition: color 0.15s, background 0.15s;
+      }
+      .nav-links a:hover {
+        color: var(--fg);
+        background: var(--bg-soft);
+      }
+      .nav-right {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .icon-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        border: 1px solid var(--border);
+        background: var(--bg-elev);
+        color: var(--fg-muted);
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: border-color 0.15s, color 0.15s, background 0.15s;
+      }
+      .icon-btn:hover {
+        color: var(--fg);
+        border-color: var(--border-strong);
+      }
+
+      /* Buttons */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 11px 18px;
+        border-radius: 10px;
+        font-size: 14.5px;
+        font-weight: 560;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: transform 0.12s ease, box-shadow 0.15s, background 0.15s, border-color 0.15s;
+        white-space: nowrap;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .btn-primary {
+        background: var(--fg);
+        color: var(--bg);
+      }
+      .btn-primary:hover {
+        box-shadow: var(--shadow);
+      }
+      .btn-ghost {
+        background: var(--bg-elev);
+        color: var(--fg);
+        border-color: var(--border-strong);
+      }
+      .btn-ghost:hover {
+        background: var(--bg-soft);
+      }
+
+      /* Hero */
+      .hero {
+        padding: 84px 0 40px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .hero::before {
+        content: "";
+        position: absolute;
+        inset: -40% 0 auto 0;
+        height: 520px;
+        background:
+          radial-gradient(
+            600px 300px at 50% 0%,
+            color-mix(in srgb, var(--accent) 16%, transparent),
+            transparent 70%
+          );
+        pointer-events: none;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 12px 5px 10px;
+        border: 1px solid var(--border-strong);
+        border-radius: 999px;
+        font-size: 12.5px;
+        color: var(--fg-muted);
+        background: var(--bg-elev);
+        margin-bottom: 22px;
+      }
+      .eyebrow .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent-2);
+      }
+      .hero h1 {
+        font-size: clamp(38px, 6.2vw, 66px);
+        font-weight: 720;
+        max-width: 15ch;
+        margin: 0 auto;
+        background: linear-gradient(180deg, var(--fg), color-mix(in srgb, var(--fg) 62%, var(--bg)));
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .hero .lede {
+        font-size: clamp(16px, 2.2vw, 19px);
+        color: var(--fg-muted);
+        max-width: 60ch;
+        margin: 20px auto 0;
+      }
+      .pillrow {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 22px;
+      }
+      .pill {
+        font-size: 13px;
+        color: var(--fg-muted);
+        border: 1px solid var(--border);
+        background: var(--bg-soft);
+        padding: 5px 12px;
+        border-radius: 999px;
+      }
+      .cta {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 30px;
+      }
+      .shot {
+        margin-top: 52px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: var(--shadow);
+        background: var(--bg-soft);
+      }
+      .shot img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* Sections */
+      section {
+        padding: 68px 0;
+      }
+      .section-head {
+        max-width: 640px;
+        margin: 0 auto 44px;
+        text-align: center;
+      }
+      .section-head h2 {
+        font-size: clamp(26px, 3.6vw, 36px);
+        font-weight: 680;
+      }
+      .section-head p {
+        color: var(--fg-muted);
+        margin-top: 12px;
+        font-size: 16px;
+      }
+      .kicker {
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 12px;
+        font-weight: 650;
+        color: var(--accent);
+        margin-bottom: 12px;
+      }
+
+      /* Feature grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-elev);
+        padding: 24px;
+        transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+      }
+      .card:hover {
+        border-color: var(--border-strong);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow);
+      }
+      .card .ico {
+        font-size: 24px;
+        line-height: 1;
+        display: block;
+        margin-bottom: 14px;
+      }
+      .card h3 {
+        font-size: 16.5px;
+        font-weight: 620;
+      }
+      .card p {
+        color: var(--fg-muted);
+        font-size: 14.5px;
+        margin-top: 8px;
+      }
+
+      /* Gallery */
+      .gallery {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+      .gallery figure {
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        background: var(--bg-soft);
+      }
+      .gallery img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .gallery figcaption {
+        padding: 12px 16px;
+        font-size: 13.5px;
+        color: var(--fg-muted);
+        border-top: 1px solid var(--border);
+        background: var(--bg-elev);
+      }
+
+      /* Docs / quick start */
+      .docs-grid {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 28px;
+        align-items: start;
+      }
+      .steps {
+        display: grid;
+        gap: 14px;
+      }
+      .step {
+        display: flex;
+        gap: 14px;
+        align-items: flex-start;
+      }
+      .step .n {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        display: grid;
+        place-items: center;
+        font-size: 13px;
+        font-weight: 650;
+        color: var(--accent-fg);
+        background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      }
+      .step h3 {
+        font-size: 15px;
+        font-weight: 620;
+      }
+      .step p {
+        color: var(--fg-muted);
+        font-size: 14px;
+        margin-top: 3px;
+      }
+      pre {
+        margin: 0;
+        background: var(--bg-soft);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        overflow-x: auto;
+        font-family: var(--mono);
+        font-size: 13.5px;
+        line-height: 1.7;
+        color: var(--fg);
+      }
+      pre .c {
+        color: var(--accent);
+      }
+      .code-stack {
+        display: grid;
+        gap: 12px;
+      }
+      .code-label {
+        font-size: 12.5px;
+        color: var(--fg-muted);
+        margin-bottom: 6px;
+        font-weight: 550;
+      }
+
+      /* Download */
+      .dl-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+      .dl-card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-elev);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .dl-card .ico {
+        font-size: 26px;
+        margin-bottom: 8px;
+      }
+      .dl-card h3 {
+        font-size: 16px;
+        font-weight: 620;
+      }
+      .dl-card p {
+        color: var(--fg-muted);
+        font-size: 14px;
+        flex: 1;
+      }
+      .dl-card .btn {
+        margin-top: 14px;
+        justify-content: center;
+      }
+      .note {
+        margin-top: 22px;
+        padding: 14px 16px;
+        border: 1px solid var(--border);
+        border-left: 3px solid var(--accent);
+        border-radius: 10px;
+        background: var(--bg-soft);
+        font-size: 13.5px;
+        color: var(--fg-muted);
+      }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid var(--border);
+        padding: 44px 0;
+        margin-top: 20px;
+      }
+      .foot {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .foot .links {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      .foot a {
+        color: var(--fg-muted);
+        font-size: 14px;
+      }
+      .foot a:hover {
+        color: var(--fg);
+      }
+
+      /* Reveal on scroll */
+      .reveal {
+        opacity: 0;
+        transform: translateY(16px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      .reveal.in {
+        opacity: 1;
+        transform: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .reveal {
+          opacity: 1;
+          transform: none;
+          transition: none;
+        }
+        html {
+          scroll-behavior: auto;
+        }
+      }
+
+      @media (max-width: 860px) {
+        .grid,
+        .dl-grid {
+          grid-template-columns: 1fr;
+        }
+        .gallery,
+        .docs-grid {
+          grid-template-columns: 1fr;
+        }
+        .nav-links {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="#top" aria-label="Pretty Lattice">
+          <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden="true">
+            <polygon
+              points="16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5"
+              fill="none"
+              stroke="url(#g)"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+            />
+            <circle cx="16" cy="16" r="3" fill="#06b6d4" />
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#6366f1" />
+                <stop offset="1" stop-color="#06b6d4" />
+              </linearGradient>
+            </defs>
+          </svg>
+          Pretty Lattice
+        </a>
+        <nav class="nav-links">
+          <a href="#features" data-en="Features" data-zh="功能">Features</a>
+          <a href="#examples" data-en="Examples" data-zh="示例">Examples</a>
+          <a href="#docs" data-en="Docs" data-zh="文档">Docs</a>
+          <a href="#download" data-en="Download" data-zh="下载">Download</a>
+        </nav>
+        <div class="nav-right">
+          <button class="icon-btn" id="lang" title="Switch language" aria-label="Switch language">
+            中
+          </button>
+          <button class="icon-btn" id="theme" title="Toggle theme" aria-label="Toggle theme">
+            ☾
+          </button>
+          <a
+            class="icon-btn"
+            href="https://github.com/Xqd9912/pretty-lattice"
+            title="GitHub"
+            aria-label="GitHub"
+            style="width: auto; padding: 0 12px"
+            >GitHub</a
+          >
+        </div>
+      </div>
+    </header>
+
+    <main id="top">
+      <!-- Hero -->
+      <section class="hero">
+        <div class="wrap">
+          <span class="eyebrow"
+            ><span class="dot"></span
+            ><span data-en="Local web GUI · Three.js" data-zh="本地 Web GUI · Three.js"
+              >Local web GUI · Three.js</span
+            ></span
+          >
+          <h1 data-en="Publication-ready crystal figures" data-zh="出版级的晶体结构图">
+            Publication-ready crystal figures
+          </h1>
+          <p
+            class="lede"
+            data-en="Pretty Lattice is a local tool that renders crystal structures as beautiful, publication-ready figures — with built-in trajectory, structure, and electronic-property analysis."
+            data-zh="Pretty Lattice 是一个本地工具，把晶体结构渲染成漂亮的、可直接用于论文发表的图，并内置轨迹、结构与电子性质分析。"
+          >
+            Pretty Lattice is a local tool that renders crystal structures as beautiful,
+            publication-ready figures — with built-in trajectory, structure, and
+            electronic-property analysis.
+          </p>
+          <div class="pillrow">
+            <span class="pill" data-en="Pretty defaults" data-zh="漂亮的默认效果">Pretty defaults</span>
+            <span class="pill" data-en="Intuitive GUI" data-zh="直观的界面">Intuitive GUI</span>
+            <span class="pill" data-en="Powered by pymatgen" data-zh="基于 pymatgen">Powered by pymatgen</span>
+            <span class="pill" data-en="Up to 10k atoms" data-zh="支持万级原子">Up to 10k atoms</span>
+          </div>
+          <div class="cta">
+            <a class="btn btn-primary" href="#download" data-en="Download" data-zh="下载">Download</a>
+            <a class="btn btn-ghost" href="#docs" data-en="Get started" data-zh="快速开始">Get started</a>
+            <a class="btn btn-ghost" href="https://github.com/Xqd9912/pretty-lattice">GitHub</a>
+          </div>
+          <div class="shot reveal">
+            <img
+              src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/demo.png"
+              alt="Pretty Lattice interface"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- Features -->
+      <section id="features">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <div class="kicker" data-en="Features" data-zh="功能特性">Features</div>
+            <h2 data-en="Everything for the final figure" data-zh="为最终成图而生">
+              Everything for the final figure
+            </h2>
+            <p
+              data-en="Focused on viewing and rendering. Prepare structures elsewhere, then bring them here to style, analyze, and export."
+              data-zh="专注于查看与渲染。在别处准备好结构，再拿到这里来配色、分析和导出。"
+            >
+              Focused on viewing and rendering. Prepare structures elsewhere, then bring them
+              here to style, analyze, and export.
+            </p>
+          </div>
+          <div class="grid">
+            <div class="card reveal">
+              <span class="ico">🎨</span>
+              <h3 data-en="Publication-ready" data-zh="出版级成图">Publication-ready</h3>
+              <p
+                data-en="Tasteful defaults for colors, materials, lighting, and depth. Clean figures straight out of the box."
+                data-zh="对颜色、材质、光照和景深都有讲究的默认设置，开箱即得干净的图。"
+              >
+                Tasteful defaults for colors, materials, lighting, and depth.
+              </p>
+            </div>
+            <div class="card reveal">
+              <span class="ico">🖱️</span>
+              <h3 data-en="Intuitive GUI" data-zh="直观界面">Intuitive GUI</h3>
+              <p
+                data-en="A quiet browser interface for loading, viewing, styling, and exporting structures."
+                data-zh="安静的浏览器界面，用于加载、查看、配色和导出结构。"
+              >
+                A quiet browser interface for loading, viewing, and exporting structures.
+              </p>
+            </div>
+            <div class="card reveal">
+              <span class="ico">🔬</span>
+              <h3 data-en="Reliable parsing" data-zh="可靠的解析">Reliable parsing</h3>
+              <p
+                data-en="Structure parsing, bonding, polyhedra, and symmetry powered by the mature pymatgen package."
+                data-zh="结构解析、成键、多面体与对称性均由成熟的 pymatgen 驱动。"
+              >
+                Structure parsing, bonding, and symmetry powered by pymatgen.
+              </p>
+            </div>
+            <div class="card reveal">
+              <span class="ico">🎞️</span>
+              <h3 data-en="Trajectory playback" data-zh="轨迹回放">Trajectory playback</h3>
+              <p
+                data-en="Load VASP XDATCAR, LAMMPS .dump, or .xyz trajectories and step through frames with the built-in player."
+                data-zh="加载 VASP XDATCAR、LAMMPS .dump 或 .xyz 轨迹，用内置播放器逐帧浏览。"
+              >
+                Load XDATCAR, LAMMPS .dump, or .xyz trajectories and step through frames.
+              </p>
+            </div>
+            <div class="card reveal">
+              <span class="ico">📊</span>
+              <h3 data-en="Structure analysis" data-zh="结构分析">Structure analysis</h3>
+              <p
+                data-en="Pair distribution g(r), coordination number, angular distribution, order parameters, MSD, and ALTBC as interactive charts."
+                data-zh="径向分布 g(r)、配位数、角分布、序参量、MSD 与 ALTBC，均以交互图表呈现。"
+              >
+                g(r), coordination number, angular distribution, order parameters, MSD, ALTBC.
+              </p>
+            </div>
+            <div class="card reveal">
+              <span class="ico">⚛️</span>
+              <h3 data-en="Electronic properties" data-zh="电子性质">Electronic properties</h3>
+              <p
+                data-en="CHGCAR/ELFCAR isosurfaces and slices, bonding-path profiles, LOBSTER bonding scatters, DOS, and IPR."
+                data-zh="CHGCAR/ELFCAR 等值面与切片、成键路径剖面、LOBSTER 成键散点、DOS 与 IPR。"
+              >
+                CHGCAR/ELFCAR isosurfaces, bonding-path profiles, LOBSTER, DOS, and IPR.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Examples gallery -->
+      <section id="examples" style="background: var(--bg-soft)">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <div class="kicker" data-en="Examples" data-zh="示例">Examples</div>
+            <h2 data-en="From structure to insight" data-zh="从结构到洞见">From structure to insight</h2>
+          </div>
+          <div class="gallery">
+            <figure class="reveal">
+              <img
+                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/Traj_visualization.png"
+                alt="Trajectory frames with the frame player"
+                loading="lazy"
+              />
+              <figcaption data-en="Trajectory visualization with the frame player" data-zh="轨迹可视化与逐帧播放器">
+                Trajectory visualization with the frame player
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <img
+                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/Analysis_1.png"
+                alt="Structure analysis charts"
+                loading="lazy"
+              />
+              <figcaption data-en="Structure analysis: g(r) and coordination number" data-zh="结构分析：g(r) 与配位数">
+                Structure analysis: g(r) and coordination number
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <img
+                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/electronic_density.png"
+                alt="Charge density isosurface"
+                loading="lazy"
+              />
+              <figcaption data-en="Charge density: 3D isosurface, slice, and LED distribution" data-zh="电荷密度：三维等值面、切片与 LED 分布">
+                Charge density: 3D isosurface, slice, and LED distribution
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <img
+                src="https://raw.githubusercontent.com/Xqd9912/pretty-lattice/main/assets/electronic_lobster.png"
+                alt="LOBSTER bonding analysis"
+                loading="lazy"
+              />
+              <figcaption data-en="LOBSTER bonding analysis: BWDF and -ICOHP / ICOOP" data-zh="LOBSTER 成键分析：BWDF 与 -ICOHP / ICOOP">
+                LOBSTER bonding analysis: BWDF and -ICOHP / ICOOP
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- Docs / quick start -->
+      <section id="docs">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <div class="kicker" data-en="Documentation" data-zh="使用文档">Documentation</div>
+            <h2 data-en="Up and running in a minute" data-zh="一分钟上手">Up and running in a minute</h2>
+            <p
+              data-en="Install the Python package, then launch the local GUI. The frontend ships with the package — no Node or bun build step."
+              data-zh="安装 Python 包，然后启动本地 GUI。前端已随包发布——无需 Node/bun 构建步骤。"
+            >
+              Install the Python package, then launch the local GUI.
+            </p>
+          </div>
+          <div class="docs-grid">
+            <div class="steps">
+              <div class="step reveal">
+                <span class="n">1</span>
+                <div>
+                  <h3 data-en="Install from the repository" data-zh="从仓库安装">Install from the repository</h3>
+                  <p data-en="Requires Python 3.12+. macOS, Linux, or Windows." data-zh="需要 Python 3.12+，支持 macOS、Linux 或 Windows。">
+                    Requires Python 3.12+. macOS, Linux, or Windows.
+                  </p>
+                </div>
+              </div>
+              <div class="step reveal">
+                <span class="n">2</span>
+                <div>
+                  <h3 data-en="Launch the GUI" data-zh="启动 GUI">Launch the GUI</h3>
+                  <p data-en="Starts a local server and opens your browser automatically." data-zh="启动本地服务并自动打开浏览器。">
+                    Starts a local server and opens your browser automatically.
+                  </p>
+                </div>
+              </div>
+              <div class="step reveal">
+                <span class="n">3</span>
+                <div>
+                  <h3 data-en="Open a structure" data-zh="打开结构">Open a structure</h3>
+                  <p data-en="Drop in a CIF or POSCAR, style it, and export a figure. Input files stay read-only." data-zh="拖入 CIF 或 POSCAR，配色后导出图。输入文件保持只读。">
+                    Drop in a CIF or POSCAR, style it, and export a figure.
+                  </p>
+                </div>
+              </div>
+              <div style="margin-top: 8px">
+                <a class="btn btn-ghost" href="https://github.com/Xqd9912/pretty-lattice#readme" data-en="Read the full README →" data-zh="阅读完整 README →">Read the full README →</a>
+              </div>
+            </div>
+            <div class="code-stack">
+              <div>
+                <div class="code-label" data-en="Install (pip)" data-zh="安装（pip）">Install (pip)</div>
+<pre><span class="c">pip install</span> git+https://github.com/Xqd9912/pretty-lattice.git</pre>
+              </div>
+              <div>
+                <div class="code-label" data-en="Or with uv" data-zh="或使用 uv">Or with uv</div>
+<pre><span class="c">uv tool install</span> git+https://github.com/Xqd9912/pretty-lattice.git</pre>
+              </div>
+              <div>
+                <div class="code-label" data-en="Launch" data-zh="启动">Launch</div>
+<pre><span class="c">prl</span> gui</pre>
+              </div>
+              <div>
+                <div class="code-label" data-en="Run once without installing" data-zh="免安装运行一次">Run once without installing</div>
+<pre><span class="c">uvx</span> --from git+https://github.com/Xqd9912/pretty-lattice.git prl gui</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Download -->
+      <section id="download" style="background: var(--bg-soft)">
+        <div class="wrap">
+          <div class="section-head reveal">
+            <div class="kicker" data-en="Download" data-zh="下载">Download</div>
+            <h2 data-en="Get Pretty Lattice" data-zh="获取 Pretty Lattice">Get Pretty Lattice</h2>
+            <p
+              data-en="Install the Python package for any platform, or grab a native desktop build for macOS or Windows."
+              data-zh="在任意平台安装 Python 包，或直接下载 macOS / Windows 的原生桌面版。"
+            >
+              Install the Python package, or grab a native desktop build.
+            </p>
+          </div>
+          <div class="dl-grid">
+            <div class="dl-card reveal">
+              <span class="ico">🐍</span>
+              <h3 data-en="Python package" data-zh="Python 包">Python package</h3>
+              <p data-en="Cross-platform. Installs the CLI and the bundled web GUI. Recommended." data-zh="跨平台。安装命令行与内置 Web GUI。推荐方式。">
+                Cross-platform. Installs the CLI and the bundled web GUI.
+              </p>
+              <a class="btn btn-primary" href="#docs" data-en="Installation steps" data-zh="安装步骤">Installation steps</a>
+            </div>
+            <div class="dl-card reveal">
+              <span class="ico">🍎</span>
+              <h3 data-en="macOS desktop app" data-zh="macOS 桌面版">macOS desktop app</h3>
+              <p data-en="Native .dmg with no Python required. Apple Silicon and Intel builds." data-zh="原生 .dmg，无需安装 Python。提供 Apple Silicon 与 Intel 版本。">
+                Native .dmg, no Python required. Apple Silicon and Intel.
+              </p>
+              <a class="btn btn-ghost" href="https://github.com/Xqd9912/pretty-lattice/releases" data-en="Latest releases" data-zh="最新发布">Latest releases</a>
+            </div>
+            <div class="dl-card reveal">
+              <span class="ico">🪟</span>
+              <h3 data-en="Windows desktop app" data-zh="Windows 桌面版">Windows desktop app</h3>
+              <p data-en="Native installer (.msi / .exe) with no Python required." data-zh="原生安装包（.msi / .exe），无需安装 Python。">
+                Native installer (.msi / .exe), no Python required.
+              </p>
+              <a class="btn btn-ghost" href="https://github.com/Xqd9912/pretty-lattice/releases" data-en="Latest releases" data-zh="最新发布">Latest releases</a>
+            </div>
+          </div>
+          <div class="note">
+            <span
+              data-en="Desktop builds are published on the GitHub Releases page. The extra analysis modules in this fork are not on PyPI — install from this repository as shown above."
+              data-zh="桌面版发布在 GitHub Releases 页面。本 fork 的额外分析模块未上传 PyPI —— 请按上面的方式从本仓库安装。"
+              >Desktop builds are published on the GitHub Releases page. The extra analysis
+              modules in this fork are not on PyPI — install from this repository as shown
+              above.</span
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap foot">
+        <div class="brand">
+          <svg width="20" height="20" viewBox="0 0 32 32" aria-hidden="true">
+            <polygon
+              points="16,3 27,9.5 27,22.5 16,29 5,22.5 5,9.5"
+              fill="none"
+              stroke="#6366f1"
+              stroke-width="2.5"
+              stroke-linejoin="round"
+            />
+            <circle cx="16" cy="16" r="3" fill="#06b6d4" />
+          </svg>
+          Pretty Lattice
+        </div>
+        <div class="links">
+          <a href="https://github.com/Xqd9912/pretty-lattice">GitHub</a>
+          <a href="https://github.com/Xqd9912/pretty-lattice#readme" data-en="Documentation" data-zh="文档">Documentation</a>
+          <a href="https://github.com/Xqd9912/pretty-lattice/releases" data-en="Releases" data-zh="发布">Releases</a>
+          <a href="https://github.com/songfeitong/pretty-lattice" data-en="Upstream project" data-zh="上游项目">Upstream project</a>
+        </div>
+        <div class="muted" style="font-size: 13px">
+          <span data-en="MIT License · A fork of" data-zh="MIT 许可证 · 派生自">MIT License · A fork of</span>
+          <a href="https://github.com/songfeitong/pretty-lattice" style="color: var(--accent)">@songfeitong</a>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        const root = document.documentElement;
+
+        // Theme: follow the OS by default, remember an explicit choice.
+        const themeBtn = document.getElementById("theme");
+        const storedTheme = localStorage.getItem("pl-theme");
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        setTheme(storedTheme || (prefersDark ? "dark" : "light"));
+        function setTheme(t) {
+          root.setAttribute("data-theme", t);
+          themeBtn.textContent = t === "dark" ? "☀" : "☾";
+        }
+        themeBtn.addEventListener("click", function () {
+          const next = root.getAttribute("data-theme") === "dark" ? "light" : "dark";
+          setTheme(next);
+          localStorage.setItem("pl-theme", next);
+        });
+
+        // Language: English default, toggle to Chinese. Swaps textContent from data
+        // attributes so the two versions never drift apart in the DOM.
+        const langBtn = document.getElementById("lang");
+        let lang = localStorage.getItem("pl-lang") || "en";
+        applyLang(lang);
+        function applyLang(l) {
+          document.querySelectorAll("[data-en]").forEach(function (el) {
+            const v = el.getAttribute("data-" + l);
+            if (v !== null) el.textContent = v;
+          });
+          root.setAttribute("lang", l === "zh" ? "zh-CN" : "en");
+          langBtn.textContent = l === "zh" ? "EN" : "中";
+        }
+        langBtn.addEventListener("click", function () {
+          lang = lang === "zh" ? "en" : "zh";
+          applyLang(lang);
+          localStorage.setItem("pl-lang", lang);
+        });
+
+        // Reveal on scroll.
+        const io = new IntersectionObserver(
+          function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("in");
+                io.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: "0px 0px -8% 0px" },
+        );
+        document.querySelectorAll(".reveal").forEach(function (el) {
+          io.observe(el);
+        });
+      })();
+    </script>
+  </body>
+</html>
