@@ -97,6 +97,37 @@ async def test_analysis_descriptors_returns_cn_adf_q() -> None:
 
 
 @pytest.mark.anyio
+async def test_analysis_rings_returns_per_frame_and_average() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://testserver"
+    ) as client:
+        trajectory_id = await _upload(client)
+        response = await client.post(
+            f"/api/trajectory/{trajectory_id}/analysis/rings",
+            json={
+                "frameStart": 0,
+                "frameEnd": 3,
+                "minSize": 3,
+                "maxSize": 8,
+                "cutoffs": [
+                    {"elements": ["Na", "Cl"], "distance": 3.0},
+                    {"elements": ["Na", "Na"], "distance": 3.0},
+                    {"elements": ["Cl", "Cl"], "distance": 3.0},
+                ],
+            },
+        )
+
+    body = response.json()
+    rings = body["rings"]
+    assert response.status_code == 200
+    assert rings["sizes"] == [3, 4, 5, 6, 7, 8]
+    assert body["frameCount"] == 3
+    assert len(rings["perFrame"]) == 3
+    assert all(len(row) == len(rings["sizes"]) for row in rings["perFrame"])
+    assert len(rings["mean"]) == len(rings["std"]) == len(rings["sizes"])
+
+
+@pytest.mark.anyio
 async def test_analysis_dynamics_returns_altbc_and_msd() -> None:
     async with AsyncClient(
         transport=ASGITransport(app=create_app()), base_url="http://testserver"

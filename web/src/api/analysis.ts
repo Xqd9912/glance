@@ -72,6 +72,25 @@ export interface GrResponse {
   suggestedCutoffs: BondCutoffSpec[];
 }
 
+export interface RingsResult {
+  /** Ring sizes tracked, e.g. [3, 4, 5, ...]. */
+  sizes: number[];
+  /** Trajectory frame indices that were analyzed. */
+  frames: number[];
+  /** Per-frame ring counts; one row per frame, one column per ring size. */
+  perFrame: number[][];
+  /** Frame-averaged count per ring size (bar-chart series). */
+  mean: number[];
+  /** Standard deviation of the per-frame counts per ring size. */
+  std: number[];
+}
+
+export interface RingsResponse {
+  symbols: string[];
+  frameCount: number;
+  rings: RingsResult;
+}
+
 async function postAnalysis<T>(
   trajectoryId: string,
   endpoint: string,
@@ -118,6 +137,15 @@ export function computeDescriptors(
   cutoffs: BondCutoffSpec[],
 ): Promise<{ symbols: string[]; frameCount: number; descriptors: DescriptorsResult }> {
   return postAnalysis(trajectoryId, "descriptors", { ...range, cutoffs });
+}
+
+export function computeRings(
+  trajectoryId: string,
+  range: FrameRange,
+  cutoffs: BondCutoffSpec[],
+  options: { minSize?: number; maxSize?: number } = {},
+): Promise<RingsResponse> {
+  return postAnalysis<RingsResponse>(trajectoryId, "rings", { ...range, cutoffs, ...options });
 }
 
 export function computeDynamics(

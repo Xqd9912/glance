@@ -121,9 +121,11 @@ elements on the fly, and every frame reuses the same rendering and bond settings
 
 Compute structural and dynamical descriptors over a frame range and explore them with
 interactive charts: pair distribution g(r), coordination number, angular distribution,
-order parameter, mean squared displacement (total and per element), and ALTBC. Bond
-cutoffs are seeded from the first minimum of each g(r) and can be edited before computing
-coordination-based quantities.
+order parameter, ring statistics, mean squared displacement (total and per element), and
+ALTBC. Bond cutoffs are seeded from the first minimum of each g(r) and can be edited
+before computing coordination-based quantities. Ring statistics count primitive
+(shortest-path) rings on the bond network and report both the frame-averaged size
+distribution (bar chart) and the per-frame spread (box plot).
 
 <p align="center">
   <img src="assets/Analysis_1.png" alt="Structure analysis: g(r) and coordination number" width="90%">
@@ -187,7 +189,7 @@ This fork extends it with:
 - **Trajectory visualization** — load VASP `XDATCAR`, LAMMPS `.dump`, and `.xyz` trajectories
   and play through frames, reusing the same rendering and unified bond settings.
 - **Structure analysis** — pair distribution g(r), coordination number, angular distribution,
-  order parameters, MSD, and ALTBC, with interactive charts.
+  order parameters, ring statistics, MSD, and ALTBC, with interactive charts.
 - **Electronic-property analysis** — CHGCAR charge density and ELFCAR electron localization
   as 3D isosurfaces plus slices and distributions, bonding-path profiles along an atom pair,
   LOBSTER BWDF/ICOHP/ICOOP bonding scatters, TDOS.dat density of states, and the inverse

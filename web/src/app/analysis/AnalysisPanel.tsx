@@ -10,12 +10,14 @@ import {
   computeDescriptors,
   computeDynamics,
   computeGr,
+  computeRings,
   type AxisSeries,
   type DescriptorsResult,
   type DynamicsResult,
   type GrResponse,
+  type RingsResult,
 } from "../../api/analysis";
-import { HeatmapCard, LineChartCard, type RawSeries } from "./chartCards";
+import { BoxPlotCard, HeatmapCard, LineChartCard, type RawSeries } from "./chartCards";
 
 type Status = "idle" | "loading" | "ready" | "error";
 
@@ -59,6 +61,11 @@ export function AnalysisPanel({
   const [descStatus, setDescStatus] = useState<Status>("idle");
   const [descriptors, setDescriptors] = useState<DescriptorsResult | null>(null);
 
+  const [ringMinSize, setRingMinSize] = useState("3");
+  const [ringMaxSize, setRingMaxSize] = useState("9");
+  const [ringStatus, setRingStatus] = useState<Status>("idle");
+  const [rings, setRings] = useState<RingsResult | null>(null);
+
   const [rMin, setRMin] = useState("2.0");
   const [rMax, setRMax] = useState("4.0");
   const [nPoint, setNPoint] = useState("100");
@@ -72,10 +79,12 @@ export function AnalysisPanel({
     // Reset when a different trajectory is loaded.
     setGr(null);
     setDescriptors(null);
+    setRings(null);
     setDynamics(null);
     setCutoffs([]);
     setGrStatus("idle");
     setDescStatus("idle");
+    setRingStatus("idle");
     setDynStatus("idle");
     setError(null);
     setFrameEnd(String(frameCount));
@@ -146,6 +155,25 @@ export function AnalysisPanel({
       setError(caught instanceof Error ? caught.message : "Descriptor computation failed.");
     }
   }, [trajectoryId, range, cutoffs]);
+
+  const runRings = useCallback(async () => {
+    if (!trajectoryId) {
+      return;
+    }
+    setRingStatus("loading");
+    setError(null);
+    try {
+      const result = await computeRings(trajectoryId, range(), cutoffs, {
+        minSize: Math.max(3, Number(ringMinSize) || 3),
+        maxSize: Math.max(3, Number(ringMaxSize) || 9),
+      });
+      setRings(result.rings);
+      setRingStatus("ready");
+    } catch (caught) {
+      setRingStatus("error");
+      setError(caught instanceof Error ? caught.message : "Ring statistics failed.");
+    }
+  }, [trajectoryId, range, cutoffs, ringMinSize, ringMaxSize]);
 
   const runDynamics = useCallback(async () => {
     if (!trajectoryId) {
@@ -263,7 +291,47 @@ export function AnalysisPanel({
               <Button size="sm" className="w-fit" disabled={descStatus === "loading"} onClick={() => void runDescriptors()}>
                 {descStatus === "loading" ? "Computing…" : "Compute CN / ADF / q"}
               </Button>
+
+              <div className="mt-1 flex flex-col gap-2 border-t border-border pt-2">
+                <h3 className="text-[13px] font-semibold">Ring statistics</h3>
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  Primitive (shortest-path) rings on the bond network above.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <label className="flex items-center gap-1">
+                    min size
+                    <input aria-label="Ring min size" value={ringMinSize} className={NUMBER_INPUT_CLASS} onChange={(e) => setRingMinSize(e.target.value)} />
+                  </label>
+                  <label className="flex items-center gap-1">
+                    max size
+                    <input aria-label="Ring max size" value={ringMaxSize} className={NUMBER_INPUT_CLASS} onChange={(e) => setRingMaxSize(e.target.value)} />
+                  </label>
+                </div>
+                <Button size="sm" className="w-fit" disabled={ringStatus === "loading"} onClick={() => void runRings()}>
+                  {ringStatus === "loading" ? "Counting rings…" : "Compute rings"}
+                </Button>
+              </div>
             </section>
+          ) : null}
+
+          {rings ? (
+            <>
+              <LineChartCard
+                variant="bar"
+                title="Ring size distribution (average)"
+                xLabel="ring size"
+                yLabel="avg count / frame"
+                series={[{ label: "mean", x: rings.sizes, y: rings.mean }]}
+              />
+              <BoxPlotCard
+                title="Ring counts per frame"
+                categories={rings.sizes}
+                data={rings.sizes.map((_, sizeIndex) => rings.perFrame.map((row) => row[sizeIndex] ?? 0))}
+                frames={rings.frames}
+                xLabel="ring size"
+                yLabel="count / frame"
+              />
+            </>
           ) : null}
 
           {descriptors ? (

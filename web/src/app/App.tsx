@@ -26,10 +26,7 @@ import type { SceneSpec } from "../api/scene";
 import type { IsosurfaceOverlay } from "../scene/DensityIsosurface";
 import { TOOL_ICON_BUTTON_ACTIVE_CLASS, TOOL_ICON_BUTTON_CLASS } from "./surface";
 import { inspectedAtomInfoForId } from "./atomInspector";
-import {
-  LatticeScene,
-  previewSafeAreaForViewport,
-} from "../scene/LatticeScene";
+import { LatticeScene } from "../scene/LatticeScene";
 import { ATOM_HIGHLIGHT_PULSE_MS } from "../scene/atomHighlight";
 import { OrientationGizmo } from "../scene/OrientationGizmo";
 import {
@@ -51,11 +48,7 @@ import { TrajectoryPlayer } from "./trajectory/TrajectoryPlayer";
 import { AnalysisPanel } from "./analysis/AnalysisPanel";
 import { ElectronicPanel } from "./electronic/ElectronicPanel";
 import { ElementLegend } from "./legend/ElementLegend";
-import {
-  orientationGizmoContainerStyle,
-  orientationGizmoSizeForViewport,
-  useViewportSize,
-} from "./layout/overlayLayout";
+import { useViewportSize } from "./layout/overlayLayout";
 import { StructureSummaryCard } from "./panels/StructureSummaryCard";
 import {
   InspectorSidebar,
@@ -75,6 +68,7 @@ import {
   type UnitCellLineStyle,
   hasPolyhedra,
   previewSafeAreaForInspector,
+  leftPanelSceneOffsetX,
   rightPanelsSceneOffsetX,
   electronicPanelRightOffset,
   ANALYSIS_PANEL_DEFAULT_WIDTH_PX,
@@ -518,19 +512,18 @@ export function App() {
   }, []);
   const previewSafeArea = previewSafeAreaForInspector();
   const inspectorOpenWidth = isInspectorOpen && scene !== null ? inspectorPanelWidth : 0;
-  const sceneOffsetX = rightPanelsSceneOffsetX(
-    inspectorOpenWidth,
-    isElectronicOpen ? electronicPanelWidth : 0,
-    viewportSize.width,
-  );
-  const effectivePreviewSafeArea = useMemo(
-    () => previewSafeAreaForViewport(previewSafeArea, viewportSize.width),
-    [previewSafeArea, viewportSize.width],
-  );
-  const orientationGizmoSize = useMemo(
-    () => orientationGizmoSizeForViewport(viewportSize, effectivePreviewSafeArea),
-    [effectivePreviewSafeArea, viewportSize],
-  );
+  // The structure-analysis panel is a resizable left-hand column; when open it
+  // shifts the scene rightward so the structure is not hidden behind it (mirror
+  // of the right-hand panels). The a/b/c gizmo instead lives inside the fixed
+  // top-left display panel, so it stays put regardless of the analysis panel.
+  const analysisPanelOpen = isAnalysisOpen && trajectoryActive;
+  const analysisOpenWidth = analysisPanelOpen ? analysisPanelWidth : 0;
+  const sceneOffsetX =
+    rightPanelsSceneOffsetX(
+      inspectorOpenWidth,
+      isElectronicOpen ? electronicPanelWidth : 0,
+      viewportSize.width,
+    ) + leftPanelSceneOffsetX(analysisOpenWidth, viewportSize.width);
   const renderPreviewContextMenuContent = () => (
     <ContextMenuContent className="w-36">
       <ContextMenuGroup>
@@ -693,19 +686,6 @@ export function App() {
         {renderPreviewContextMenuContent()}
       </ContextMenu>
 
-      {visibleScene ? (
-        <OrientationGizmo
-          cameraOrientationRef={cameraOrientationRef}
-          cellVectors={visibleScene.cell.vectors}
-          className="absolute"
-          frameRequestRef={orientationGizmoFrameRequestRef}
-          onAxisClick={handleGizmoAxisClick}
-          orientationVersion={cameraOrientationVersion}
-          showLabels={showCrystalAxisLabels}
-          style={orientationGizmoContainerStyle(effectivePreviewSafeArea, orientationGizmoSize)}
-        />
-      ) : null}
-
       {trajectory.meta ? (
         <TrajectoryPlayer
           disabled={previewStatus === "loading" && !trajectory.frameScene}
@@ -786,8 +766,13 @@ export function App() {
       <div
         className={cn(
           "absolute left-4 top-4 flex w-[296px] max-w-[calc(100vw-2rem)] flex-col gap-4",
+          !isResizingRightPanel &&
+            "transition-[left] duration-[260ms] ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none",
           isInspectorOpen ? "max-[760px]:hidden" : null,
         )}
+        // Slide the whole display panel (with the a/b/c axes below it) out from
+        // behind the analysis panel so neither is ever covered by it.
+        style={analysisOpenWidth > 0 ? { left: analysisOpenWidth + 16 } : undefined}
       >
         <StructureSummaryCard
           isCollapsed={isStructureSummaryCollapsed}
@@ -829,6 +814,22 @@ export function App() {
               onComponentVisibilityChange={setComponentVisibility}
             />
           </div>
+        ) : null}
+
+        {/* The a/b/c axes sit at the bottom of the display panel as a fixed
+            member of it — no background of their own, and they travel with the
+            panel rather than floating over the scene. */}
+        {visibleScene ? (
+          <OrientationGizmo
+            cameraOrientationRef={cameraOrientationRef}
+            cellVectors={visibleScene.cell.vectors}
+            className="relative self-center"
+            frameRequestRef={orientationGizmoFrameRequestRef}
+            onAxisClick={handleGizmoAxisClick}
+            orientationVersion={cameraOrientationVersion}
+            showLabels={showCrystalAxisLabels}
+            style={{ height: 200, width: 200 }}
+          />
         ) : null}
       </div>
 

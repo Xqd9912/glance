@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import { CHART_MARGIN as MARGIN, CHART_WIDTH, minMax, niceTicks } from "./chartMath";
 import type { LineSeries } from "./LineChart";
 
@@ -13,12 +15,15 @@ interface BarChartProps {
 /**
  * Grouped bar chart for categorical x (e.g. coordination number). All series
  * are assumed to share the same x categories (the first series defines them).
- * `xDomain` limits which categories are shown.
+ * `xDomain` limits which categories are shown. Bars are filled with a
+ * per-series diagonal hatch (in the series color) and outlined for a cleaner,
+ * publication-style look.
  */
 export function BarChart({ series, xDomain, yDomain, xLabel, yLabel, height = 220 }: BarChartProps) {
   const width = CHART_WIDTH;
   const plotWidth = width - MARGIN.left - MARGIN.right;
   const plotHeight = height - MARGIN.top - MARGIN.bottom;
+  const hatchId = useId();
 
   const allCategories = series[0]?.x ?? [];
   const [xLo, xHi] = xDomain ?? [-Infinity, Infinity];
@@ -42,6 +47,22 @@ export function BarChart({ series, xDomain, yDomain, xLabel, yLabel, height = 22
 
   return (
     <svg viewBox={`0 0 ${width} ${height}`} className="plot-chart w-full" role="img" aria-label={`${yLabel ?? "value"} by ${xLabel ?? "category"}`}>
+      <defs>
+        {series.map((line, seriesIndex) => (
+          <pattern
+            key={line.label}
+            id={`${hatchId}-${seriesIndex}`}
+            patternUnits="userSpaceOnUse"
+            width={5}
+            height={5}
+            patternTransform="rotate(45)"
+          >
+            <rect width={5} height={5} fill={line.color} fillOpacity={0.12} />
+            <line x1={0} y1={0} x2={0} y2={5} stroke={line.color} strokeWidth={1.5} strokeOpacity={0.9} />
+          </pattern>
+        ))}
+      </defs>
+
       {yTicks.map((tick) => (
         <g key={`y${tick}`}>
           <line x1={MARGIN.left} x2={MARGIN.left + plotWidth} y1={scaleY(tick)} y2={scaleY(tick)} stroke="currentColor" strokeOpacity={0.08} />
@@ -62,14 +83,19 @@ export function BarChart({ series, xDomain, yDomain, xLabel, yLabel, height = 22
               const value = line.y[categoryIndex] ?? 0;
               const top = scaleY(Math.max(dy[0], value));
               const barHeight = Math.max(0, MARGIN.top + plotHeight - top);
+              const drawWidth = Math.max(0.5, barWidth - 0.5);
               return (
                 <rect
                   key={line.label}
                   x={groupX + seriesIndex * barWidth}
                   y={top}
-                  width={Math.max(0.5, barWidth - 0.5)}
+                  width={drawWidth}
                   height={barHeight}
-                  fill={line.color}
+                  rx={Math.min(1.5, drawWidth / 3)}
+                  fill={`url(#${hatchId}-${seriesIndex})`}
+                  stroke={line.color}
+                  strokeWidth={1}
+                  strokeOpacity={0.9}
                 />
               );
             })}

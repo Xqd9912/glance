@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 
 import { BarChart } from "./BarChart";
+import { BoxPlot } from "./BoxPlot";
 import { ChartExportButtons, slugify, type CsvColumn } from "./chartExport";
 import { Heatmap, type Colormap } from "./Heatmap";
 import { LineChart, type LineSeries } from "./LineChart";
@@ -171,6 +172,65 @@ export function LineChartCard({
           );
         })}
       </div>
+    </section>
+  );
+}
+
+export function BoxPlotCard({
+  title,
+  categories,
+  data,
+  frames,
+  xLabel,
+  yLabel,
+}: {
+  title: string;
+  /** Category value for each box (e.g. ring size). */
+  categories: number[];
+  /** One value array per category — the distribution drawn as a box. */
+  data: number[][];
+  /** Frame indices for each per-frame row, used for the CSV export. */
+  frames: number[];
+  xLabel: string;
+  yLabel: string;
+}) {
+  const [color, setColor] = useState(DEFAULT_COLOR);
+  const [yMin, setYMin] = useState("");
+  const [yMax, setYMax] = useState("");
+  const cardRef = useRef<HTMLElement>(null);
+
+  const csvColumns = (): CsvColumn[] => [
+    { header: "frame", values: frames },
+    ...categories.map((category, index) => ({
+      header: `${xLabel}=${category}`,
+      values: (data[index] ?? []) as Array<number | string>,
+    })),
+  ];
+
+  return (
+    <section ref={cardRef} className="flex flex-col gap-2 rounded-lg border border-border bg-background p-2">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <label className="flex items-center gap-1">
+            color
+            <input
+              type="color"
+              aria-label={`${title} color`}
+              value={color}
+              className="h-4 w-5 cursor-pointer border-0 bg-transparent p-0"
+              onChange={(event) => setColor(event.target.value)}
+            />
+          </label>
+          <span className="flex items-center gap-1">
+            y
+            <input aria-label={`${title} y min`} placeholder="auto" value={yMin} className={NUMBER_INPUT_CLASS} onChange={(e) => setYMin(e.target.value)} />
+            <input aria-label={`${title} y max`} placeholder="auto" value={yMax} className={NUMBER_INPUT_CLASS} onChange={(e) => setYMax(e.target.value)} />
+          </span>
+          <ChartExportButtons targetRef={cardRef} fileStem={slugify(title)} csvColumns={csvColumns} />
+        </div>
+      </div>
+      <BoxPlot categories={categories} data={data} color={color} yDomain={domainFrom(yMin, yMax)} xLabel={xLabel} yLabel={yLabel} />
     </section>
   );
 }

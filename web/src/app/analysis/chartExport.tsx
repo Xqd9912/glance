@@ -64,14 +64,25 @@ const SVG_STYLE_PROPS = [
 
 function inlineComputedStyles(source: Element, clone: Element): void {
   const computed = window.getComputedStyle(source);
+  // A `fill="url(#…)"` pattern/gradient reference (e.g. the bar-chart hatch)
+  // must survive as an attribute — inlining the computed `fill` can absolutize
+  // the fragment URL and break it in the serialized standalone SVG.
+  const fillAttr = source.getAttribute("fill");
+  const keepFillReference = fillAttr?.startsWith("url(") ?? false;
   let inline = "";
   for (const prop of SVG_STYLE_PROPS) {
+    if (prop === "fill" && keepFillReference) {
+      continue;
+    }
     const value = computed.getPropertyValue(prop);
     if (value) {
       inline += `${prop}:${value};`;
     }
   }
   clone.setAttribute("style", inline);
+  if (keepFillReference && fillAttr) {
+    clone.setAttribute("fill", fillAttr);
+  }
   const sourceChildren = source.children;
   const cloneChildren = clone.children;
   for (let index = 0; index < sourceChildren.length; index += 1) {

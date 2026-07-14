@@ -26,6 +26,10 @@ export const ELECTRONIC_PANEL_MIN_WIDTH_PX = 360;
 // panels: shifting the scene left by half the panels' combined width holds the
 // structure's centre as the anchor while its on-screen size never changes.
 const RIGHT_PANEL_SCENE_OFFSET_FACTOR = 0.5;
+// The structure-analysis panel is the mirror image on the left, so it shifts
+// the scene rightward by the same factor to re-centre it in the space beside
+// the panel.
+const LEFT_PANEL_SCENE_OFFSET_FACTOR = 0.5;
 
 export function previewSafeAreaForInspector(): PreviewSafeArea {
   return INSPECTOR_PREVIEW_SAFE_AREA;
@@ -51,6 +55,26 @@ export function rightPanelsSceneOffsetX(
     return 0;
   }
   return -Math.round(occupied * RIGHT_PANEL_SCENE_OFFSET_FACTOR);
+}
+
+/**
+ * Rightward scene shift that keeps the structure centered in the space to the
+ * right of the open structure-analysis panel (a resizable left-hand column).
+ * Mirrors {@link rightPanelsSceneOffsetX}: pass the panel width, or 0 when it is
+ * closed. Pure translation, so the structure keeps its on-screen size.
+ */
+export function leftPanelSceneOffsetX(
+  analysisPanelWidth: number,
+  viewportWidth: number,
+): number {
+  if (viewportWidth <= INSPECTOR_SCENE_OFFSET_BREAKPOINT_PX) {
+    return 0;
+  }
+  const occupied = Math.max(0, analysisPanelWidth);
+  if (occupied <= 0) {
+    return 0;
+  }
+  return Math.round(occupied * LEFT_PANEL_SCENE_OFFSET_FACTOR);
 }
 
 /**

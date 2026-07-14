@@ -334,6 +334,30 @@ async def analyze_descriptors(trajectory_id: str, request: Request) -> dict[str,
     return {"symbols": symbols, "frameCount": len(indices), "descriptors": descriptors}
 
 
+@router.post("/trajectory/{trajectory_id}/analysis/rings")
+async def analyze_rings(trajectory_id: str, request: Request) -> dict[str, object]:
+    entry = _require_trajectory(trajectory_id)
+    body = await _json_body(request)
+    indices = _frame_indices(entry, body)
+    symbols = _trajectory_symbols(entry)
+    cutoffs = _parse_bond_cutoffs_body(body.get("cutoffs"))
+    cutoff_matrix = analysis_pipeline.cutoff_matrix_from_pairs(cutoffs, symbols)
+
+    min_size = int(body.get("minSize") or analysis_pipeline.RING_MIN_SIZE)
+    max_size = int(body.get("maxSize") or analysis_pipeline.RING_MAX_SIZE)
+    if min_size < 3 or max_size < min_size:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "Ring sizes must satisfy 3 <= minSize <= maxSize."},
+        )
+
+    rings = analysis_pipeline.compute_rings(
+        entry.data.frames, symbols, indices, cutoff_matrix,
+        min_size=min_size, max_size=max_size,
+    )
+    return {"symbols": symbols, "frameCount": len(indices), "rings": rings}
+
+
 @router.post("/trajectory/{trajectory_id}/analysis/dynamics")
 async def analyze_dynamics(trajectory_id: str, request: Request) -> dict[str, object]:
     entry = _require_trajectory(trajectory_id)

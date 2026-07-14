@@ -15,11 +15,14 @@ from pymatgen.core import Structure
 from scipy.signal import find_peaks
 
 from glance.analysis import kernels as K
+from glance.analysis import rings as R
 
 BIN_WIDTH = 0.1
 R_MAX = 10.0
 MAX_CN = 20
 MAX_ANGLE_FEA = 200
+RING_MIN_SIZE = R.RING_MIN_SIZE
+RING_MAX_SIZE = R.RING_MAX_SIZE
 
 
 def element_pair_labels(symbols: Sequence[str]) -> list[str]:
@@ -158,6 +161,46 @@ def compute_descriptors(
             for i in range(e_k)
             for j in range(e_k)
         ],
+    }
+
+
+def compute_rings(
+    frames: Sequence[Structure],
+    symbols: Sequence[str],
+    indices: Sequence[int],
+    cutoff_matrix: np.ndarray,
+    *,
+    min_size: int = RING_MIN_SIZE,
+    max_size: int = RING_MAX_SIZE,
+) -> dict[str, object]:
+    """Primitive (shortest-path) ring statistics across the selected frames.
+
+    Produces both deliverables the design calls for: a per-frame record of the
+    ring-size counts (for a box plot of the frame-to-frame distribution) and
+    the frame-averaged mean/std per ring size (for a bar chart).
+    """
+    sizes = list(range(min_size, max_size + 1))
+    per_frame: list[list[int]] = []
+    for index in indices:
+        counts = R.ring_size_counts(
+            frames[index], symbols, cutoff_matrix, min_size=min_size, max_size=max_size
+        )
+        per_frame.append([int(value) for value in counts])
+
+    matrix = np.array(per_frame, dtype=float) if per_frame else np.zeros((0, len(sizes)))
+    mean = matrix.mean(axis=0) if matrix.size else np.zeros(len(sizes))
+    std = (
+        matrix.std(axis=0, ddof=1)
+        if matrix.shape[0] > 1
+        else np.zeros(len(sizes))
+    )
+
+    return {
+        "sizes": sizes,
+        "frames": [int(index) for index in indices],
+        "perFrame": per_frame,
+        "mean": mean.tolist(),
+        "std": std.tolist(),
     }
 
 

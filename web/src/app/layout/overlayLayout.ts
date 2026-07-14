@@ -15,10 +15,13 @@ export function orientationGizmoContainerStyle(
   safeArea: PreviewSafeArea,
   size: number,
 ): CSSProperties {
+  // The axes are drawn centered in this square, so anchor the square's centre
+  // near the structure region's lower-left corner (the safe-area insets) rather
+  // than pinning it to the viewport floor.
   return {
-    bottom: Math.max(16, safeArea.bottom - 100),
+    bottom: Math.max(16, safeArea.bottom),
     height: size,
-    left: Math.max(16, safeArea.left - 78),
+    left: Math.max(16, safeArea.left - size / 2),
     width: size,
   };
 }
