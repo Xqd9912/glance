@@ -26,8 +26,10 @@ import type {
   CrystalCameraPrimaryDirection,
   CrystalCameraScreenDirection,
   CrystalCameraState,
+  DisplayPresetSnapshot,
   ExportProjectedSize,
   ExportSettingsState,
+  PeriodicCellRange,
   StyleState,
   VectorTuple,
 } from "../../../model";
@@ -38,6 +40,7 @@ import { MaterialPresetTokenPreloadPool } from "./MaterialPresetToken3D";
 import { OrientationTabContent } from "./OrientationTab";
 import { SelectTabContent } from "./SelectTab";
 import { StyleTabContent } from "./StyleTab";
+import { DisplayPresetsPopover } from "./DisplayPresetsPopover";
 
 export type CommonPanelTab = "camera" | "display" | "select" | "style" | "export";
 
@@ -75,6 +78,8 @@ export function CommonControlsPanel({
   isSiteVisible,
   onComponentOpacityChange,
   onComponentVisibilityChange,
+  onPeriodicCellRangeChange,
+  onPeriodicCellRangeReset,
   onAtomRadiusModelChange,
   onCameraPrimaryChange,
   onCameraRollPreviewChange,
@@ -95,8 +100,13 @@ export function CommonControlsPanel({
   onSiteVisibilityToggle,
   selectedSiteIndices,
   selectedOnly,
+  periodicCellRange,
+  periodicDisabledReason,
+  periodicNotice,
   onStyleChange,
   style,
+  getDisplayPresetSnapshot,
+  onApplyDisplayPreset,
 }: {
   activeTab: CommonPanelTab;
   atomSelectionSessionVersion: string | number;
@@ -122,6 +132,8 @@ export function CommonControlsPanel({
   onActiveTabChange?: (tab: CommonPanelTab) => void;
   onComponentOpacityChange: Dispatch<SetStateAction<ComponentOpacityState>>;
   onComponentVisibilityChange: Dispatch<SetStateAction<ComponentVisibilityState>>;
+  onPeriodicCellRangeChange: (range: PeriodicCellRange) => string | null;
+  onPeriodicCellRangeReset: () => void;
   onExport: () => void;
   onExportSettingsChange: (settings: ExportSettingsState) => void;
   onElementVisibilityToggle: (element: string) => void;
@@ -134,8 +146,13 @@ export function CommonControlsPanel({
   onSiteVisibilityToggle: (siteIndex: number) => void;
   selectedSiteIndices: ReadonlySet<number>;
   selectedOnly: boolean;
+  periodicCellRange: PeriodicCellRange;
+  periodicDisabledReason?: string | null;
+  periodicNotice?: string | null;
   onStyleChange: Dispatch<SetStateAction<StyleState>>;
   style: StyleState;
+  getDisplayPresetSnapshot?: () => DisplayPresetSnapshot;
+  onApplyDisplayPreset?: (snapshot: DisplayPresetSnapshot) => string | null;
 }) {
   const tabTriggerRefs = useRef<Record<CommonPanelTab, HTMLButtonElement | null>>({
     camera: null,
@@ -282,6 +299,14 @@ export function CommonControlsPanel({
         )}
       >
         <MaterialPresetTokenPreloadPool />
+        {getDisplayPresetSnapshot && onApplyDisplayPreset ? (
+          <div className="mb-1 flex justify-end">
+            <DisplayPresetsPopover
+              getSnapshot={getDisplayPresetSnapshot}
+              onApply={onApplyDisplayPreset}
+            />
+          </div>
+        ) : null}
         <Tabs
           value={activeTab}
           onValueChange={handleTabValueChange}
@@ -370,6 +395,11 @@ export function CommonControlsPanel({
                 hasPolyhedra={hasPolyhedra}
                 opacity={componentOpacity}
                 onOpacityChange={onComponentOpacityChange}
+                onPeriodicCellRangeChange={onPeriodicCellRangeChange}
+                onPeriodicCellRangeReset={onPeriodicCellRangeReset}
+                periodicCellRange={periodicCellRange}
+                periodicDisabledReason={periodicDisabledReason}
+                periodicNotice={periodicNotice}
                 visibility={componentVisibility}
                 onVisibilityChange={onComponentVisibilityChange}
               />
