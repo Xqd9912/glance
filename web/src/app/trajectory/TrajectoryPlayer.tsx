@@ -151,9 +151,10 @@ function TypeMapEditor({
             placeholder="e.g. Ge"
             disabled={disabled}
             className="h-6 w-14 rounded-md border border-border bg-background px-1 text-center font-mono"
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, [typeId]: event.target.value }))
-            }
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              setDraft((current) => ({ ...current, [typeId]: value }));
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 apply();

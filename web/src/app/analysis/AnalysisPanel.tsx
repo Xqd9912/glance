@@ -275,15 +275,16 @@ export function AnalysisPanel({
                       aria-label={`${cutoff.elements[0]}-${cutoff.elements[1]} cutoff`}
                       value={cutoff.distance}
                       className={NUMBER_INPUT_CLASS}
-                      onChange={(event) =>
+                      onChange={(event) => {
+                        const distance = Number(event.currentTarget.value) || 0;
                         setCutoffs((current) =>
                           current.map((entry, i) =>
                             i === index
-                              ? { ...entry, distance: Number(event.target.value) || 0 }
+                              ? { ...entry, distance }
                               : entry,
                           ),
-                        )
-                      }
+                        );
+                      }}
                     />
                   </label>
                 ))}

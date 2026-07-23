@@ -247,18 +247,20 @@ function PairScatterCard({ data, title }: { data: PairListResponse; title: strin
                 type="checkbox"
                 checked={!hidden[pair]}
                 className="size-3 accent-foreground"
-                onChange={(event) =>
-                  setHidden((current) => ({ ...current, [pair]: !event.target.checked }))
-                }
+                onChange={(event) => {
+                  const hiddenValue = !event.currentTarget.checked;
+                  setHidden((current) => ({ ...current, [pair]: hiddenValue }));
+                }}
               />
               <input
                 type="color"
                 aria-label={`${pair} color`}
                 value={color}
                 className="h-3 w-4 cursor-pointer border-0 bg-transparent p-0"
-                onChange={(event) =>
-                  setColors((current) => ({ ...current, [pair]: event.target.value }))
-                }
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setColors((current) => ({ ...current, [pair]: value }));
+                }}
               />
               {pair} ({count})
             </label>
