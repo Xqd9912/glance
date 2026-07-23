@@ -10,27 +10,35 @@ import { exportFileStem } from "./fileNames";
 
 export async function createCombinedExportFile({
   cameraOrientationRef,
+  cellRange,
   componentOpacity,
   componentVisibility,
   fileName,
   lightStrength,
+  measurements,
   scene,
+  scalarLegend,
   settings,
   showCrystalAxisLabels,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   const visibleScene = visibleSceneForComponents(scene, componentVisibility);
   const cameraPose = createCameraPoseSnapshot(cameraOrientationRef.current);
   const rasterImage = await renderCombinedExportRaster({
     cameraPose,
+    cellRange,
     componentOpacity,
     componentVisibility,
     lightStrength,
+    measurements,
     scene,
+    scalarLegend,
     settings,
     showCrystalAxisLabels,
     style,
+    siteColorOverrides,
     unitCellLineStyle,
     visibleScene,
   });

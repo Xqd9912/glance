@@ -22,7 +22,8 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { AtomInspectorCard } from "./AtomInspectorCard";
-import type { SceneSpec } from "../api/scene";
+import { MeasurementInfoCard } from "./MeasurementInfoCard";
+import type { AtomSpec, SceneSpec } from "../api/scene";
 import type { IsosurfaceOverlay } from "../scene/DensityIsosurface";
 import { TOOL_ICON_BUTTON_ACTIVE_CLASS, TOOL_ICON_BUTTON_CLASS } from "./surface";
 import { inspectedAtomInfoForId } from "./atomInspector";
@@ -44,12 +45,21 @@ import { useLockedInteractionFeedback } from "./hooks/useLockedInteractionFeedba
 import { usePreviewCameraCommands } from "./hooks/usePreviewCameraCommands";
 import { useStructurePreview } from "./hooks/useStructurePreview";
 import { useTrajectory } from "./hooks/useTrajectory";
-import { isTrajectoryFileName } from "../api/trajectory";
-import { bondCutoffPairsFromScene, updateBondCutoff } from "../model/bondCutoffs";
+import {
+  fetchTrajectoryAtomProperties,
+  isTrajectoryFileName,
+  type AtomPropertySeries,
+} from "../api/trajectory";
+import {
+  bondCutoffPairsFromScene,
+  bondCutoffsToSpecs,
+  updateBondCutoff,
+} from "../model/bondCutoffs";
 import { TrajectoryPlayer } from "./trajectory/TrajectoryPlayer";
 import { AnalysisPanel } from "./analysis/AnalysisPanel";
 import { ElectronicPanel } from "./electronic/ElectronicPanel";
 import { ElementLegend } from "./legend/ElementLegend";
+import { ScalarLegend } from "./legend/ScalarLegend";
 import { useViewportSize } from "./layout/overlayLayout";
 import { StructureSummaryCard } from "./panels/StructureSummaryCard";
 import {
@@ -59,6 +69,7 @@ import {
 import {
   createDefaultComponentOpacity,
   createDefaultComponentVisibility,
+  createDefaultPeriodicCellRange,
   createDefaultStyle,
   baseColorSchemeForStyle,
   DEFAULT_SHOW_CRYSTAL_AXIS_LABELS,
@@ -75,12 +86,32 @@ import {
   electronicPanelRightOffset,
   ANALYSIS_PANEL_DEFAULT_WIDTH_PX,
   canonicalSites,
+  atomPropertyOptions,
+  createDefaultAtomPropertyControlState,
   ELECTRONIC_PANEL_DEFAULT_WIDTH_PX,
   INSPECTOR_PANEL_DEFAULT_WIDTH_PX,
   isolateSelectedSites,
+  isDefaultPeriodicCellRange,
   isSiteVisible,
+  replicateSceneForPeriodicRange,
+  validatePeriodicReplicationBudget,
   visibleSceneForComponents,
   visibleSceneForSites,
+  type PeriodicCellRange,
+  matchingSiteIndices,
+  finitePropertyDomain,
+  scalarSiteColors,
+  scalarPropertyDomain,
+  staticSceneAtomProperties,
+  type AtomPropertyControlState,
+  type ScalarPropertySnapshot,
+  type ScalarLegendSpec,
+  appendMeasurementPoint,
+  atomInstanceIdentity,
+  type AtomInstanceIdentity,
+  type MeasurementRecord,
+  type MeasurementTool,
+  type DisplayPresetSnapshot,
 } from "../model";
 
 interface ResetLoadedPreviewOptions {
@@ -113,7 +144,17 @@ export function App() {
   const [pulseAtom, setPulseAtom] = useState<{ atomId: string; token: number } | null>(null);
   const [activeCommonPanelTab, setActiveCommonPanelTab] =
     useState<CommonPanelTab>("display");
+  const [periodicCellRange, setPeriodicCellRange] = useState<PeriodicCellRange>(
+    createDefaultPeriodicCellRange,
+  );
+  const [periodicNotice, setPeriodicNotice] = useState<string | null>(null);
+  const resetPeriodicDisplay = useCallback(() => {
+    setPeriodicCellRange(createDefaultPeriodicCellRange());
+    setPeriodicNotice(null);
+  }, []);
   const {
+    applySelectedSites,
+    clearAppliedSelection,
     handleClearSelection,
     handleElementVisibilityToggle,
     handleHideSelected,
@@ -123,12 +164,43 @@ export function App() {
     handleSiteSelectionToggle,
     handleSiteVisibilityToggle,
     reconcileAtomSelection,
+    replaceSiteSelection,
     resetAtomSelection,
     selectedSiteIndices,
     selectedOnly,
     sessionVersion: atomSelectionSessionVersion,
     siteVisibility,
   } = useAtomSelection();
+  const [propertyState, setPropertyState] = useState<AtomPropertyControlState>(
+    createDefaultAtomPropertyControlState,
+  );
+  const [trajectoryProperties, setTrajectoryProperties] = useState<
+    Record<string, ScalarPropertySnapshot>
+  >({});
+  const [propertyLoading, setPropertyLoading] = useState(false);
+  const [propertyError, setPropertyError] = useState<string | null>(null);
+  const propertyRequestVersionRef = useRef(0);
+  const [iprColorProperty, setIprColorProperty] = useState<ScalarPropertySnapshot | null>(null);
+  const resetAtomProperties = useCallback(() => {
+    setPropertyState(createDefaultAtomPropertyControlState());
+    setTrajectoryProperties({});
+    setPropertyLoading(false);
+    setPropertyError(null);
+    setIprColorProperty(null);
+  }, []);
+  const [measurementTool, setMeasurementTool] = useState<MeasurementTool | null>(null);
+  const [measurementDraft, setMeasurementDraftState] = useState<AtomInstanceIdentity[]>([]);
+  const measurementDraftRef = useRef<AtomInstanceIdentity[]>([]);
+  const replaceMeasurementDraft = useCallback((next: AtomInstanceIdentity[]) => {
+    measurementDraftRef.current = next;
+    setMeasurementDraftState(next);
+  }, []);
+  const [measurements, setMeasurements] = useState<MeasurementRecord[]>([]);
+  const resetMeasurements = useCallback(() => {
+    setMeasurementTool(null);
+    replaceMeasurementDraft([]);
+    setMeasurements([]);
+  }, [replaceMeasurementDraft]);
   const [cameraInteractionStore] = useState(createCameraInteractionStore);
   const [previewFpsStore] = useState(createPreviewFpsStore);
   const [isStructureSummaryCollapsed, setIsStructureSummaryCollapsed] = useState(true);
@@ -148,7 +220,10 @@ export function App() {
     setIsInspectorOpen(false);
     setIsStructureSummaryCollapsed(true);
     resetAtomSelection();
-  }, [resetAtomSelection]);
+    resetPeriodicDisplay();
+    resetAtomProperties();
+    resetMeasurements();
+  }, [resetAtomProperties, resetAtomSelection, resetMeasurements, resetPeriodicDisplay]);
   const handleBondAlgorithmSceneLoaded = useCallback((nextScene: SceneSpec) => {
     setInspectedAtomId(null);
     setPulseAtom(null);
@@ -190,9 +265,17 @@ export function App() {
     ANALYSIS_PANEL_DEFAULT_WIDTH_PX,
   );
   const [isResizingRightPanel, setIsResizingRightPanel] = useState(false);
+  const [iprScene, setIprScene] = useState<SceneSpec | null>(null);
+  const [iprFileName, setIprFileName] = useState<string | null>(null);
+  const [iprSessionVersion, setIprSessionVersion] = useState(0);
   const [densityScene, setDensityScene] = useState<SceneSpec | null>(null);
   const [densityFileName, setDensityFileName] = useState<string | null>(null);
   const [densityIsosurface, setDensityIsosurface] = useState<IsosurfaceOverlay | null>(null);
+  const clearIprSession = useCallback(() => {
+    setIprScene(null);
+    setIprFileName(null);
+    setIprSessionVersion((version) => version + 1);
+  }, []);
   const handleFrameSceneLoaded = useCallback(() => {}, []);
   const handleTrajectoryLoaded = useCallback(
     (nextScene: SceneSpec) => {
@@ -224,31 +307,75 @@ export function App() {
   const handleDensitySceneChange = useCallback(
     (next: { scene: SceneSpec; fileName: string } | null) => {
       if (next) {
+        clearIprSession();
         setDensityScene(next.scene);
         setDensityFileName(next.fileName);
+        resetPeriodicDisplay();
         resetLoadedPreviewStateForPreview(next.scene);
       } else {
         setDensityScene(null);
         setDensityFileName(null);
         setDensityIsosurface(null);
         resetAtomSelection();
+        resetMeasurements();
       }
     },
-    [resetAtomSelection, resetLoadedPreviewStateForPreview],
+    [
+      clearIprSession,
+      resetAtomSelection,
+      resetMeasurements,
+      resetLoadedPreviewStateForPreview,
+      resetPeriodicDisplay,
+    ],
   );
   const handleIsosurfaceChange = useCallback((overlay: IsosurfaceOverlay | null) => {
     setDensityIsosurface(overlay);
   }, []);
 
+  const handleIprSceneLoad = useCallback(
+    (next: { scene: SceneSpec; fileName: string }) => {
+      setDensityScene(null);
+      setDensityFileName(null);
+      setDensityIsosurface(null);
+      trajectory.clearTrajectory();
+      setTrajectoryFileName(null);
+      setIsAnalysisOpen(false);
+      setIprScene(next.scene);
+      setIprFileName(next.fileName);
+      setBondAlgorithm("custom-cutoff");
+      setBondCutoffs(bondCutoffPairsFromScene(next.scene));
+      resetLoadedPreviewStateForPreview(next.scene);
+    },
+    [
+      resetLoadedPreviewStateForPreview,
+      setBondAlgorithm,
+      setBondCutoffs,
+      trajectory,
+    ],
+  );
+  const handleIprApply = useCallback(
+    (siteIndices: readonly number[]) => {
+      applySelectedSites(siteIndices);
+      setActiveCommonPanelTab("select");
+    },
+    [applySelectedSites],
+  );
+  const handleIprClear = useCallback(() => {
+    clearAppliedSelection();
+  }, [clearAppliedSelection]);
+
   const trajectoryActive = trajectory.isActive;
   // A loaded CHGCAR density (structure + electron-cloud isosurface) takes over
   // the main viewport, reusing the structure renderer.
   const densityActive = densityScene !== null;
+  const iprActive = iprScene !== null;
   const scene = densityActive
     ? densityScene
-    : trajectoryActive
-      ? trajectory.frameScene
-      : structureScene;
+    : iprActive
+      ? iprScene
+      : trajectoryActive
+        ? trajectory.frameScene
+        : structureScene;
   // A trajectory reports "loading" from the moment upload starts, but it only becomes
   // "active" once its metadata arrives. Parsing a large trajectory is the slowest step, so
   // surface that loading state during the gap too — otherwise the preview shows nothing
@@ -256,11 +383,13 @@ export function App() {
   const trajectoryLoading = trajectory.status === "loading";
   const previewStatus = densityActive
     ? "ready"
-    : trajectoryActive
-      ? trajectory.status
-      : trajectoryLoading
-        ? "loading"
-        : structurePreviewStatus;
+    : iprActive
+      ? "ready"
+      : trajectoryActive
+        ? trajectory.status
+        : trajectoryLoading
+          ? "loading"
+          : structurePreviewStatus;
   const loadingLabel = trajectoryLoading ? "Loading trajectory…" : "Loading structure…";
   const errorMessage = trajectoryActive
     ? trajectory.error
@@ -269,9 +398,11 @@ export function App() {
     trajectoryActive && trajectory.error ? "Unsupported file" : structureErrorTitle;
   const displayFileName = densityActive
     ? densityFileName
-    : trajectoryActive
-      ? trajectoryFileName
-      : selectedFileName;
+    : iprActive
+      ? iprFileName
+      : trajectoryActive
+        ? trajectoryFileName
+        : selectedFileName;
 
   const handleFileChange = useCallback(
     async (event: ChangeEvent<HTMLInputElement>) => {
@@ -282,6 +413,7 @@ export function App() {
       }
       // Opening a structure/trajectory dismisses any active CHGCAR density view
       // and closes the electronic panel so it does not linger over the new file.
+      clearIprSession();
       handleDensitySceneChange(null);
       setIsElectronicOpen(false);
       if (isTrajectoryFileName(file.name)) {
@@ -300,6 +432,7 @@ export function App() {
     },
     [
       handleDensitySceneChange,
+      clearIprSession,
       loadStructureFile,
       setBondAlgorithm,
       setBondCutoffs,
@@ -330,7 +463,270 @@ export function App() {
     [handleBondCutoffChange, setBondCutoffs, trajectoryActive],
   );
 
+  const periodicDisabledReason = densityActive
+    ? "Cell repetition is unavailable while a density isosurface is active."
+    : !scene
+      ? "Load a periodic structure before repeating cells."
+      : !scene.cell.periodic
+        ? "Cell repetition is unavailable for non-periodic structures."
+        : null;
+  const handlePeriodicCellRangeChange = useCallback(
+    (nextRange: PeriodicCellRange): string | null => {
+      if (!scene) {
+        return "Load a periodic structure before repeating cells.";
+      }
+      if (densityActive) {
+        return "Cell repetition is unavailable while a density isosurface is active.";
+      }
+      const validation = validatePeriodicReplicationBudget(scene, nextRange);
+      if (!validation.valid) {
+        return validation.message;
+      }
+      setPeriodicNotice(null);
+      setPeriodicCellRange(nextRange);
+      return null;
+    },
+    [densityActive, scene],
+  );
+  const handlePeriodicCellRangeReset = useCallback(() => {
+    resetPeriodicDisplay();
+  }, [resetPeriodicDisplay]);
+
+  useEffect(() => {
+    if (isDefaultPeriodicCellRange(periodicCellRange)) {
+      return;
+    }
+    if (!scene || densityActive) {
+      setPeriodicCellRange(createDefaultPeriodicCellRange());
+      setPeriodicNotice(
+        densityActive
+          ? "Cell range was reset because density views cannot be repeated."
+          : null,
+      );
+      return;
+    }
+    const validation = validatePeriodicReplicationBudget(scene, periodicCellRange);
+    if (!validation.valid) {
+      setPeriodicCellRange(createDefaultPeriodicCellRange());
+      setPeriodicNotice(`Cell range was reset: ${validation.message}`);
+    }
+  }, [densityActive, periodicCellRange, scene]);
+
+  const effectivePeriodicCellRange = useMemo(() => {
+    if (!scene || densityActive) {
+      return createDefaultPeriodicCellRange();
+    }
+    return validatePeriodicReplicationBudget(scene, periodicCellRange).valid
+      ? periodicCellRange
+      : createDefaultPeriodicCellRange();
+  }, [densityActive, periodicCellRange, scene]);
+
   const canonicalAtoms = useMemo(() => canonicalSites(scene), [scene]);
+  const propertyOptions = useMemo(
+    () => atomPropertyOptions(
+      [...new Set(canonicalAtoms.map((atom) => atom.element))],
+      trajectoryActive,
+    ),
+    [canonicalAtoms, trajectoryActive],
+  );
+  const propertyColorOptions = useMemo(
+    () => [
+      ...propertyOptions,
+      ...(iprColorProperty ? [{ id: iprColorProperty.propertyId, label: iprColorProperty.label }] : []),
+    ],
+    [iprColorProperty, propertyOptions],
+  );
+  const requestedPropertyIds = useMemo(
+    () => [...new Set([
+      ...(propertyState.colorPropertyId && propertyState.colorPropertyId !== "ipr.selected"
+        ? [propertyState.colorPropertyId]
+        : []),
+      ...(propertyState.filterEnabled
+        ? propertyState.conditions.map((condition) => condition.propertyId)
+        : []),
+    ])],
+    [propertyState],
+  );
+  const staticProperties = useMemo(
+    () => !trajectoryActive && scene
+      ? staticSceneAtomProperties(scene, requestedPropertyIds)
+      : {},
+    [requestedPropertyIds, scene, trajectoryActive],
+  );
+
+  useEffect(() => {
+    const requestVersion = propertyRequestVersionRef.current + 1;
+    propertyRequestVersionRef.current = requestVersion;
+    if (!trajectory.meta || requestedPropertyIds.length === 0) {
+      setTrajectoryProperties({});
+      setPropertyLoading(false);
+      setPropertyError(null);
+      return;
+    }
+    const controller = new AbortController();
+    const requestedFrame = trajectory.frameIndex;
+    setPropertyLoading(true);
+    setPropertyError(null);
+    void fetchTrajectoryAtomProperties(
+      trajectory.meta.trajectoryId,
+      requestedFrame,
+      requestedPropertyIds,
+      {
+        bondAlgorithm,
+        cutoffs: bondCutoffsToSpecs(bondCutoffs),
+      },
+      controller.signal,
+    ).then((response) => {
+      if (
+        propertyRequestVersionRef.current !== requestVersion
+        || response.frameIndex !== requestedFrame
+      ) {
+        return;
+      }
+      setTrajectoryProperties(response.properties);
+      const unavailable = requestedPropertyIds
+        .map((propertyId) => response.unavailable[propertyId])
+        .filter((message): message is string => Boolean(message));
+      setPropertyError(unavailable[0] ?? null);
+      setPropertyLoading(false);
+    }).catch((caught) => {
+      if (caught instanceof Error && caught.name === "AbortError") {
+        return;
+      }
+      setTrajectoryProperties({});
+      setPropertyLoading(false);
+      setPropertyError(caught instanceof Error ? caught.message : "Atom properties failed.");
+    });
+    return () => controller.abort();
+  }, [
+    bondAlgorithm,
+    bondCutoffs,
+    requestedPropertyIds,
+    trajectory.frameIndex,
+    trajectory.meta,
+  ]);
+
+  const availableProperties = useMemo<Record<string, ScalarPropertySnapshot>>(
+    () => ({
+      ...(trajectoryActive ? trajectoryProperties : staticProperties),
+      ...(iprColorProperty ? { [iprColorProperty.propertyId]: iprColorProperty } : {}),
+    }),
+    [iprColorProperty, staticProperties, trajectoryActive, trajectoryProperties],
+  );
+  const propertyMatches = useMemo(
+    () => propertyState.filterEnabled
+      ? matchingSiteIndices(
+          availableProperties,
+          propertyState.conditions,
+          propertyState.filterLogic,
+        )
+      : null,
+    [availableProperties, propertyState],
+  );
+  const scalarColors = useMemo(() => {
+    const propertyId = propertyState.colorPropertyId;
+    const snapshot = propertyId ? availableProperties[propertyId] : undefined;
+    return snapshot
+      ? scalarSiteColors(snapshot, propertyState.palette, propertyState.manualDomain)
+      : undefined;
+  }, [availableProperties, propertyState]);
+  const scalarLegend = useMemo<ScalarLegendSpec | null>(() => {
+    const propertyId = propertyState.colorPropertyId;
+    const snapshot = propertyId ? availableProperties[propertyId] : undefined;
+    const domain = snapshot
+      ? scalarPropertyDomain(snapshot, propertyState.manualDomain)
+      : undefined;
+    return snapshot && domain
+      ? { label: snapshot.label, unit: snapshot.unit, domain, palette: propertyState.palette }
+      : null;
+  }, [availableProperties, propertyState]);
+  const handleSelectPropertyMatches = useCallback(() => {
+    if (propertyMatches) {
+      replaceSiteSelection(propertyMatches);
+      setActiveCommonPanelTab("select");
+    }
+  }, [propertyMatches, replaceSiteSelection]);
+  const handleIprColor = useCallback((values: ReadonlyMap<number, number> | null) => {
+    if (!values || !scene) {
+      setIprColorProperty(null);
+      setPropertyState((current) => current.colorPropertyId === "ipr.selected"
+        ? { ...current, colorPropertyId: null, manualDomain: null }
+        : current);
+      return;
+    }
+    const rows = Array.from(
+      { length: scene.summary.atomCount },
+      (_, siteIndex) => values.get(siteIndex) ?? null,
+    );
+    setIprColorProperty({
+      propertyId: "ipr.selected",
+      label: "IPR composition",
+      unit: "",
+      values: rows,
+      domain: finitePropertyDomain(rows),
+    });
+    setPropertyState((current) => ({
+      ...current,
+      colorPropertyId: "ipr.selected",
+      manualDomain: null,
+    }));
+  }, [scene]);
+  const handleCommonPanelTabChange = useCallback((tab: CommonPanelTab) => {
+    setActiveCommonPanelTab(tab);
+    if (tab === "select") {
+      setMeasurementTool(null);
+      replaceMeasurementDraft([]);
+      setMeasurements([]);
+    }
+  }, [replaceMeasurementDraft]);
+  const handleMeasurementToolChange = useCallback((tool: MeasurementTool | null) => {
+    setMeasurementTool(tool);
+    replaceMeasurementDraft([]);
+    setMeasurements([]);
+    setInspectedAtomId(null);
+    if (tool !== null) {
+      setActiveCommonPanelTab("display");
+    }
+  }, [replaceMeasurementDraft]);
+  const handleAtomMeasurementPick = useCallback((atom: AtomSpec) => {
+    if (!measurementTool || measurementTool === "bond") {
+      return;
+    }
+    if (measurementDraftRef.current.length === 0) {
+      setMeasurements([]);
+    }
+    const result = appendMeasurementPoint(
+      measurementDraftRef.current,
+      atomInstanceIdentity(atom),
+      measurementTool,
+    );
+    replaceMeasurementDraft(result.draft);
+    if (result.completed) {
+      // Keep this side effect outside a React state updater. Development
+      // StrictMode may invoke updater functions more than once.
+      setMeasurements([result.completed]);
+    }
+  }, [measurementTool, replaceMeasurementDraft]);
+  const handleBondMeasurementPick = useCallback((start: AtomSpec, end: AtomSpec) => {
+    if (measurementTool !== "bond") {
+      return;
+    }
+    setMeasurements([{
+      id: crypto.randomUUID(),
+      type: "bond",
+      points: [atomInstanceIdentity(start), atomInstanceIdentity(end)],
+    }]);
+  }, [measurementTool]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && measurementDraft.length > 0) {
+        replaceMeasurementDraft([]);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [measurementDraft.length, replaceMeasurementDraft]);
   const effectiveSiteVisibility = useMemo(
     () =>
       selectedOnly
@@ -348,9 +744,42 @@ export function App() {
     () => visibleSceneForSites(scene, effectiveSiteVisibility),
     [effectiveSiteVisibility, scene],
   );
+  const propertyFilteredScene = useMemo(
+    () => propertyState.filterEnabled
+      && propertyState.conditions.length > 0
+      && propertyMatches !== null
+      ? visibleSceneForSites(siteFilteredScene, isolateSelectedSites(propertyMatches))
+      : siteFilteredScene,
+    [propertyMatches, propertyState.conditions.length, propertyState.filterEnabled, siteFilteredScene],
+  );
+  const visibleCanonicalSiteIndices = useMemo(
+    () =>
+      new Set(
+        canonicalAtoms
+          .filter((atom) =>
+            isSiteVisible(effectiveSiteVisibility, atom.siteIndex)
+            && (!propertyState.filterEnabled
+              || propertyState.conditions.length === 0
+              || propertyMatches === null
+              || propertyMatches.has(atom.siteIndex)),
+          )
+          .map((atom) => atom.siteIndex),
+      ),
+    [
+      canonicalAtoms,
+      effectiveSiteVisibility,
+      propertyMatches,
+      propertyState.conditions.length,
+      propertyState.filterEnabled,
+    ],
+  );
+  const repeatedSiteFilteredScene = useMemo(
+    () => replicateSceneForPeriodicRange(propertyFilteredScene, effectivePeriodicCellRange),
+    [effectivePeriodicCellRange, propertyFilteredScene],
+  );
   const visibleScene = useMemo(
-    () => visibleSceneForComponents(siteFilteredScene, componentVisibility),
-    [componentVisibility, siteFilteredScene],
+    () => visibleSceneForComponents(repeatedSiteFilteredScene, componentVisibility),
+    [componentVisibility, repeatedSiteFilteredScene],
   );
   const handleIsSiteVisible = useCallback(
     (siteIndex: number) => isSiteVisible(effectiveSiteVisibility, siteIndex),
@@ -408,6 +837,57 @@ export function App() {
     scene,
     visibleScene,
   });
+  const getDisplayPresetSnapshot = useCallback((): DisplayPresetSnapshot => ({
+    componentOpacity: structuredClone(componentOpacity),
+    componentVisibility: structuredClone(componentVisibility),
+    periodicCellRange: structuredClone(effectivePeriodicCellRange),
+    cameraState: structuredClone(cameraControlsPanelState),
+    viewScale: cameraInteractionStore.getViewScaleSnapshot(),
+    style: structuredClone(style),
+    lightStrength: viewState.lightStrength,
+    unitCellLineStyle,
+    showCrystalAxisLabels,
+    previewMeshQuality,
+  }), [
+    cameraControlsPanelState,
+    cameraInteractionStore,
+    componentOpacity,
+    componentVisibility,
+    effectivePeriodicCellRange,
+    previewMeshQuality,
+    showCrystalAxisLabels,
+    style,
+    unitCellLineStyle,
+    viewState.lightStrength,
+  ]);
+  const handleApplyDisplayPreset = useCallback((snapshot: DisplayPresetSnapshot): string | null => {
+    setComponentOpacity(structuredClone(snapshot.componentOpacity));
+    setComponentVisibility(structuredClone(snapshot.componentVisibility));
+    setStyle(structuredClone(snapshot.style));
+    setPreviewMeshQuality(snapshot.previewMeshQuality);
+    setUnitCellLineStyle(snapshot.unitCellLineStyle);
+    setShowCrystalAxisLabels(snapshot.showCrystalAxisLabels);
+    handleCameraStateChange(structuredClone(snapshot.cameraState));
+    cameraInteractionStore.requestViewScale(snapshot.viewScale);
+    handleLightStrengthChange(snapshot.lightStrength);
+    const periodicError = handlePeriodicCellRangeChange(snapshot.periodicCellRange);
+    if (periodicError) {
+      setPeriodicNotice(`Preset cell range skipped: ${periodicError}`);
+      return `Applied preset, but skipped the cell range: ${periodicError}`;
+    }
+    return "Preset applied.";
+  }, [
+    cameraInteractionStore,
+    handleCameraStateChange,
+    handleLightStrengthChange,
+    handlePeriodicCellRangeChange,
+  ]);
+  const renderedStyle = useMemo(
+    () => scalarColors
+      ? { ...style, bondColorMode: "unicolor" as const, bondColor: "#9ca3af" }
+      : style,
+    [scalarColors, style],
+  );
   const {
     exportError,
     exportProjectedSize,
@@ -420,13 +900,17 @@ export function App() {
     syncProjectedSizeForExportTab,
   } = useFigureExportController({
     cameraOrientationRef,
+    cellRange: effectivePeriodicCellRange,
     componentOpacity,
     componentVisibility,
     lightStrength: viewState.lightStrength,
-    scene: siteFilteredScene,
+    measurements,
+    scene: repeatedSiteFilteredScene,
+    scalarLegend,
     selectedFileName: displayFileName,
     showCrystalAxisLabels,
-    style,
+    style: renderedStyle,
+    siteColorOverrides: scalarColors,
     unitCellLineStyle,
     visibleScene,
   });
@@ -487,6 +971,9 @@ export function App() {
       setUnitCellLineStyle(DEFAULT_UNIT_CELL_LINE_STYLE);
       setShowCrystalAxisLabels(DEFAULT_SHOW_CRYSTAL_AXIS_LABELS);
       resetAtomSelection();
+      resetPeriodicDisplay();
+      resetAtomProperties();
+      resetMeasurements();
       if (!options.preserveActiveCommonPanelTab) {
         setActiveCommonPanelTab("display");
       }
@@ -496,9 +983,12 @@ export function App() {
     },
     [
       resetCameraForScene,
+      resetAtomProperties,
       resetAtomSelection,
       resetExportState,
       resetLockedInteractionFeedback,
+      resetPeriodicDisplay,
+      resetMeasurements,
     ],
   );
 
@@ -593,6 +1083,29 @@ export function App() {
       isElectronicOpen ? electronicPanelWidth : 0,
       viewportSize.width,
     ) + leftPanelSceneOffsetX(analysisOpenWidth, viewportSize.width);
+  const handleUnifiedResetAllSettings = useCallback(async () => {
+    if ((iprActive || trajectoryActive || densityActive) && scene) {
+      if (trajectoryActive) {
+        setBondAlgorithm("custom-cutoff");
+        setBondCutoffs(bondCutoffPairsFromScene(scene));
+      }
+      resetLoadedPreviewStateForPreview(scene, {
+        preserveActiveCommonPanelTab: true,
+        preserveInspectorOpen: true,
+      });
+      return;
+    }
+    await handleResetAllSettings();
+  }, [
+    densityActive,
+    handleResetAllSettings,
+    iprActive,
+    resetLoadedPreviewStateForPreview,
+    scene,
+    setBondAlgorithm,
+    setBondCutoffs,
+    trajectoryActive,
+  ]);
   const renderPreviewContextMenuContent = () => (
     <ContextMenuContent className="w-36">
       <ContextMenuGroup>
@@ -625,7 +1138,7 @@ export function App() {
         <ContextMenuItem
           disabled={!scene || previewStatus === "loading"}
           onSelect={() => {
-            void handleResetAllSettings();
+            void handleUnifiedResetAllSettings();
           }}
         >
           <RefreshCw aria-hidden="true" />
@@ -683,7 +1196,10 @@ export function App() {
           >
             {visibleScene ? (
               <LatticeScene
-                atomPickingEnabled={activeCommonPanelTab === "select"}
+                atomPickingEnabled={activeCommonPanelTab === "select" && measurementTool === null}
+                atomMeasurementEnabled={measurementTool !== null && measurementTool !== "bond"}
+                bondPickingEnabled={measurementTool === "bond"}
+                cellRange={effectivePeriodicCellRange}
                 cameraAnimatedCommandVersion={cameraAnimatedCommandVersion}
                 cameraCommandVersion={cameraCommandVersion}
                 cameraState={viewState.camera}
@@ -697,6 +1213,8 @@ export function App() {
                 onAtomInspect={handleAtomInspect}
                 onAtomPulse={handleAtomPulse}
                 onAtomSelectionToggle={handleSiteSelectionToggle}
+                onAtomMeasurementPick={handleAtomMeasurementPick}
+                onBondMeasurementPick={handleBondMeasurementPick}
                 onLockedInteractionAttempt={triggerLockedInteractionFeedback}
                 cameraInteractionStore={cameraInteractionStore}
                 suspendCameraOrientationUpdates={
@@ -714,6 +1232,10 @@ export function App() {
                 selectedSiteIndices={
                   selectedSiteIndicesForHighlight(selectedSiteIndices, selectedOnly)
                 }
+                siteColorOverrides={scalarColors}
+                measurements={measurements}
+                measurementDraft={measurementDraft}
+                measurementTool={measurementTool}
                 inspectedAtomId={inspectedAtomId}
                 pulseAtomId={pulseAtom?.atomId ?? null}
                 pulseToken={pulseAtom?.token ?? 0}
@@ -722,7 +1244,7 @@ export function App() {
                 dragSensitivity={viewState.dragSensitivity}
                 lightStrength={viewState.lightStrength}
                 previewFpsStore={previewFpsStore}
-                style={style}
+                style={renderedStyle}
                 showAtoms={componentVisibility.atoms}
                 showFpsOverlay={viewState.showFpsOverlay}
                 showUnitCell={componentVisibility.unitCell}
@@ -808,6 +1330,7 @@ export function App() {
       </Button>
 
       <ElectronicPanel
+        iprSessionVersion={iprSessionVersion}
         isOpen={isElectronicOpen}
         width={electronicPanelWidth}
         onWidthChange={setElectronicPanelWidth}
@@ -815,9 +1338,23 @@ export function App() {
         rightOffset={electronicPanelRightOffset(inspectorOpenWidth)}
         onDensitySceneChange={handleDensitySceneChange}
         onIsosurfaceChange={handleIsosurfaceChange}
+        onIprApply={handleIprApply}
+        onIprClear={handleIprClear}
+        onIprColor={handleIprColor}
+        onIprSceneLoad={handleIprSceneLoad}
+        structureSelectedOnly={selectedOnly}
+        structureSelectedSiteIndices={selectedSiteIndices}
+        structureVisibleSiteIndices={visibleCanonicalSiteIndices}
       />
 
-      {legendEntries.length > 0 ? (
+      {scalarLegend ? (
+        <ScalarLegend
+          spec={scalarLegend}
+          offsetX={sceneOffsetX}
+          safeArea={previewSafeArea}
+          bottomPx={trajectory.meta ? 124 : 28}
+        />
+      ) : legendEntries.length > 0 ? (
         <ElementLegend
           entries={legendEntries}
           offsetX={sceneOffsetX}
@@ -827,7 +1364,16 @@ export function App() {
         />
       ) : null}
 
-      {inspectedAtomInfo ? (
+      {measurementTool && visibleScene ? (
+        <MeasurementInfoCard
+          activeTool={measurementTool}
+          draft={measurementDraft}
+          isInspectorOpen={isInspectorOpen}
+          record={measurements[0] ?? null}
+          scene={visibleScene}
+          onClose={() => handleMeasurementToolChange(null)}
+        />
+      ) : inspectedAtomInfo ? (
         <AtomInspectorCard
           colorScheme={legendColorScheme}
           colorOverrides={elementColorOverrides}
@@ -872,10 +1418,11 @@ export function App() {
               exportError={exportError}
               exportSettings={exportSettings}
               hasPolyhedra={hasPolyhedra(scene)}
+              getDisplayPresetSnapshot={getDisplayPresetSnapshot}
               isExporting={isExporting}
               isSiteVisible={handleIsSiteVisible}
               isSiteBaseVisible={handleIsSiteBaseVisible}
-              onActiveTabChange={setActiveCommonPanelTab}
+              onActiveTabChange={handleCommonPanelTabChange}
               onAtomRadiusModelChange={(atomRadiusModel) => {
                 setStyle((currentStyle) => ({ ...currentStyle, atomRadiusModel }));
               }}
@@ -890,9 +1437,12 @@ export function App() {
               onExportSettingsChange={handleExportSettingsChange}
               onStyleChange={setStyle}
               onComponentVisibilityChange={setComponentVisibility}
+              onPeriodicCellRangeChange={handlePeriodicCellRangeChange}
+              onPeriodicCellRangeReset={handlePeriodicCellRangeReset}
               onElementVisibilityToggle={handleSelectElementVisibilityToggle}
               onHideSelected={handleHideSelected}
               onInvertSelection={handleSelectInvertSelection}
+              onApplyDisplayPreset={handleApplyDisplayPreset}
               onSelectedOnlyChange={handleSelectedOnlyChange}
               onSelectionClear={handleClearSelection}
               onShowAllSites={handleShowAll}
@@ -900,6 +1450,9 @@ export function App() {
               onSiteVisibilityToggle={handleSiteVisibilityToggle}
               selectedSiteIndices={selectedSiteIndices}
               selectedOnly={selectedOnly}
+              periodicCellRange={periodicCellRange}
+              periodicDisabledReason={periodicDisabledReason}
+              periodicNotice={periodicNotice}
             />
           </div>
         ) : null}
@@ -944,6 +1497,16 @@ export function App() {
             lockedInteractionFeedbackCount={lockedInteractionFeedbackCount}
             onInteractionLockedChange={handleInteractionLockedChange}
             onResetView={handleResetView}
+            propertyState={propertyState}
+            propertyOptions={propertyOptions}
+            propertyColorOptions={propertyColorOptions}
+            propertyLoading={propertyLoading}
+            propertyError={propertyError}
+            propertyMatchCount={propertyMatches?.size ?? null}
+            onPropertyStateChange={setPropertyState}
+            onSelectPropertyMatches={handleSelectPropertyMatches}
+            measurementTool={measurementTool}
+            onMeasurementToolChange={handleMeasurementToolChange}
             cameraInteractionStore={cameraInteractionStore}
             previewFpsStore={previewFpsStore}
             showFps={viewState.showFpsOverlay}
@@ -965,7 +1528,7 @@ export function App() {
                   lightStrength={viewState.lightStrength}
                   isCustomColorScheme={style.colorSchemeMode === "custom"}
                   isOpen={isInspectorOpen}
-                  isSceneLoading={previewStatus === "loading"}
+                  isSceneLoading={previewStatus === "loading" || iprActive}
                   width={inspectorPanelWidth}
                   onWidthChange={setInspectorPanelWidth}
                   onResizeActiveChange={setIsResizingRightPanel}

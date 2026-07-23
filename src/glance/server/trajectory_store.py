@@ -6,6 +6,8 @@ from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from glance.structures.schema import BondCutoffSpec, SceneSpec
 from glance.structures.trajectory import TrajectoryData, read_trajectory_bytes
 
@@ -13,6 +15,7 @@ from glance.structures.trajectory import TrajectoryData, read_trajectory_bytes
 # and bound the per-frame scene cache so memory stays predictable.
 MAX_TRAJECTORIES = 2
 SCENE_CACHE_CAPACITY = 256
+PROPERTY_CACHE_CAPACITY = 64
 
 
 @dataclass
@@ -21,6 +24,14 @@ class TrajectoryEntry:
     filename: str | None
     data: TrajectoryData
     scene_cache: OrderedDict[str, SceneSpec] = field(default_factory=OrderedDict)
+    property_cache: OrderedDict[str, dict[str, object]] = field(default_factory=OrderedDict)
+    property_domains: OrderedDict[str, tuple[float, float] | None] = field(
+        default_factory=OrderedDict
+    )
+    displacement_cache: OrderedDict[int, np.ndarray] = field(default_factory=OrderedDict)
+    displacement_domain: tuple[float, float] | None = None
+    displacement_initialized: bool = False
+    displacement_error: str | None = None
 
 
 class TrajectoryStore:
@@ -62,6 +73,12 @@ class TrajectoryStore:
         )
         entry.data = data
         entry.scene_cache.clear()
+        entry.property_cache.clear()
+        entry.property_domains.clear()
+        entry.displacement_cache.clear()
+        entry.displacement_domain = None
+        entry.displacement_initialized = False
+        entry.displacement_error = None
         return entry
 
     @staticmethod
@@ -80,6 +97,45 @@ class TrajectoryStore:
         while len(entry.scene_cache) > SCENE_CACHE_CAPACITY:
             entry.scene_cache.popitem(last=False)
         return scene
+
+    @staticmethod
+    def cache_properties(
+        entry: TrajectoryEntry,
+        cache_key: str,
+        build: Callable[[], dict[str, object]],
+    ) -> dict[str, object]:
+        cached = entry.property_cache.get(cache_key)
+        if cached is not None:
+            entry.property_cache.move_to_end(cache_key)
+            return cached
+
+        response = build()
+        entry.property_cache[cache_key] = response
+        while len(entry.property_cache) > PROPERTY_CACHE_CAPACITY:
+            entry.property_cache.popitem(last=False)
+        return response
+
+    @staticmethod
+    def cache_displacement(
+        entry: TrajectoryEntry,
+        frame_index: int,
+        values: np.ndarray,
+    ) -> None:
+        entry.displacement_cache[frame_index] = values
+        entry.displacement_cache.move_to_end(frame_index)
+        while len(entry.displacement_cache) > PROPERTY_CACHE_CAPACITY:
+            entry.displacement_cache.popitem(last=False)
+
+    @staticmethod
+    def cache_property_domain(
+        entry: TrajectoryEntry,
+        cache_key: str,
+        domain: tuple[float, float] | None,
+    ) -> None:
+        entry.property_domains[cache_key] = domain
+        entry.property_domains.move_to_end(cache_key)
+        while len(entry.property_domains) > PROPERTY_CACHE_CAPACITY:
+            entry.property_domains.popitem(last=False)
 
 
 def trajectory_metadata(trajectory_id: str, entry: TrajectoryEntry) -> dict[str, object]:

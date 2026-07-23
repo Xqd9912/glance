@@ -4,8 +4,12 @@ import { Fog } from "three";
 
 import type { SceneSpec } from "../api/scene";
 import type {
+  AtomInstanceIdentity,
+  MeasurementRecord,
+  MeasurementTool,
   ComponentOpacityState,
   ExportMeshQuality,
+  PeriodicCellRange,
   StyleState,
   UnitCellLineStyle,
 } from "../model";
@@ -18,6 +22,8 @@ import type { ResolvedStructureMaterialFamilies } from "./materialPresetResolver
 import type { SceneLayout } from "./sceneLayout";
 import type { VectorTuple } from "./viewMath";
 import { InstancedAtoms } from "./InstancedAtoms";
+import { BondPickTargets } from "./BondPickTargets";
+import { MeasurementOverlays } from "./MeasurementOverlays";
 import { BatchedBonds } from "./BatchedBonds";
 import { createBondRenderItems } from "./BondRenderItems";
 import { CellFrame } from "./CellFrame";
@@ -66,7 +72,10 @@ export const EXPORT_SCENE_MESH_DETAIL_PRESETS: Record<ExportMeshQuality, SceneMe
 };
 
 export function PreviewSceneContent({
+  atomMeasurementEnabled = false,
   atomPickingEnabled = false,
+  bondPickingEnabled = false,
+  cellRange,
   componentOpacity,
   layout,
   materialFamilies,
@@ -77,18 +86,27 @@ export function PreviewSceneContent({
   onAtomInspect,
   onAtomPulse,
   onAtomSelectionToggle,
+  onAtomMeasurementPick,
+  onBondMeasurementPick,
   onLockedInteractionAttempt,
   polyhedronEdgeLineWidthScale = 1,
   pulseAtomId,
   pulseToken,
   selectedSiteIndices = EMPTY_SELECTED_SITE_INDICES,
+  siteColorOverrides,
+  measurements = [],
+  measurementDraft = [],
+  measurementTool = null,
   showAtoms,
   showUnitCell,
   style,
   unitCellLineStyle = "solid",
   unitCellLineWidthScale = 1,
 }: {
+  atomMeasurementEnabled?: boolean;
   atomPickingEnabled?: boolean;
+  bondPickingEnabled?: boolean;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   layout: SceneLayout;
   materialFamilies: ResolvedStructureMaterialFamilies;
@@ -99,11 +117,20 @@ export function PreviewSceneContent({
   onAtomInspect?: (atomId: string | null) => void;
   onAtomPulse?: (atomId: string) => void;
   onAtomSelectionToggle?: (siteIndex: number) => void;
+  onAtomMeasurementPick?: (atom: import("../api/scene").AtomSpec) => void;
+  onBondMeasurementPick?: (
+    start: import("../api/scene").AtomSpec,
+    end: import("../api/scene").AtomSpec,
+  ) => void;
   onLockedInteractionAttempt?: () => void;
   polyhedronEdgeLineWidthScale?: number;
   pulseAtomId: string | null;
   pulseToken: number;
   selectedSiteIndices?: ReadonlySet<number>;
+  siteColorOverrides?: ReadonlyMap<number, string>;
+  measurements?: readonly MeasurementRecord[];
+  measurementDraft?: readonly AtomInstanceIdentity[];
+  measurementTool?: MeasurementTool | null;
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
@@ -119,7 +146,10 @@ export function PreviewSceneContent({
       />
       <SceneFog layout={layout} style={style} />
       <MemoizedStructureSceneObjects
+        atomMeasurementEnabled={atomMeasurementEnabled}
         atomPickingEnabled={atomPickingEnabled}
+        bondPickingEnabled={bondPickingEnabled}
+        cellRange={cellRange}
         componentOpacity={componentOpacity}
         groupPosition={layout.groupPosition}
         materialFamilies={materialFamilies}
@@ -130,11 +160,17 @@ export function PreviewSceneContent({
         onAtomInspect={onAtomInspect}
         onAtomPulse={onAtomPulse}
         onAtomSelectionToggle={onAtomSelectionToggle}
+        onAtomMeasurementPick={onAtomMeasurementPick}
+        onBondMeasurementPick={onBondMeasurementPick}
         onLockedInteractionAttempt={onLockedInteractionAttempt}
         polyhedronEdgeLineWidthScale={polyhedronEdgeLineWidthScale}
         pulseAtomId={pulseAtomId}
         pulseToken={pulseToken}
         selectedSiteIndices={selectedSiteIndices}
+        siteColorOverrides={siteColorOverrides}
+        measurements={measurements}
+        measurementDraft={measurementDraft}
+        measurementTool={measurementTool}
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
@@ -260,7 +296,10 @@ function lerp(start: number, end: number, amount: number): number {
 }
 
 export function StructureSceneObjects({
+  atomMeasurementEnabled = false,
   atomPickingEnabled = false,
+  bondPickingEnabled = false,
+  cellRange,
   componentOpacity,
   groupPosition,
   interactionLocked = false,
@@ -271,11 +310,17 @@ export function StructureSceneObjects({
   onAtomInspect,
   onAtomPulse,
   onAtomSelectionToggle,
+  onAtomMeasurementPick,
+  onBondMeasurementPick,
   onLockedInteractionAttempt,
   polyhedronEdgeLineWidthScale = 1,
   pulseAtomId = null,
   pulseToken = 0,
   selectedSiteIndices = EMPTY_SELECTED_SITE_INDICES,
+  siteColorOverrides,
+  measurements = [],
+  measurementDraft = [],
+  measurementTool = null,
   showAtoms,
   showUnitCell,
   style,
@@ -283,7 +328,10 @@ export function StructureSceneObjects({
   unitCellLineStyle = "solid",
   unitCellLineWidthScale = 1,
 }: {
+  atomMeasurementEnabled?: boolean;
   atomPickingEnabled?: boolean;
+  bondPickingEnabled?: boolean;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   groupPosition: VectorTuple;
   interactionLocked?: boolean;
@@ -294,11 +342,20 @@ export function StructureSceneObjects({
   onAtomInspect?: (atomId: string | null) => void;
   onAtomPulse?: (atomId: string) => void;
   onAtomSelectionToggle?: (siteIndex: number) => void;
+  onAtomMeasurementPick?: (atom: import("../api/scene").AtomSpec) => void;
+  onBondMeasurementPick?: (
+    start: import("../api/scene").AtomSpec,
+    end: import("../api/scene").AtomSpec,
+  ) => void;
   onLockedInteractionAttempt?: () => void;
   polyhedronEdgeLineWidthScale?: number;
   pulseAtomId?: string | null;
   pulseToken?: number;
   selectedSiteIndices?: ReadonlySet<number>;
+  siteColorOverrides?: ReadonlyMap<number, string>;
+  measurements?: readonly MeasurementRecord[];
+  measurementDraft?: readonly AtomInstanceIdentity[];
+  measurementTool?: MeasurementTool | null;
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
@@ -330,6 +387,13 @@ export function StructureSceneObjects({
       style.bondColorMode,
     ],
   );
+  const measurementHighlightedAtoms = useMemo(
+    () => [
+      ...measurements.flatMap((record) => record.points),
+      ...measurementDraft,
+    ],
+    [measurementDraft, measurements],
+  );
   const handlePointerMissed = useCallback(() => {
     if (interactionLocked) {
       return;
@@ -343,6 +407,7 @@ export function StructureSceneObjects({
       <group position={groupPosition}>
         {showUnitCell ? (
           <CellFrame
+            cellRange={cellRange}
             color={unitCellLineColor}
             fog={style.fogEnabled && style.fogAffectsUnitCell}
             lineWidthScale={unitCellLineWidthScale}
@@ -368,8 +433,18 @@ export function StructureSceneObjects({
           thicknessScale={style.bondThickness / 100}
           opacity={componentOpacity.bonds / 100}
         />
+        {bondPickingEnabled ? (
+          <BondPickTargets
+            atoms={scene.atoms}
+            bonds={scene.bonds}
+            interactionLocked={interactionLocked}
+            onPick={onBondMeasurementPick}
+            onLockedInteractionAttempt={onLockedInteractionAttempt}
+          />
+        ) : null}
         {showAtoms ? (
           <InstancedAtoms
+            atomMeasurementEnabled={atomMeasurementEnabled}
             atomPickingEnabled={atomPickingEnabled}
             atoms={scene.atoms}
             colorScheme={colorScheme}
@@ -381,15 +456,24 @@ export function StructureSceneObjects({
             onInspect={onAtomInspect}
             onPulse={onAtomPulse}
             onAtomSelectionToggle={onAtomSelectionToggle}
+            onAtomMeasurementPick={onAtomMeasurementPick}
             onLockedInteractionAttempt={onLockedInteractionAttempt}
             pulseAtomId={pulseAtomId}
             pulseToken={pulseToken}
             radiusModel={style.atomRadiusModel}
             radiusScale={style.atomRadius / 100}
             selectedSiteIndices={selectedSiteIndices}
+            measurementHighlightedAtoms={measurementHighlightedAtoms}
+            siteColorOverrides={siteColorOverrides}
             opacity={componentOpacity.atoms / 100}
           />
         ) : null}
+        <MeasurementOverlays
+          activeTool={measurementTool}
+          draft={measurementDraft}
+          records={measurements}
+          scene={scene}
+        />
       </group>
     </group>
   );

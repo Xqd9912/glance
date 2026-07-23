@@ -19,6 +19,20 @@ export interface TrajectoryMeta {
   typeIds: number[] | null;
 }
 
+export interface AtomPropertySeries {
+  propertyId: string;
+  label: string;
+  unit: string;
+  values: Array<number | null>;
+  domain?: { min: number; max: number };
+}
+
+export interface AtomPropertiesResponse {
+  frameIndex: number;
+  properties: Record<string, AtomPropertySeries>;
+  unavailable: Record<string, string>;
+}
+
 export const TRAJECTORY_FILE_EXTENSIONS = [".dump", ".lammpstrj", ".xyz"] as const;
 
 export function isTrajectoryFileName(fileName: string): boolean {
@@ -103,6 +117,39 @@ export async function fetchTrajectoryFrame(
     throw new StructurePreviewError(await readTrajectoryError(response));
   }
   return (await response.json()) as SceneSpec;
+}
+
+export async function fetchTrajectoryAtomProperties(
+  trajectoryId: string,
+  frameIndex: number,
+  propertyIds: readonly string[],
+  options: { bondAlgorithm?: BondAlgorithm; cutoffs?: BondCutoffSpec[] } = {},
+  signal?: AbortSignal,
+): Promise<AtomPropertiesResponse> {
+  const params = new URLSearchParams({ properties: propertyIds.join(",") });
+  if (options.bondAlgorithm) {
+    params.set("bondAlgorithm", options.bondAlgorithm);
+  }
+  if (options.bondAlgorithm === "custom-cutoff" && options.cutoffs?.length) {
+    params.set("cutoffs", JSON.stringify(options.cutoffs));
+  }
+  let response: Response;
+  try {
+    response = await apiFetch(
+      `/api/trajectory/${encodeURIComponent(trajectoryId)}/frames/${frameIndex}`
+        + `/atom-properties?${params}`,
+      { signal },
+    );
+  } catch (caught) {
+    if (caught instanceof Error && caught.name === "AbortError") {
+      throw caught;
+    }
+    throw new StructurePreviewError(BACKEND_UNAVAILABLE_MESSAGE, "backend-unavailable");
+  }
+  if (!response.ok) {
+    throw new StructurePreviewError(await readTrajectoryError(response));
+  }
+  return (await response.json()) as AtomPropertiesResponse;
 }
 
 async function readTrajectoryResponse(response: Response): Promise<unknown> {

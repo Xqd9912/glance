@@ -7,6 +7,8 @@ import type {
   ComponentOpacityState,
   ExportMeshQuality,
   ExportSupersampling,
+  MeasurementRecord,
+  PeriodicCellRange,
   StyleState,
   UnitCellLineStyle,
 } from "../model";
@@ -70,12 +72,15 @@ export interface RasterExportTextItem {
 export interface RenderStructureRasterOptions {
   backgroundColor: string | null;
   cameraPose: CameraPoseSnapshot;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   height: number;
   imageFormat: RasterExportImageFormat;
   lightStrength: number;
+  measurements?: readonly MeasurementRecord[];
   meshQuality: ExportMeshQuality;
   scene: SceneSpec;
+  siteColorOverrides?: ReadonlyMap<number, string>;
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
@@ -103,12 +108,15 @@ export interface RenderCrystalAxesRasterOptions {
 export async function renderStructureRasterImage({
   backgroundColor,
   cameraPose,
+  cellRange,
   componentOpacity,
   height,
   imageFormat,
   lightStrength,
+  measurements,
   meshQuality,
   scene,
+  siteColorOverrides,
   showAtoms,
   showUnitCell,
   style,
@@ -133,11 +141,12 @@ export async function renderStructureRasterImage({
   canvas.setAttribute("aria-hidden", "true");
   document.body.appendChild(canvas);
 
-  const layout = computeSceneLayout(scene, style.atomRadiusModel);
+  const layout = computeSceneLayout(scene, style.atomRadiusModel, undefined, cellRange);
   const materialFamily = resolveStructureMaterialFamilyForStyle(style);
   const materialFamilies = resolveStructureMaterialFamiliesForStyle(style);
   const exportFramePlan = computeStructureExportFramePlan({
     cameraPose,
+    cellRange,
     componentOpacity,
     height: renderHeight,
     groupPosition: layout.groupPosition,
@@ -188,13 +197,16 @@ export async function renderStructureRasterImage({
         />
         <ExportSceneContent
           cameraPose={cameraPose}
+          cellRange={cellRange}
           componentOpacity={componentOpacity}
           exportFramePlan={exportFramePlan}
           layout={layout}
           materialFamilies={materialFamilies}
           meshDetail={meshDetail}
+          measurements={measurements}
           polyhedronEdgeLineWidthScale={lineWidthScale}
           scene={scene}
+          siteColorOverrides={siteColorOverrides}
           showAtoms={showAtoms}
           showUnitCell={showUnitCell}
           style={style}

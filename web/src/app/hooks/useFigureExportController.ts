@@ -19,32 +19,43 @@ import {
   type ComponentVisibilityState,
   type ExportProjectedSize,
   type ExportSettingsState,
+  type PeriodicCellRange,
+  type MeasurementRecord,
+  type ScalarLegendSpec,
   type StyleState,
   type UnitCellLineStyle,
 } from "../../model";
 
 interface UseFigureExportControllerOptions {
   cameraOrientationRef: RefObject<Quaternion>;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
   lightStrength: number;
+  measurements?: readonly MeasurementRecord[];
   scene: SceneSpec | null;
+  scalarLegend?: ScalarLegendSpec | null;
   selectedFileName: string | null;
   showCrystalAxisLabels: boolean;
   style: StyleState;
+  siteColorOverrides?: ReadonlyMap<number, string>;
   unitCellLineStyle: UnitCellLineStyle;
   visibleScene: SceneSpec | null;
 }
 
 export function useFigureExportController({
   cameraOrientationRef,
+  cellRange,
   componentOpacity,
   componentVisibility,
   lightStrength,
+  measurements,
   scene,
+  scalarLegend,
   selectedFileName,
   showCrystalAxisLabels,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
   visibleScene,
 }: UseFigureExportControllerOptions) {
@@ -67,6 +78,7 @@ export function useFigureExportController({
 
     return computeStructureExportProjectedSize({
       cameraPose: createCameraPoseSnapshot(cameraOrientationRef.current),
+      cellRange,
       componentOpacity,
       scene: visibleScene,
       showAtoms: componentVisibility.atoms,
@@ -75,6 +87,7 @@ export function useFigureExportController({
     });
   }, [
     cameraOrientationRef,
+    cellRange,
     componentOpacity,
     componentVisibility.atoms,
     componentVisibility.unitCell,
@@ -137,14 +150,18 @@ export function useFigureExportController({
       const settingsForExport = prepareExportSettings();
       const exportFiles = await createFigureExportFiles({
         cameraOrientationRef,
+        cellRange,
         componentOpacity,
         componentVisibility,
         fileName: selectedFileName,
         lightStrength,
+        measurements,
         scene,
+        scalarLegend,
         settings: settingsForExport,
         showCrystalAxisLabels,
         style,
+        siteColorOverrides,
         unitCellLineStyle,
       });
       await downloadFigureExportFiles(exportFiles, selectedFileName);
@@ -159,15 +176,19 @@ export function useFigureExportController({
     }
   }, [
     cameraOrientationRef,
+    cellRange,
     componentOpacity,
     componentVisibility,
     isExporting,
     lightStrength,
+    measurements,
     prepareExportSettings,
     scene,
+    scalarLegend,
     selectedFileName,
     showCrystalAxisLabels,
     style,
+    siteColorOverrides,
     unitCellLineStyle,
   ]);
 

@@ -5,17 +5,24 @@ import type {
   ComponentVisibilityState,
   ExportFormat,
   ExportSettingsState,
+  PeriodicCellRange,
+  MeasurementRecord,
+  ScalarLegendSpec,
   StyleState,
   UnitCellLineStyle,
 } from "../model";
 
 export interface CreateFigureExportOptions {
   cameraOrientationRef: CameraOrientationRef;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
   fileName: string | null;
   lightStrength: number;
+  measurements?: readonly MeasurementRecord[];
   scene: SceneSpec;
+  scalarLegend?: ScalarLegendSpec | null;
+  siteColorOverrides?: ReadonlyMap<number, string>;
   settings: ExportSettingsState;
   showCrystalAxisLabels: boolean;
   style: StyleState;

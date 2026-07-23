@@ -34,6 +34,14 @@ from glance.server.vasprun_store import (
     site_pdos_response,
     vasprun_metadata,
 )
+from glance.structures.atom_properties import (
+    PROPERTY_DISPLACEMENT,
+    AtomPropertyError,
+    finite_domain,
+    iter_trajectory_displacements,
+    scene_atom_properties,
+    validate_property_ids,
+)
 from glance.structures.readers import StructureReadError, read_structure_bytes
 from glance.structures.scene_builder import build_scene_response
 from glance.structures.schema import (
@@ -262,6 +270,149 @@ def get_trajectory_frame(
         )
 
     return TrajectoryStore.cache_scene(entry, cache_key, build_frame_scene)
+
+
+@router.get("/trajectory/{trajectory_id}/frames/{frame_index}/atom-properties")
+def get_trajectory_atom_properties(
+    trajectory_id: str,
+    frame_index: int,
+    properties: str = Query(...),
+    bond_algorithm: str | None = Query(default=None, alias="bondAlgorithm"),
+    cutoffs: str | None = Query(default=None, alias="cutoffs"),
+) -> dict[str, object]:
+    entry = _trajectory_store.get(trajectory_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail={"message": "Trajectory not found."})
+    frames = entry.data.frames
+    if frame_index < 0 or frame_index >= len(frames):
+        raise HTTPException(status_code=404, detail={"message": "Frame index out of range."})
+
+    try:
+        normalized_bond_algorithm = normalize_bond_algorithm(bond_algorithm)
+        bond_cutoffs = _parse_bond_cutoffs(cutoffs)
+        property_ids = validate_property_ids(
+            [value.strip() for value in properties.split(",") if value.strip()],
+            elements=[str(site.specie.symbol) for site in frames[0]],
+        )
+    except (UnsupportedBondAlgorithmError, AtomPropertyError) as exc:
+        raise HTTPException(status_code=400, detail={"message": str(exc)}) from exc
+
+    if PROPERTY_DISPLACEMENT in property_ids and not entry.displacement_initialized:
+        if entry.displacement_error is None:
+            try:
+                domain_min = float("inf")
+                domain_max = float("-inf")
+                for displacement_frame, values in enumerate(
+                    iter_trajectory_displacements(frames)
+                ):
+                    TrajectoryStore.cache_displacement(
+                        entry, displacement_frame, values
+                    )
+                    domain_min = min(domain_min, float(values.min()))
+                    domain_max = max(domain_max, float(values.max()))
+                entry.displacement_domain = (domain_min, domain_max)
+                entry.displacement_initialized = True
+            except AtomPropertyError as exc:
+                entry.displacement_error = str(exc)
+
+    if (
+        PROPERTY_DISPLACEMENT in property_ids
+        and entry.displacement_initialized
+        and frame_index not in entry.displacement_cache
+    ):
+        for displacement_frame, values in enumerate(
+            iter_trajectory_displacements(frames)
+        ):
+            if displacement_frame == frame_index:
+                TrajectoryStore.cache_displacement(entry, frame_index, values)
+                break
+
+    available_ids = tuple(
+        property_id
+        for property_id in property_ids
+        if property_id != PROPERTY_DISPLACEMENT or entry.displacement_initialized
+    )
+    unavailable = {}
+    if PROPERTY_DISPLACEMENT in property_ids and not entry.displacement_initialized:
+        unavailable[PROPERTY_DISPLACEMENT] = entry.displacement_error or (
+            "Displacement is unavailable."
+        )
+
+    config_key = scene_cache_key(-1, normalized_bond_algorithm, bond_cutoffs)
+    displacement_domain_key = f"{config_key}|{PROPERTY_DISPLACEMENT}"
+    if (
+        PROPERTY_DISPLACEMENT in available_ids
+        and displacement_domain_key not in entry.property_domains
+    ):
+        TrajectoryStore.cache_property_domain(
+            entry,
+            displacement_domain_key,
+            entry.displacement_domain,
+        )
+    missing_domains = [
+        property_id
+        for property_id in available_ids
+        if f"{config_key}|{property_id}" not in entry.property_domains
+    ]
+    if missing_domains:
+        rows: dict[str, list[object]] = {property_id: [] for property_id in missing_domains}
+        for domain_frame_index, frame in enumerate(frames):
+            frame_scene_key = scene_cache_key(
+                domain_frame_index, normalized_bond_algorithm, bond_cutoffs
+            )
+            scene = TrajectoryStore.cache_scene(
+                entry,
+                frame_scene_key,
+                lambda frame=frame: build_scene_response(
+                    frame,
+                    bond_algorithm=normalized_bond_algorithm,
+                    bond_cutoffs=bond_cutoffs,
+                ),
+            )
+            computed = scene_atom_properties(scene, missing_domains)
+            for property_id, property_values in computed.items():
+                rows[property_id].append(property_values.values)
+        for property_id, property_rows in rows.items():
+            TrajectoryStore.cache_property_domain(
+                entry,
+                f"{config_key}|{property_id}",
+                finite_domain(property_rows),
+            )
+
+    response_cache_key = (
+        f"{config_key}|frame:{frame_index}|properties:{','.join(available_ids)}"
+    )
+
+    def build_response() -> dict[str, object]:
+        frame_scene_key = scene_cache_key(
+            frame_index, normalized_bond_algorithm, bond_cutoffs
+        )
+        scene = TrajectoryStore.cache_scene(
+            entry,
+            frame_scene_key,
+            lambda: build_scene_response(
+                frames[frame_index],
+                bond_algorithm=normalized_bond_algorithm,
+                bond_cutoffs=bond_cutoffs,
+            ),
+        )
+        displacement = entry.displacement_cache.get(frame_index)
+        computed = scene_atom_properties(scene, available_ids, displacement=displacement)
+        return {
+            "frameIndex": frame_index,
+            "properties": {
+                property_id: values.response(
+                    entry.property_domains.get(f"{config_key}|{property_id}")
+                )
+                for property_id, values in computed.items()
+            },
+        }
+
+    response = dict(
+        TrajectoryStore.cache_properties(entry, response_cache_key, build_response)
+    )
+    response["unavailable"] = unavailable
+    return response
 
 
 def _trajectory_symbols(entry: TrajectoryEntry) -> list[str]:
