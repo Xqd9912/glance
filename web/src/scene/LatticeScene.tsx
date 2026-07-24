@@ -3,13 +3,18 @@ import { useEffect, useMemo, useRef } from "react";
 import { Quaternion } from "three";
 
 import type { SceneSpec } from "../api/scene";
+import type { AtomSpec } from "../api/scene";
 import type { CameraInteractionStore } from "../model/cameraInteractionStore";
 import type { PreviewSafeArea } from "../model/layout";
 import {
   DEFAULT_DRAG_SENSITIVITY,
   DEFAULT_PREVIEW_MESH_QUALITY,
   type ComponentOpacityState,
+  type AtomInstanceIdentity,
+  type MeasurementRecord,
+  type MeasurementTool,
   type MeshQuality,
+  type PeriodicCellRange,
   type StyleState,
   type UnitCellLineStyle,
 } from "../model";
@@ -84,7 +89,10 @@ const FPS_SMOOTHING_WEIGHT = 0.18;
 const EMPTY_SELECTED_SITE_INDICES: ReadonlySet<number> = new Set();
 
 export function LatticeScene({
+  atomMeasurementEnabled = false,
   atomPickingEnabled = false,
+  bondPickingEnabled = false,
+  cellRange,
   cameraOrientationRef,
   cameraAnimatedCommandVersion = 0,
   cameraInteractionStore,
@@ -104,11 +112,17 @@ export function LatticeScene({
   onAtomInspect,
   onAtomPulse,
   onAtomSelectionToggle,
+  onAtomMeasurementPick,
+  onBondMeasurementPick,
   onLockedInteractionAttempt,
   resetCounter,
   safeArea = EMPTY_SAFE_AREA,
   scene,
   selectedSiteIndices = EMPTY_SELECTED_SITE_INDICES,
+  siteColorOverrides,
+  measurements = [],
+  measurementDraft = [],
+  measurementTool = null,
   inspectedAtomId = null,
   pulseAtomId = null,
   pulseToken = 0,
@@ -121,7 +135,10 @@ export function LatticeScene({
   suspendCameraOrientationUpdates = false,
   unitCellLineStyle = "solid",
 }: {
+  atomMeasurementEnabled?: boolean;
   atomPickingEnabled?: boolean;
+  bondPickingEnabled?: boolean;
+  cellRange?: PeriodicCellRange;
   cameraOrientationRef?: CameraOrientationRef;
   cameraAnimatedCommandVersion?: number;
   cameraInteractionStore: CameraInteractionStore;
@@ -144,11 +161,17 @@ export function LatticeScene({
   onAtomInspect?: (atomId: string | null) => void;
   onAtomPulse?: (atomId: string) => void;
   onAtomSelectionToggle?: (siteIndex: number) => void;
+  onAtomMeasurementPick?: (atom: AtomSpec) => void;
+  onBondMeasurementPick?: (start: AtomSpec, end: AtomSpec) => void;
   onLockedInteractionAttempt?: () => void;
   resetCounter: number;
   safeArea?: PreviewSafeArea;
   scene: SceneSpec;
   selectedSiteIndices?: ReadonlySet<number>;
+  siteColorOverrides?: ReadonlyMap<number, string>;
+  measurements?: readonly MeasurementRecord[];
+  measurementDraft?: readonly AtomInstanceIdentity[];
+  measurementTool?: MeasurementTool | null;
   inspectedAtomId?: string | null;
   pulseAtomId?: string | null;
   pulseToken?: number;
@@ -163,8 +186,8 @@ export function LatticeScene({
 }) {
   const layoutSourceScene = layoutScene ?? scene;
   const structureLayout = useMemo(
-    () => computeSceneStructureLayout(layoutSourceScene),
-    [layoutSourceScene],
+    () => computeSceneStructureLayout(layoutSourceScene, "uniform", cellRange),
+    [cellRange, layoutSourceScene],
   );
   const cameraPose = useMemo(
     () =>
@@ -207,7 +230,7 @@ export function LatticeScene({
       frameloop="demand"
       gl={DEFAULT_RENDERER_PARAMETERS}
       data-testid="lattice-canvas"
-      style={atomPickingEnabled ? { cursor: "crosshair" } : undefined}
+      style={atomPickingEnabled || atomMeasurementEnabled || bondPickingEnabled ? { cursor: "crosshair" } : undefined}
     >
       <MaterialPresetLights
         intensityScale={lightStrength}
@@ -229,7 +252,10 @@ export function LatticeScene({
         safeArea={safeArea}
       />
       <PreviewSceneContent
+        atomMeasurementEnabled={atomMeasurementEnabled}
         atomPickingEnabled={atomPickingEnabled}
+        bondPickingEnabled={bondPickingEnabled}
+        cellRange={cellRange}
         componentOpacity={componentOpacity}
         layout={layout}
         materialFamilies={materialFamilies}
@@ -240,10 +266,16 @@ export function LatticeScene({
         onAtomInspect={onAtomInspect}
         onAtomPulse={onAtomPulse}
         onAtomSelectionToggle={onAtomSelectionToggle}
+        onAtomMeasurementPick={onAtomMeasurementPick}
+        onBondMeasurementPick={onBondMeasurementPick}
         onLockedInteractionAttempt={onLockedInteractionAttempt}
         pulseAtomId={pulseAtomId}
         pulseToken={pulseToken}
         selectedSiteIndices={selectedSiteIndices}
+        siteColorOverrides={siteColorOverrides}
+        measurements={measurements}
+        measurementDraft={measurementDraft}
+        measurementTool={measurementTool}
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}

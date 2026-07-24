@@ -28,6 +28,7 @@ import {
 import { createStructureExportFile } from "../export/structureExportFile";
 import { createCombinedExportFile } from "../export/combinedExportFile";
 import { exportFileStem } from "../export/fileNames";
+import { createScalarLegendExportFile } from "../export/scalarLegendExport";
 
 export type {
   CreateFigureExportOptions,
@@ -43,14 +44,18 @@ const EXPORT_ACCESSORY_LONG_SIDE_WEIGHT = 0.25;
 
 export async function createFigureExportFiles({
   cameraOrientationRef,
+  cellRange,
   componentOpacity,
   componentVisibility,
   fileName,
   lightStrength,
+  measurements,
   scene,
+  scalarLegend,
   settings,
   showCrystalAxisLabels,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile[]> {
   const validation = validateExportSettings(settings);
@@ -62,14 +67,18 @@ export async function createFigureExportFiles({
     return [
       await createCombinedExportFile({
         cameraOrientationRef,
+        cellRange,
         componentOpacity,
         componentVisibility,
         fileName,
         lightStrength,
+        measurements,
         scene,
+        scalarLegend,
         settings,
         showCrystalAxisLabels,
         style,
+        siteColorOverrides,
         unitCellLineStyle,
       }),
     ];
@@ -82,14 +91,18 @@ export async function createFigureExportFiles({
     files.push(
       await createStructureExportFile({
         cameraOrientationRef,
+        cellRange,
         componentOpacity,
         componentVisibility,
         fileName,
         lightStrength,
+        measurements,
         scene,
+        scalarLegend,
         settings,
         showCrystalAxisLabels,
         style,
+        siteColorOverrides,
         unitCellLineStyle,
       }),
     );
@@ -111,6 +124,18 @@ export async function createFigureExportFiles({
   }
 
   if (settings.components.legend) {
+    if (scalarLegend) {
+      files.push(
+        await createScalarLegendExportFile({
+          background: settings.background,
+          fileName: `${stem}-legend.${settings.format}`,
+          format: settings.format,
+          referenceSize: exportAccessoryReferenceSize(settings),
+          spec: scalarLegend,
+        }),
+      );
+      return files;
+    }
     const colorScheme = baseColorSchemeForStyle(style);
     const elementColorOverrides = elementColorOverridesForStyle(scene.atoms, style);
     files.push(
@@ -131,26 +156,34 @@ export async function createFigureExportFiles({
 
 export async function createFigureExportFile({
   cameraOrientationRef,
+  cellRange,
   componentOpacity,
   componentVisibility,
   fileName,
   lightStrength,
+  measurements,
   scene,
+  scalarLegend,
   settings,
   showCrystalAxisLabels,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   return createStructureExportFile({
     cameraOrientationRef,
+    cellRange,
     componentOpacity,
     componentVisibility,
     fileName,
     lightStrength,
+    measurements,
     scene,
+    scalarLegend,
     settings,
     showCrystalAxisLabels,
     style,
+    siteColorOverrides,
     unitCellLineStyle,
   });
 }

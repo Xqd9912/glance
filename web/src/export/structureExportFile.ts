@@ -13,13 +13,16 @@ import { exportFileStem } from "./fileNames";
 
 export async function createStructureExportFile({
   cameraOrientationRef,
+  cellRange,
   componentOpacity,
   componentVisibility,
   fileName,
   lightStrength,
+  measurements,
   scene,
   settings,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
 }: CreateFigureExportOptions): Promise<FigureExportFile> {
   const validation = validateExportSettings(settings);
@@ -35,11 +38,14 @@ export async function createStructureExportFile({
   const cameraPose = createCameraPoseSnapshot(cameraOrientationRef.current);
   const rasterImage = await renderExportRaster({
     cameraPose,
+    cellRange,
     componentOpacity,
     componentVisibility,
     lightStrength,
+    measurements,
     settings,
     style,
+    siteColorOverrides,
     unitCellLineStyle,
     visibleScene,
   });

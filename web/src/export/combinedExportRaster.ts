@@ -9,6 +9,9 @@ import type {
   ComponentOpacityState,
   ComponentVisibilityState,
   ExportSettingsState,
+  PeriodicCellRange,
+  MeasurementRecord,
+  ScalarLegendSpec,
   StyleState,
   UnitCellLineStyle,
 } from "../model";
@@ -33,18 +36,23 @@ import {
   CRYSTAL_AXIS_LABEL_HALO_COLOR,
   crystalAxisExportSize,
 } from "./crystalAxesExport";
+import { renderScalarLegendCanvas } from "./scalarLegendExport";
 
 const EXPORT_ACCESSORY_PADDING_RATIO = 0.08;
 
 interface CombinedExportRasterOptions {
   cameraPose: CameraPoseSnapshot;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   componentVisibility: ComponentVisibilityState;
   lightStrength: number;
+  measurements?: readonly MeasurementRecord[];
   scene: SceneSpec;
+  scalarLegend?: ScalarLegendSpec | null;
   settings: ExportSettingsState;
   showCrystalAxisLabels: boolean;
   style: StyleState;
+  siteColorOverrides?: ReadonlyMap<number, string>;
   unitCellLineStyle: UnitCellLineStyle;
   visibleScene: SceneSpec | null;
 }
@@ -58,13 +66,17 @@ interface CombinedExportLayer {
 
 export async function renderCombinedExportRaster({
   cameraPose,
+  cellRange,
   componentOpacity,
   componentVisibility,
   lightStrength,
+  measurements,
   scene,
+  scalarLegend,
   settings,
   showCrystalAxisLabels,
   style,
+  siteColorOverrides,
   unitCellLineStyle,
   visibleScene,
 }: CombinedExportRasterOptions): Promise<RasterExportImage> {
@@ -78,11 +90,14 @@ export async function renderCombinedExportRaster({
 
     const structureImage = await renderExportRaster({
       cameraPose,
+      cellRange,
       componentOpacity,
       componentVisibility,
       lightStrength,
+      measurements,
       settings,
       style,
+      siteColorOverrides,
       unitCellLineStyle,
       visibleScene,
     });
@@ -99,17 +114,25 @@ export async function renderCombinedExportRaster({
   const accessoryPadding = Math.round(accessoryReferenceSize * EXPORT_ACCESSORY_PADDING_RATIO);
 
   if (settings.components.legend) {
-    const colorScheme = baseColorSchemeForStyle(style);
-    const elementColorOverrides = elementColorOverridesForStyle(scene.atoms, style);
-    const renderedLegend = renderLegendCanvas({
-      background: "transparent",
-      entries: deriveElementLegendEntries(scene, colorScheme, elementColorOverrides),
-      includeText: settings.format !== "pdf",
-      layout: settings.legendLayout,
-      style: legendExportStyle(settings, accessoryReferenceSize),
-      supersampling: settings.supersampling,
-      textBackground: settings.background,
-    });
+    const renderedLegend = scalarLegend
+      ? { canvas: renderScalarLegendCanvas({
+          background: "transparent",
+          referenceSize: accessoryReferenceSize,
+          spec: scalarLegend,
+        }), textItems: [] as RasterExportTextItem[] }
+      : (() => {
+          const colorScheme = baseColorSchemeForStyle(style);
+          const elementColorOverrides = elementColorOverridesForStyle(scene.atoms, style);
+          return renderLegendCanvas({
+            background: "transparent",
+            entries: deriveElementLegendEntries(scene, colorScheme, elementColorOverrides),
+            includeText: settings.format !== "pdf",
+            layout: settings.legendLayout,
+            style: legendExportStyle(settings, accessoryReferenceSize),
+            supersampling: settings.supersampling,
+            textBackground: settings.background,
+          });
+        })();
     const position = combinedLegendPosition(
       settings.legendLayout,
       structureBounds,

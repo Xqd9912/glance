@@ -3,10 +3,24 @@ from __future__ import annotations
 import json
 from urllib.parse import quote
 
+import numpy as np
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pymatgen.core import Lattice, Structure
 
 from glance.server.app import create_app
+from glance.server.trajectory_store import (
+    PROPERTY_CACHE_CAPACITY,
+    TrajectoryEntry,
+    TrajectoryStore,
+)
+from glance.structures.atom_properties import (
+    PROPERTY_BOND_MEAN,
+    PROPERTY_COORDINATION,
+    PROPERTY_DISPLACEMENT,
+    scene_atom_properties,
+    unwrap_trajectory_displacements,
+)
 from glance.structures.trajectory import (
     TrajectoryReadError,
     detect_trajectory_format,
@@ -122,6 +136,22 @@ def test_read_trajectory_rejects_empty_payload() -> None:
         read_trajectory_bytes(b"", filename="XDATCAR")
 
 
+def test_trajectory_displacement_cache_is_bounded() -> None:
+    data = read_trajectory_bytes(XDATCAR_BYTES, filename="XDATCAR")
+    entry = TrajectoryEntry(payload=XDATCAR_BYTES, filename="XDATCAR", data=data)
+
+    for frame_index in range(PROPERTY_CACHE_CAPACITY + 5):
+        TrajectoryStore.cache_displacement(
+            entry,
+            frame_index,
+            np.asarray([float(frame_index)]),
+        )
+
+    assert len(entry.displacement_cache) == PROPERTY_CACHE_CAPACITY
+    assert 0 not in entry.displacement_cache
+    assert PROPERTY_CACHE_CAPACITY + 4 in entry.displacement_cache
+
+
 @pytest.mark.anyio
 async def test_trajectory_upload_and_frame_endpoints() -> None:
     async with AsyncClient(
@@ -204,3 +234,89 @@ async def test_trajectory_rejects_invalid_type_map() -> None:
 
         assert response.status_code == 400
         assert "JSON" in response.json()["detail"]["message"]
+
+
+def test_scene_atom_properties_count_periodic_self_bond_incidences() -> None:
+    scene = {
+        "cell": {"vectors": [[4.0, 0.0, 0.0]] * 3, "periodic": True},
+        "atoms": [
+            {
+                "siteIndex": 0,
+                "element": "H",
+                "position": [0.0, 0.0, 0.0],
+            },
+            {
+                "siteIndex": 1,
+                "element": "He",
+                "position": [1.0, 0.0, 0.0],
+            },
+            {
+                "siteIndex": 0,
+                "element": "H",
+                "position": [2.0, 0.0, 0.0],
+            },
+        ],
+        "bonds": [
+            {"startAtomIndex": 0, "endAtomIndex": 1},
+            {"startAtomIndex": 0, "endAtomIndex": 2},
+        ],
+        "polyhedra": [],
+        "summary": {"atomCount": 2},
+        "bondCutoffs": [],
+    }
+    properties = scene_atom_properties(
+        scene,  # type: ignore[arg-type]
+        [PROPERTY_COORDINATION, "coordination.element:H", PROPERTY_BOND_MEAN],
+    )
+
+    assert properties[PROPERTY_COORDINATION].values.tolist() == [3.0, 1.0]
+    assert properties["coordination.element:H"].values.tolist() == [2.0, 1.0]
+    assert properties[PROPERTY_BOND_MEAN].values.tolist() == pytest.approx([5 / 3, 1.0])
+
+
+def test_unwrap_trajectory_displacement_uses_minimum_image() -> None:
+    lattice = Lattice.cubic(10.0)
+    frames = [
+        Structure(lattice, ["H"], [[0.95, 0.0, 0.0]]),
+        Structure(lattice, ["H"], [[0.05, 0.0, 0.0]]),
+        Structure(lattice, ["H"], [[0.15, 0.0, 0.0]]),
+    ]
+
+    displacement = unwrap_trajectory_displacements(frames)
+
+    assert displacement[:, 0].tolist() == pytest.approx([0.0, 1.0, 2.0])
+
+
+def test_unwrap_trajectory_displacement_includes_cell_deformation() -> None:
+    frames = [
+        Structure(Lattice.cubic(10.0), ["H"], [[0.5, 0.0, 0.0]]),
+        Structure(Lattice.cubic(12.0), ["H"], [[0.5, 0.0, 0.0]]),
+    ]
+
+    displacement = unwrap_trajectory_displacements(frames)
+
+    assert displacement[:, 0].tolist() == pytest.approx([0.0, 1.0])
+
+
+@pytest.mark.anyio
+async def test_trajectory_atom_properties_endpoint_has_stable_domain() -> None:
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app()), base_url="http://testserver"
+    ) as client:
+        upload = await client.post(
+            "/api/trajectory",
+            content=XDATCAR_BYTES,
+            headers={"x-glance-filename": "XDATCAR"},
+        )
+        trajectory_id = upload.json()["trajectoryId"]
+        response = await client.get(
+            f"/api/trajectory/{trajectory_id}/frames/1/atom-properties",
+            params={"properties": PROPERTY_DISPLACEMENT},
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        displacement = body["properties"][PROPERTY_DISPLACEMENT]
+        assert body["frameIndex"] == 1
+        assert displacement["values"] == pytest.approx([0.1128, 0.0])
+        assert displacement["domain"] == pytest.approx({"min": 0.0, "max": 0.1128})

@@ -14,6 +14,10 @@ import {
 import type { AtomRadiusModel, AtomSpec } from "../api/scene";
 import { atomColorForScheme, type ElementColorOverrides } from "../model/colorSchemes";
 import type { StyleState } from "../model";
+import {
+  sameAtomInstance,
+  type AtomInstanceIdentity,
+} from "../model/measurements";
 import { atomRadiusForModel } from "./sceneGeometry";
 import type { ResolvedStructureMaterialFamily } from "./materialPresetResolver";
 import { STRUCTURE_RENDER_ORDER } from "./renderOrder";
@@ -54,6 +58,7 @@ const ATOM_SELECTION_HALO_OPACITY = 0.9;
 const ATOM_SELECTION_HALO_SCALE = 1.12;
 
 export function InstancedAtoms({
+  atomMeasurementEnabled = false,
   atomPickingEnabled = false,
   atoms,
   colorScheme,
@@ -65,6 +70,7 @@ export function InstancedAtoms({
   onInspect,
   onPulse,
   onAtomSelectionToggle,
+  onAtomMeasurementPick,
   onLockedInteractionAttempt,
   opacity,
   pulseAtomId,
@@ -72,7 +78,10 @@ export function InstancedAtoms({
   radiusModel,
   radiusScale,
   selectedSiteIndices = EMPTY_SELECTED_SITE_INDICES,
+  measurementHighlightedAtoms = [],
+  siteColorOverrides,
 }: {
+  atomMeasurementEnabled?: boolean;
   atomPickingEnabled?: boolean;
   atoms: AtomSpec[];
   colorScheme: StyleState["colorScheme"];
@@ -84,6 +93,7 @@ export function InstancedAtoms({
   onInspect?: (atomId: string | null) => void;
   onPulse?: (atomId: string) => void;
   onAtomSelectionToggle?: (siteIndex: number) => void;
+  onAtomMeasurementPick?: (atom: AtomSpec) => void;
   onLockedInteractionAttempt?: () => void;
   opacity: number;
   pulseAtomId: string | null;
@@ -91,6 +101,8 @@ export function InstancedAtoms({
   radiusModel: AtomRadiusModel;
   radiusScale: number;
   selectedSiteIndices?: ReadonlySet<number>;
+  measurementHighlightedAtoms?: readonly AtomInstanceIdentity[];
+  siteColorOverrides?: ReadonlyMap<number, string>;
 }) {
   const meshRef = useRef<InstancedMesh | null>(null);
   const selectionPointerDownRef = useRef<{
@@ -102,13 +114,14 @@ export function InstancedAtoms({
   const atomColorInstances = useMemo<AtomColorInstanceSpec[]>(
     () =>
       atoms.map((atom) => {
-        const color = atomColorForScheme(atom, colorScheme, colorOverrides);
+        const color = siteColorOverrides?.get(atom.siteIndex)
+          ?? atomColorForScheme(atom, colorScheme, colorOverrides);
         return {
           color,
           restingColor: new Color(color),
         };
       }),
-    [atoms, colorOverrides, colorScheme],
+    [atoms, colorOverrides, colorScheme, siteColorOverrides],
   );
   const atomInstances = useMemo<AtomInstanceSpec[]>(
     () =>
@@ -122,6 +135,21 @@ export function InstancedAtoms({
     () => selectedAtomInstanceIndices(atoms, selectedSiteIndices),
     [atoms, selectedSiteIndices],
   );
+  const haloInstanceIndices = useMemo(() => {
+    const indices = new Set(selectedInstanceIndices);
+    atomInstances.forEach((instance, index) => {
+      if (measurementHighlightedAtoms.some((identity) => sameAtomInstance(
+        identity,
+        {
+          siteIndex: instance.atom.siteIndex,
+          imageOffset: instance.atom.imageOffset,
+        },
+      ))) {
+        indices.add(index);
+      }
+    });
+    return [...indices];
+  }, [atomInstances, measurementHighlightedAtoms, selectedInstanceIndices]);
   const atomIndexById = useMemo(() => {
     const indexById = new Map<string, number>();
     atomInstances.forEach((instance, index) => {
@@ -209,7 +237,7 @@ export function InstancedAtoms({
         return;
       }
 
-      if (atomPickingEnabled) {
+      if (atomPickingEnabled || atomMeasurementEnabled) {
         const pointerDown = selectionPointerDownRef.current;
         selectionPointerDownRef.current = null;
         const selectionAction = resolveAtomSelectionAction(
@@ -231,7 +259,11 @@ export function InstancedAtoms({
           return;
         }
 
-        onAtomSelectionToggle?.(atom.siteIndex);
+        if (atomMeasurementEnabled) {
+          onAtomMeasurementPick?.(atom);
+        } else {
+          onAtomSelectionToggle?.(atom.siteIndex);
+        }
         return;
       }
 
@@ -244,8 +276,10 @@ export function InstancedAtoms({
     },
     [
       atomForEvent,
+      atomMeasurementEnabled,
       atomPickingEnabled,
       interactionLocked,
+      onAtomMeasurementPick,
       onAtomSelectionToggle,
       onLockedInteractionAttempt,
       onPulse,
@@ -255,11 +289,11 @@ export function InstancedAtoms({
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
       selectionPointerDownRef.current =
-        atomPickingEnabled && event.button === 0
+        (atomPickingEnabled || atomMeasurementEnabled) && event.button === 0
           ? { clientX: event.clientX, clientY: event.clientY }
           : null;
     },
-    [atomPickingEnabled],
+    [atomMeasurementEnabled, atomPickingEnabled],
   );
 
   const handlePointerCancel = useCallback(() => {
@@ -274,7 +308,7 @@ export function InstancedAtoms({
       }
 
       event.stopPropagation();
-      if (atomPickingEnabled) {
+      if (atomPickingEnabled || atomMeasurementEnabled) {
         return;
       }
 
@@ -287,6 +321,7 @@ export function InstancedAtoms({
     },
     [
       atomForEvent,
+      atomMeasurementEnabled,
       atomPickingEnabled,
       interactionLocked,
       onInspect,
@@ -303,7 +338,7 @@ export function InstancedAtoms({
       <InstancedAtomSelectionHalos
         atomInstances={atomInstances}
         meshDetail={meshDetail}
-        selectedInstanceIndices={selectedInstanceIndices}
+        selectedInstanceIndices={haloInstanceIndices}
       />
       <instancedMesh
         ref={meshRef}

@@ -330,7 +330,7 @@ describe("App", () => {
     const displayTab = within(commonControls).getByRole("tab", { name: "Display" });
     expect(displayTab.isConnected).toBe(true);
     expect(within(commonControls).queryByRole("heading", { name: "Display" })).toBeNull();
-    expect(within(commonControls).getByText("Periodic images").isConnected).toBe(true);
+    expect(within(commonControls).getByText("Periodic display").isConnected).toBe(true);
     expect(
       commonControls.querySelector("[data-slot='common-controls-content']")?.className,
     ).not.toContain("h-[");
@@ -344,6 +344,113 @@ describe("App", () => {
         .getAllByRole("checkbox")
         .map((checkbox) => checkbox.getAttribute("aria-label")),
     ).toEqual(["Atoms", "Bonds", "Unit cell", "Polyhedra"]);
+  });
+
+  test("loads an IPR structure and applies its dominant-atom cluster", async () => {
+    const user = userEvent.setup();
+    const iprScene = sceneWithPeriodicImages();
+    queueFetchResponse(jsonResponse({
+      capabilities: {
+        dos: { available: true },
+        pdos: { available: false, reason: "No PDOS" },
+        sitePdos: { available: false, reason: "No site PDOS" },
+        ipr: { available: true },
+      },
+      dosSeries: [{
+        id: "tdos:up",
+        label: "TDOS",
+        kind: "tdos",
+        spin: "up",
+        values: [0, 2, 0],
+      }],
+      efermi: 5,
+      electronicId: "ipr-app",
+      energy: [-1, 0, 1],
+      ipr: {
+        aggregation: "k-weighted-band-composition",
+        states: [{
+          stateId: "band-0",
+          bandIndex: 0,
+          energy: 0.2,
+          energyMin: 0.2,
+          energyMax: 0.2,
+          occupation: 0,
+          ipr: 0.905,
+          kPointCount: 1,
+        }],
+      },
+      orbitalTypes: [],
+      pdosSeries: [],
+      scene: iprScene,
+      source: "vasprun",
+      spinChannels: ["up"],
+      warnings: [],
+    }));
+
+    render(<App />);
+    await user.click(screen.getByRole("button", { name: "Electronic properties" }));
+    const electronicPanel = screen.getByRole("complementary", {
+      name: "Electronic properties",
+    });
+    const iprSection = within(electronicPanel).getByRole("button", {
+      name: "Load vasprun.xml",
+    }).closest("section");
+    if (!iprSection) {
+      throw new Error("IPR upload section was not rendered.");
+    }
+    const iprInput = iprSection.querySelectorAll<HTMLInputElement>("input[type='file']")[1];
+    if (!iprInput) {
+      throw new Error("IPR file input was not rendered.");
+    }
+    await user.upload(
+      iprInput,
+      new File(["xml"], "vasprun.xml", { type: "application/xml" }),
+    );
+
+    await screen.findByTestId("lattice-canvas");
+    expect(
+      within(screen.getByRole("complementary", { name: "Current structure" })).getByText(
+        "vasprun.xml",
+      ),
+    ).toBeTruthy();
+
+    queueFetchResponse(jsonResponse({
+      state: {
+        stateId: "band-0",
+        bandIndex: 0,
+        energy: 0.2,
+        energyMin: 0.2,
+        energyMax: 0.2,
+        occupation: 0,
+        ipr: 0.905,
+        kPointCount: 1,
+      },
+      contributions: [
+        { siteIndex: 0, element: "Na", composition: 0.95, iprContribution: 0.9025 },
+        { siteIndex: 1, element: "Cl", composition: 0.05, iprContribution: 0.0025 },
+      ],
+    }));
+    await user.click(
+      within(electronicPanel).getByRole("button", { name: "Next IPR band" }),
+    );
+    await within(electronicPanel).findByText(
+      "1 atoms · 95.0% composition · 99.7% of IPR captured",
+    );
+    await user.click(
+      within(electronicPanel).getByRole("button", { name: "Apply to structure" }),
+    );
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    expect(
+      within(commonControls).getByRole("tab", { name: "Select" }).getAttribute(
+        "aria-selected",
+      ),
+    ).toBe("true");
+    expect(within(commonControls).getByText("1 selected · 1 / 2 visible")).toBeTruthy();
+    expect(within(electronicPanel).getByText("Applied to structure")).toBeTruthy();
+
+    await user.click(within(commonControls).getByRole("button", { name: "Normal view" }));
+    expect(within(electronicPanel).getByText("Structure selection changed")).toBeTruthy();
   });
 
   test("initializes uploaded structure camera controls from the uploaded cell", async () => {
@@ -673,6 +780,42 @@ describe("App", () => {
     ).toBe("true");
   });
 
+  test("resets a periodic cell range while a trajectory is active", async () => {
+    const user = userEvent.setup();
+    const trajectoryScene = sceneWithPeriodicImages();
+    queueFetchResponse(
+      jsonResponse({
+        trajectoryId: "t-periodic-reset",
+        format: "lammps-dump",
+        frameCount: 2,
+        atomCount: 2,
+        elements: ["Na", "Cl"],
+        typeIds: null,
+      }),
+    );
+    for (let index = 0; index < 6; index += 1) {
+      queueFetchResponse(jsonResponse(trajectoryScene));
+    }
+
+    render(<App />);
+    await user.upload(
+      getFileInput(),
+      new File(["frames"], "periodic.dump", { type: "application/octet-stream" }),
+    );
+    await screen.findByText("1 / 2");
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    const aTo = within(commonControls).getByRole("textbox", { name: "a cell to" });
+    fireEvent.change(aTo, { target: { value: "1" } });
+    fireEvent.blur(aTo);
+    expect(within(commonControls).getByText("2 × 1 × 1 · 2 cells")).toBeTruthy();
+
+    await openPreviewContextMenu();
+    await user.click(await screen.findByRole("menuitem", { name: "Reset all" }));
+
+    expect(within(commonControls).getByText("1 × 1 × 1 · 1 cell")).toBeTruthy();
+  });
+
   test("does not restore a previously uploaded scene after the app remounts", async () => {
     const user = userEvent.setup();
     queueFetchResponse(jsonResponse(sceneWithPeriodicImages()));
@@ -894,6 +1037,67 @@ describe("App", () => {
     expect(exportRequests[0]?.style.distinguishSimilarColors).toBe(true);
   });
 
+  test("repeats a selected site in export and resets the cell range", async () => {
+    const user = userEvent.setup();
+    await renderLoadedStructure(user);
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    const aTo = within(commonControls).getByRole("textbox", { name: "a cell to" });
+    fireEvent.change(aTo, { target: { value: "1" } });
+    fireEvent.blur(aTo);
+    expect(within(commonControls).getByText("2 × 1 × 1 · 2 cells")).toBeTruthy();
+
+    await user.click(within(commonControls).getByRole("tab", { name: "Select" }));
+    await user.click(
+      within(commonControls).getByRole("checkbox", { name: "Select atom #1 Na" }),
+    );
+    await user.click(within(commonControls).getByRole("button", { name: "Selected only" }));
+    await user.click(within(commonControls).getByRole("tab", { name: "Export" }));
+    await user.click(within(commonControls).getByRole("button", { name: "Export PNG" }));
+    await waitFor(() => expect(exportRequests).toHaveLength(1));
+
+    expect(exportRequests[0]?.cellRange).toEqual({
+      a: { from: 0, to: 1 },
+      b: { from: 0, to: 0 },
+      c: { from: 0, to: 0 },
+    });
+    expect(exportRequests[0]?.scene.atoms.map((atom) => atom.id)).toEqual([
+      "Na-0",
+      "Na-0-image-1-0-0",
+      "Na-0-image-2-0-0",
+    ]);
+    expect(exportRequests[0]?.scene.atoms.every((atom) => atom.siteIndex === 0)).toBe(true);
+    expect(exportRequests[0]?.scene.bonds).toEqual([]);
+    expect(exportRequests[0]?.scene.polyhedra).toEqual([]);
+
+    await openPreviewContextMenu();
+    await user.click(await screen.findByRole("menuitem", { name: "Reset all" }));
+    await user.click(within(commonControls).getByRole("tab", { name: "Display" }));
+    expect(within(commonControls).getByText("1 × 1 × 1 · 1 cell")).toBeTruthy();
+  });
+
+  test("disables cell repetition for a non-periodic structure", async () => {
+    const user = userEvent.setup();
+    const scene = sceneWithPeriodicImages();
+    scene.cell.periodic = false;
+    scene.atoms = scene.atoms.filter((atom) => !atom.isPeriodicImage);
+    scene.bonds = scene.bonds.slice(0, 1);
+    scene.polyhedra = [];
+    await renderLoadedStructure(user, scene);
+
+    const commonControls = screen.getByRole("complementary", { name: "Common controls" });
+    expect(
+      within(commonControls).getByText(
+        "Cell repetition is unavailable for non-periodic structures.",
+      ),
+    ).toBeTruthy();
+    for (const input of within(commonControls).getAllByRole("textbox", {
+      name: /cell (from|to)$/,
+    })) {
+      expect((input as HTMLInputElement).disabled).toBe(true);
+    }
+  });
+
   test("selects canonical atoms, isolates their periodic images, and exports the filtered scene", async () => {
     const user = userEvent.setup();
 
@@ -991,6 +1195,10 @@ describe("App", () => {
     expect(screen.getByTestId("lattice-canvas")).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Element legend" })).toBeNull();
 
+    await user.click(within(commonControls).getByRole("tab", { name: "Display" }));
+    const aTo = within(commonControls).getByRole("textbox", { name: "a cell to" });
+    fireEvent.change(aTo, { target: { value: "1" } });
+    fireEvent.blur(aTo);
     await user.click(within(commonControls).getByRole("tab", { name: "Export" }));
     await user.click(within(commonControls).getByRole("button", { name: "Export PNG" }));
     await waitFor(() => expect(exportRequests).toHaveLength(2));
@@ -998,6 +1206,7 @@ describe("App", () => {
     expect(exportRequests[1]?.scene.bonds).toEqual([]);
     expect(exportRequests[1]?.scene.polyhedra).toEqual([]);
     expect(exportRequests[1]?.componentVisibility.unitCell).toBe(true);
+    expect(exportRequests[1]?.cellRange?.a).toEqual({ from: 0, to: 1 });
   });
 
   test("keeps Select search and visibility across tabs, then clears them on Reset all", async () => {
@@ -2510,6 +2719,7 @@ function sceneWithPeriodicImages({
         ]
       : [],
     cell: {
+      periodic: true,
       vectors: [
         [1, 0, 0],
         [0, 1, 0],

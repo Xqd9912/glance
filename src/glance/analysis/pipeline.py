@@ -16,6 +16,7 @@ from scipy.signal import find_peaks
 
 from glance.analysis import kernels as K
 from glance.analysis import rings as R
+from glance.structures.atom_properties import unwrap_trajectory_positions
 
 BIN_WIDTH = 0.1
 R_MAX = 10.0
@@ -230,10 +231,16 @@ def compute_dynamics(
         tbc = tbc / peak
     axis = np.linspace(r_min, r_max, n_point)
 
-    time, total_msd = fs.mean_squared_displacement(atoms, timestep)
+    unwrapped_positions = unwrap_trajectory_positions(frames)
+    dynamics_atoms = [AseAtomsAdaptor.get_atoms(frames[index]) for index in indices]
+    for atom_frame, frame_index in zip(dynamics_atoms, indices, strict=True):
+        atom_frame.set_positions(unwrapped_positions[frame_index])
+        atom_frame.set_pbc(False)
+
+    time, total_msd = fs.mean_squared_displacement(dynamics_atoms, timestep)
     # Per-atom squared displacement; average over each element's atoms to get
     # per-element MSD. Atom order follows the (grouped or not) frame order.
-    per_atom_sd = np.array(fs.squared_displacement(atoms))
+    per_atom_sd = np.array(fs.squared_displacement(dynamics_atoms))
     site_symbols = [str(site.specie.symbol) for site in frames[indices[0]]]
     per_element = []
     for symbol in symbols:

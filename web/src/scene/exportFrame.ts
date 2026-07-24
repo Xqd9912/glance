@@ -3,6 +3,10 @@ import { OrthographicCamera, Quaternion, Vector3 } from "three";
 import type { SceneSpec } from "../api/scene";
 import type { StyleState } from "../model/appearance";
 import type { ComponentOpacityState } from "../model/displayState";
+import {
+  DEFAULT_PERIODIC_CELL_RANGE,
+  type PeriodicCellRange,
+} from "../model/periodicReplication";
 import type { CameraPoseSnapshot } from "./cameraPose";
 import {
   BOND_RADIUS,
@@ -45,6 +49,7 @@ interface ExportFramePoint {
 
 interface StructureExportGeometryOptions {
   cameraPose: CameraPoseSnapshot;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   groupPosition?: VectorTuple;
   scene: SceneSpec;
@@ -138,6 +143,7 @@ export function applyOrthographicExportFrame(
 
 export function computeStructureProjectedBounds({
   cameraPose,
+  cellRange = DEFAULT_PERIODIC_CELL_RANGE,
   componentOpacity,
   groupPosition,
   scene,
@@ -147,12 +153,12 @@ export function computeStructureProjectedBounds({
 }: StructureExportGeometryOptions): ProjectedBounds | null {
   const projector = createCameraPlaneProjector(
     cameraPose,
-    groupPosition ?? centeredCellGroupPosition(scene.cell.vectors),
+    groupPosition ?? centeredCellGroupPosition(scene.cell.vectors, cellRange),
   );
   const bounds = createBoundsAccumulator();
 
   if (showUnitCell && componentOpacity.unitCell > 0) {
-    for (const corner of cellCorners(scene.cell.vectors)) {
+    for (const corner of cellCorners(scene.cell.vectors, cellRange)) {
       bounds.includePoint(projector.projectPoint(corner));
     }
   }

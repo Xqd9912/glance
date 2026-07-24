@@ -30,6 +30,13 @@ import {
   viewScaleToSliderPosition,
 } from "../viewState";
 import type { PreviewFpsStore } from "../../model/previewFpsStore";
+import type {
+  AtomPropertyControlState,
+  AtomPropertyOption,
+} from "../../model/atomProperties";
+import type { MeasurementTool } from "../../model/measurements";
+import { PropertiesPopover } from "./PropertiesPopover";
+import { MeasurementPopover } from "./MeasurementPopover";
 
 const LOCKED_INTERACTION_FEEDBACK_ANIMATION_MS = 420;
 const RESET_VIEW_FEEDBACK_ANIMATION_MS = 150;
@@ -44,6 +51,16 @@ export function ViewControlRail({
   lockedInteractionFeedbackCount,
   onInteractionLockedChange,
   onResetView,
+  propertyState,
+  propertyOptions,
+  propertyColorOptions,
+  propertyLoading = false,
+  propertyError,
+  propertyMatchCount,
+  onPropertyStateChange,
+  onSelectPropertyMatches,
+  measurementTool,
+  onMeasurementToolChange,
   previewFpsStore,
   showFps = false,
 }: {
@@ -53,6 +70,16 @@ export function ViewControlRail({
   lockedInteractionFeedbackCount: number;
   onInteractionLockedChange: (interactionLocked: boolean) => void;
   onResetView: () => void;
+  propertyState?: AtomPropertyControlState;
+  propertyOptions?: readonly AtomPropertyOption[];
+  propertyColorOptions?: readonly AtomPropertyOption[];
+  propertyLoading?: boolean;
+  propertyError?: string | null;
+  propertyMatchCount?: number | null;
+  onPropertyStateChange?: (state: AtomPropertyControlState) => void;
+  onSelectPropertyMatches?: () => void;
+  measurementTool?: MeasurementTool | null;
+  onMeasurementToolChange?: (tool: MeasurementTool | null) => void;
   previewFpsStore: PreviewFpsStore;
   showFps?: boolean;
 }) {
@@ -265,6 +292,26 @@ export function ViewControlRail({
               {interactionLocked ? "Unlock mouse interaction" : "Lock mouse interaction"}
             </TooltipContent>
           </Tooltip>
+
+          {propertyState && propertyOptions && onPropertyStateChange && onSelectPropertyMatches ? (
+            <PropertiesPopover
+              state={propertyState}
+              options={propertyOptions}
+              colorOptions={propertyColorOptions}
+              loading={propertyLoading}
+              error={propertyError}
+              matchCount={propertyMatchCount}
+              onChange={onPropertyStateChange}
+              onSelectMatches={onSelectPropertyMatches}
+            />
+          ) : null}
+
+          {onMeasurementToolChange ? (
+            <MeasurementPopover
+              activeTool={measurementTool ?? null}
+              onToolChange={onMeasurementToolChange}
+            />
+          ) : null}
 
           <div className="zoom-slider-shell relative h-[180px] w-7" style={sliderStyle}>
             <input

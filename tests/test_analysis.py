@@ -5,6 +5,7 @@ import pytest
 from pymatgen.core import Lattice, Structure
 
 from glance.analysis import kernels as K
+from glance.analysis.pipeline import compute_dynamics
 
 
 def test_grouped_frame_arrays_reorders_interleaved_elements() -> None:
@@ -103,3 +104,31 @@ def test_pair_distribution_shape_and_normalization() -> None:
     assert np.all(gr[:, 1] >= 0)
     # Nearest-neighbour shell at 1.0 A is populated.
     assert gr[10, 1] > 0
+
+
+def test_dynamics_msd_uses_unwrapped_minimum_image_positions() -> None:
+    lattice = Lattice.cubic(10.0)
+    frames = [
+        Structure(lattice, ["H", "He"], [[0.95, 0.0, 0.0], [0.5, 0.5, 0.5]]),
+        Structure(lattice, ["H", "He"], [[0.05, 0.0, 0.0], [0.5, 0.5, 0.5]]),
+        Structure(lattice, ["H", "He"], [[0.15, 0.0, 0.0], [0.5, 0.5, 0.5]]),
+    ]
+
+    dynamics = compute_dynamics(
+        frames,
+        [0, 1, 2],
+        ["H", "He"],
+        r_min=1.0,
+        r_max=4.0,
+        n_point=10,
+        cutoff_angle=160.0,
+        timestep=1.0,
+    )
+
+    # The H atom moves 1 A per frame across x=1 -> x=0. Wrapped coordinates
+    # would incorrectly report a 9 A jump at the first step.
+    assert dynamics["msd"]["total"][-1] == pytest.approx(2.0)
+    h_series = next(
+        row for row in dynamics["msd"]["perElement"] if row["element"] == "H"
+    )
+    assert h_series["values"][-1] == pytest.approx(4.0)

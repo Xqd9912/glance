@@ -154,18 +154,20 @@ export function LineChartCard({
                 type="checkbox"
                 checked={!hidden[line.label]}
                 className="size-3 accent-foreground"
-                onChange={(event) =>
-                  setHidden((current) => ({ ...current, [line.label]: !event.target.checked }))
-                }
+                onChange={(event) => {
+                  const hiddenValue = !event.currentTarget.checked;
+                  setHidden((current) => ({ ...current, [line.label]: hiddenValue }));
+                }}
               />
               <input
                 type="color"
                 aria-label={`${line.label} color`}
                 value={color}
                 className="h-3 w-4 cursor-pointer border-0 bg-transparent p-0"
-                onChange={(event) =>
-                  setColors((current) => ({ ...current, [line.label]: event.target.value }))
-                }
+                onChange={(event) => {
+                  const value = event.currentTarget.value;
+                  setColors((current) => ({ ...current, [line.label]: value }));
+                }}
               />
               {line.label}
             </label>

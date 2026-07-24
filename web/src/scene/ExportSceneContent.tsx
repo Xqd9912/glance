@@ -5,6 +5,8 @@ import { useThree } from "@react-three/fiber";
 import type { SceneSpec } from "../api/scene";
 import type {
   ComponentOpacityState,
+  PeriodicCellRange,
+  MeasurementRecord,
   StyleState,
   UnitCellLineStyle,
 } from "../model";
@@ -18,13 +20,16 @@ import { applyOrthographicExportFrame, type StructureExportFramePlan } from "./e
 
 export function ExportSceneContent({
   cameraPose,
+  cellRange,
   componentOpacity,
   exportFramePlan,
   layout,
   materialFamilies,
   meshDetail,
+  measurements = [],
   polyhedronEdgeLineWidthScale = 1,
   scene,
+  siteColorOverrides,
   showAtoms,
   showUnitCell,
   style,
@@ -33,13 +38,16 @@ export function ExportSceneContent({
   unitCellLineWidthScale = 1,
 }: {
   cameraPose: CameraPoseSnapshot;
+  cellRange?: PeriodicCellRange;
   componentOpacity: ComponentOpacityState;
   exportFramePlan: StructureExportFramePlan;
   layout: SceneLayout;
   materialFamilies: ResolvedStructureMaterialFamilies;
   meshDetail: SceneMeshDetail;
+  measurements?: readonly MeasurementRecord[];
   polyhedronEdgeLineWidthScale?: number;
   scene: SceneSpec;
+  siteColorOverrides?: ReadonlyMap<number, string>;
   showAtoms: boolean;
   showUnitCell: boolean;
   style: StyleState;
@@ -63,12 +71,15 @@ export function ExportSceneContent({
     <>
       <SceneFog layout={layout} style={style} />
       <MemoizedStructureSceneObjects
+        cellRange={cellRange}
         componentOpacity={componentOpacity}
         groupPosition={layout.groupPosition}
         materialFamilies={materialFamilies}
         meshDetail={meshDetail}
+        measurements={measurements}
         polyhedronEdgeLineWidthScale={polyhedronEdgeLineWidthScale}
         scene={scene}
+        siteColorOverrides={siteColorOverrides}
         showAtoms={showAtoms}
         showUnitCell={showUnitCell}
         style={style}
