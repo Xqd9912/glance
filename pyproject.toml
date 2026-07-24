@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "glance"
-version = "0.3.0"
+version = "0.3.1"
 description = "Local web GUI for rendering crystal structures as publication-ready figures."
 readme = "README.md"
 license = "MIT"
